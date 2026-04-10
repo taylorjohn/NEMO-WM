@@ -1,0 +1,16 @@
+﻿recon_dataset.tar.gz
+*.tar.gz
+BEATs_iter3_plus_AS2M*.pt
+tiny-imagenet-200.zip
+geo_latent_db*
+*.onnx.data
+checkpoints/
+recon_data/
+ogbench_data/
+allen_cache/
+*.log
+*.csv
+__pycache__/
+*.pyc
+.env
+*DEPRECATED*
