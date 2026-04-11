@@ -1,6 +1,6 @@
 # NeMo-WM: Neuromodulated World Model for Robot Navigation
 
-[![arXiv](https://img.shields.io/badge/arXiv-pending-b31b1b.svg)](https://github.com/taylorjohn/NEMO-WM)
+[![arXiv](https://img.shields.io/badge/arXiv-submitting-b31b1b.svg)](https://github.com/taylorjohn/NEMO-WM)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Hardware](https://img.shields.io/badge/Hardware-AMD_Ryzen_AI_MAX%2B_395-ED1C24.svg)](https://www.amd.com/)
 [![NPU](https://img.shields.io/badge/NPU-XINT8_0.34ms-00A86B.svg)](https://github.com/taylorjohn/strix-halo-vision-npu)
@@ -95,6 +95,62 @@ independent of the visual language pathway:
 The proprioceptive encoder alone matches the full system. The visual pathway
 contributes zero additional information for temporal self-localisation.
 This mirrors the double dissociation in rodent hippocampus (Moser et al. 2008).
+
+---
+
+## Language-Conditioned Navigation
+
+Text goal → GPS waypoint in real time. No LLM. No retraining. 164K-parameter CLIPBridge distilled from CLIP ViT-B/32. **8,700× smaller than direct CLIP use.**
+
+**10,906 real Berkeley campus nodes** indexed in a GeoLatentDB (RECON dataset). Scoring all nodes: ~35ms (CLIP encode, one-time). Per-step navigation: **0.1ms**.
+
+```bash
+# Text → GPS: different queries return different GPS coordinates
+python sprint7b_language_nav.py --text "outdoor path through campus"
+python sprint7b_language_nav.py --text "building entrance with steps"
+python sprint7b_language_nav.py --text "narrow alley between buildings"
+python sprint7b_language_nav.py --benchmark
+```
+
+| Query | Top GPS Target | Score | Latency |
+|---|---|---|---|
+| "outdoor path through campus" | (37.91499, -122.33437) | 0.275 | 30ms |
+| "building entrance with steps" | (37.91486, -122.33463) | 0.257 | 31ms |
+| "narrow alley between buildings" | (37.91500, -122.33652) | 0.280 | 45ms |
+| "parking area near road" | (37.91494, -122.33617) | 0.167 | 30ms |
+
+Language A\* is measurably faster than GPS A\* — text scores reshape the search topology.
+
+### Text-as-Target Anomaly Detection
+
+Define the expected scene in English. The system detects when reality diverges. **F1=1.000 with zero false positives.**
+
+```bash
+python vlm_phase1c_calibrate.py \
+    --hdf5-dir recon_data/recon_release \
+    --text "robot navigating outdoor campus path"
+```
+
+| Encoder | F1 | Notes |
+|---|---|---|
+| DINOv2-Student (visual) | 0.950 | |
+| CLIP ViT-B/32 (visual+language) | 0.884 | |
+| **CLIP text-as-target** | **1.000** | Define scene in English |
+
+### Cortisol-Triggered Continual Adaptation
+
+```bash
+python phase2b_clean.py
+```
+
+| Mode | False+ | Adaptations | Verdict |
+|---|---|---|---|
+| Static | 0 | 0 | Baseline |
+| Periodic (every 20 steps) | **3** | 8 | Disrupts stable encoder |
+| **Cortisol-triggered** | **0** | 0 | **Wins** |
+
+Cortisol correctly abstains from adaptation on stable sequences. Periodic fine-tuning disrupts stable encoder representations and produces 3 false positives. Cortisol is a **homeostatic restraint signal**, not a constant update trigger.
+
 
 ---
 
@@ -209,8 +265,8 @@ Documented explicitly per scientific practice:
 **NeMo-WM: Neuromodulated World Model for Robot Navigation**
 John Taylor (independent researcher)
 
-arXiv submission in progress (cs.LG, cs.RO).
-Endorsement received. Submission imminent.
+arXiv submission in progress (cs.RO primary, cs.LG + cs.CV cross-list).
+Endorsement received from Dhruv Shah (UC Berkeley). Submission zip ready.
 
 Key references: Hasselmo 1999 (ACh), Moser et al. 2008 (grid cells),
 O'Keefe 1971 (place cells), Taube 1998 (head direction),
