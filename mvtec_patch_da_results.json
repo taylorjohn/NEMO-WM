@@ -1,0 +1,15 @@
+{
+  "transistor": {
+    "patch": {
+      "f1": 0.71,
+      "fp": 4,
+      "sm": 0.329,
+      "xm": 0.4708
+    },
+    "cls": {
+      "f1": NaN,
+      "fp": "?"
+    },
+    "improved": true
+  }
+}
