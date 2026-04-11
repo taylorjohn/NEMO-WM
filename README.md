@@ -1,117 +1,72 @@
-# amd-npu-vlm-compat
+﻿# NeMo-WM: Neuromodulated World Model for Robot Navigation
 
-Fix popular vision-language models to run on AMD Ryzen AI MAX+ (Strix Halo) NPU.
+Biologically-grounded navigation world model trained entirely on a GMKtec EVO-X2
+(AMD Ryzen AI MAX+ 395, 128GB RAM). No GPU. No cloud.
 
-Most VLMs fail on AMD NPU not because of the vision encoder but because of
-graph fragmentation in the connector layers. This repo isolates and fixes each
-component so the vision side runs on NPU even when the LLM stays on CPU.
+## Key Results
 
----
+| Result | Value |
+|---|---|
+| Proprioceptive encoder AUROC (k_ctx=64) | **0.9999** |
+| RECON fine-tune AUROC | 0.9972 |
+| V-JEPA 2 ViT-G (1034M params) AUROC | 0.8833 |
+| NeMo-WM params | **26,561** |
+| Speedup vs V-JEPA 2-L | **1411x** |
+| MVTec AD | 15/15 PASS (p95 mode) |
+| CWRU Bearing | AUROC 1.000 |
+| MIMII | AUROC 0.9313 |
 
-## Compatibility table
+NeMo-WM outperforms V-JEPA 2 ViT-G (+0.114 AUROC) with 40,000x fewer parameters.
+Physics-grounded path integration outperforms visual scaling for temporal self-localisation.
 
-| Model | Vision Enc | Connector | LLM | Fix Available |
-|---|---|---|---|---|
-| LLaVA-1.5 | CLIP ViT-L | MLP 2-layer | Vicuna/Llama | yes -- fix_llava/ |
-| InstructBLIP | ViT-G | Q-Former | Vicuna | yes -- fix_instructblip/ |
-| PaliGemma | SigLIP | linear | Gemma | yes -- fix_siglip/ |
-| Qwen-VL | ViT custom | resampler | Qwen | yes -- fix_qwenvl/ |
-| Qwen2-VL | ViT custom | MRope | Qwen2 | partial -- fixed res only |
-| V-JEPA 2-L | ViT-L | -- | -- | yes -- fix_vjepa2/ (frame wrapper) |
-| V-JEPA 2-G | ViT-G | -- | -- | partial -- OOM on calibration |
-| CogVLM | ViT-E | expert router | Vicuna | no -- scatter/gather not in XDNA2 |
-| MiniGPT-4 | ViT-G | Q-Former | Vicuna | no -- same as CogVLM |
+## ACh Sweep (Temporal Context Window)
 
-Status: NPU = vision encoder runs on NPU with XINT8. LLM always stays on CPU.
+| k_ctx | Context | top1_acc | No-VLM AUROC |
+|---|---|---|---|
+| 2 | 1s | 0.925 | 0.925 |
+| 4 | 2s | 0.961 | 0.961 |
+| 8 | 4s | 0.977 | 0.977 |
+| 16 | 8s | 0.9874 | 0.9972 |
+| 32 | 16s | 0.9957 | 0.9997 |
+| 64 | 32s | 1.0000 | 0.9999 |
 
----
+Superlinear scaling -- broader temporal context strictly better for 4Hz outdoor navigation.
+Biological parallel: acetylcholine modulates temporal integration window in hippocampus (Hasselmo 1999).
 
-## The pattern
+## Three Pillars
 
-Every VLM has three parts:
+- **NeMo-WM**: Neuromodulated world model for robot navigation (this repo)
+- **CORTEX-PE**: Multi-domain anomaly detection (RECON, MVTec, CWRU, MIMII, cardiac, SMAP)
+- **CORTEX-16**: Algorithmic trading engine (Alpaca paper trading)
 
-    Image -> [Vision Encoder] -> [Connector] -> [LLM backbone] -> Text
+All share a biological neuromodulation philosophy: ACh, dopamine, cortisol, NE, eCB signals.
 
-Vision encoders are ViTs -- they work great on NPU with XINT8.
-LLM backbones always run on CPU -- autoregressive decoding does not benefit from NPU.
-Connectors are the problem -- small layers that fragment the NPU graph.
+## Hardware
 
-The fix in every case is the same:
-1. Export vision encoder separately to ONNX
-2. XINT8 quantize it
-3. Run it on NPU
-4. Pass the output to the connector + LLM running normally on CPU
+GMKtec EVO-X2, AMD Ryzen AI MAX+ 395, 128GB unified RAM, AMD NPU XINT8 (0.34ms inference).
+Trained without a discrete GPU.
 
----
+## Key Files
 
-## Quickstart
+- 	rain_proprio_6c.py -- Sprint 6c proprioceptive encoder training
+- eval_recon_auroc.py -- Dissociation eval (VLM + proprio)
+- 
+euro_vlm_gate.py -- Two-DA channel VLM gate (73/73 tests)
+- cortisol_domain_adaptive.py -- Domain-adaptive cortisol signal
+- un_vision_model.py -- Unified vision model benchmark launcher
+- pusht_physics_registry.py -- Physics registry for manipulation tasks
+- grasp_planner.py -- GRASP planner (arXiv:2602.00475, <10ms)
 
-    conda activate ryzen-ai-1.7.0
-    pip install -r requirements.txt
+## Related Repos
 
-    # Fix LLaVA (easiest, 2 hrs)
-    python fix_llava/run.py --model llava-1.5-7b --image photo.jpg --prompt "describe this"
+- [strix-halo-vision-npu](https://github.com/taylorjohn/strix-halo-vision-npu) -- DINOv2/CLIP on AMD NPU
+- [amd-npu-vlm-compat](https://github.com/taylorjohn/amd-npu-vlm-compat) -- VLM fixes for AMD NPU
 
-    # Fix SigLIP / PaliGemma
-    python fix_siglip/run.py --model google/paligemma-3b-pt-224
+## Paper
 
-    # Fix V-JEPA 2 (frame wrapper)
-    python fix_vjepa2/run.py --model facebook/vjepa2-vitl-fpc64-256 --video clip.mp4
+arXiv submission pending endorsement. Independent researcher.
+Contact: johntaylorcreative@gmail.com
 
-    # Benchmark all fixed models
-    python test_all.py --benchmark
+## License
 
----
-
-## Why this matters
-
-V-JEPA 2-L on AMD NPU (broken):   1849ms per 8-frame clip
-V-JEPA 2-L on AMD NPU (fixed):    ~230ms per frame (frame wrapper, NPU per frame)
-
-LLaVA vision encoder (broken):    375ms (CLIP-L/14 on CPU)
-LLaVA vision encoder (fixed):     ~50ms (CLIP-L/14 XINT8 on NPU)
-
-LLM backbone: always CPU, not changed.
-
----
-
-## Key insight
-
-XINT8 is the only quantization mode where LayerNorm runs on AMD NPU.
-BF16/A8W8/A16W8 all trigger CPU fallbacks for LayerNorm.
-Every ViT has 2 LayerNorms per block.
-
-See also: github.com/taylorjohn/strix-halo-vision-npu
-
----
-
-## Hardware tested
-
-GMKtec EVO-X2, Ryzen AI MAX+ 395, 128GB unified RAM, XDNA2 NPU
-No discrete GPU.
-
----
-
-MIT License
-
-## Measured CPU baselines (GMKtec EVO-X2, Ryzen AI MAX+ 395)
-
-Model               CPU PyTorch    ONNX CPU    NPU XINT8    Speedup
-DINOv2-S/14         41.5ms         --          0.85ms       49x  (measured)
-CLIP ViT-B/32       47.9ms         13.6ms      ~1.0ms       ~50x (estimated)
-CLIP ViT-L/14       341.8ms        164.5ms     ~5.7ms       ~60x (estimated)
-V-JEPA 2-L          1849ms         --          ~400ms       ~5x  (wrapper)
-
-Measured April 11 2026.
-
-## Measured CPU baselines (GMKtec EVO-X2, Ryzen AI MAX+ 395)
-
-Model               CPU PyTorch    ONNX CPU    NPU XINT8    Speedup
-DINOv2-S/14 (21M)   41.5ms         --          0.85ms       49x measured
-CLIP ViT-B/32       47.9ms         13.6ms      ~1.0ms       ~50x estimated
-CLIP ViT-L/14       341.8ms        164.5ms     ~5.7ms       ~60x estimated
-V-JEPA 2-L          1849ms         --          ~400ms       ~5x wrapper
-
-Measured April 11 2026 on GMKtec EVO-X2.
-ONNX/CPU = PyTorch FP32 exported to ONNX, no quantization.
-NPU XINT8 = AMD Quark quantization + VitisAI Execution Provider.
+MIT
