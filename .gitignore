@@ -93,3 +93,8 @@ geo_latent_db_*.npy
 cortex_combat_log.csv
 quantized_info.csv
 huggingface_token_jepa2.txt
+huggingface_token_jepa2.txt
+*.token
+*_token*
+*token*.txt
+.env
