@@ -1,16 +1,50 @@
-﻿recon_dataset.tar.gz
-*.tar.gz
-BEATs_iter3_plus_AS2M*.pt
-tiny-imagenet-200.zip
-geo_latent_db*
-*.onnx.data
-checkpoints/
+﻿# Data
+*.hdf5
+*.h5
 recon_data/
-ogbench_data/
-allen_cache/
-*.log
-*.csv
+bearing_data/
+cwru_data/
+mimii_data/
+cardiac_data/
+heart_data/
+smap_data/
+data/
+tiny-imagenet-200/
+
+# Checkpoints
+checkpoints/
+*.pt
+*.onnx
+*.pth
+
+# Output and debug
+outputs/
+results/
+sessions/
+*.png
+*.jpg
+*.svg
+*.json
+debug_*.py
+_fix*.py
+_patch*.py
+fix_*.py
+patch_*.py
+
+# Temp
 __pycache__/
 *.pyc
-.env
-*DEPRECATED*
+*.bak
+*.bak_*
+mnt/
+
+# Logs
+*.log
+*.txt
+
+# Large files
+*.zip
+*.pdf
+*.docx
+*.psd
+*.exe
