@@ -166,6 +166,22 @@ class BiologicalNeuromodulator:
         self.da_threshold      = da_threshold
         self.fatigue_threshold = fatigue_threshold
         self.stress_threshold  = stress_threshold
+
+        # Text-goal DA channel (calibrated April 2026)
+        # Blends text-visual similarity into DA signal
+        self.text_goal_alpha  = 0.30    # weight: 30% text, 70% temporal
+        self.text_hot         = 0.245   # sim above → HOT (exploit goal)
+        self.text_cold        = 0.180   # sim below → COLD (explore)
+        self._text_goal_da    = 0.5     # current text DA (neutral start)
+        self._text_goal_sim   = 0.0     # last measured similarity
+
+        # Text-goal DA channel (calibrated April 2026)
+        # Blends text-visual similarity into DA signal
+        self.text_goal_alpha  = 0.30    # weight: 30% text, 70% temporal
+        self.text_hot         = 0.245   # sim above → HOT (exploit goal)
+        self.text_cold        = 0.180   # sim below → COLD (explore)
+        self._text_goal_da    = 0.5     # current text DA (neutral start)
+        self._text_goal_sim   = 0.0     # last measured similarity
         self.history_window    = history_window
 
         # Running state
@@ -194,6 +210,130 @@ class BiologicalNeuromodulator:
         self.event_log: list = []
 
     # ── Main interface ─────────────────────────────────────────────────────────
+
+
+    def update_text_goal(self, sim: float) -> float:
+        """
+        Update DA from text-goal similarity.
+
+        Args:
+            sim: cosine similarity between visual embedding and
+                 projected text goal (typically 0.14-0.25 for RECON)
+
+        Returns:
+            text_goal_da: [0,1] DA signal from text goal proximity
+                          HOT (→1) = frame matches text goal (exploit)
+                          COLD (→0) = frame far from text goal (explore)
+
+        Biological analogue:
+            Mesolimbic DA fires when sensory input matches expected goal.
+            High text-visual alignment = reward prediction = DA spike.
+        """
+        self._text_goal_sim = float(sim)
+
+        if sim >= self.text_hot:
+            # HOT: at goal — strong DA, exploit
+            self._text_goal_da = 1.0
+        elif sim <= self.text_cold:
+            # COLD: far from goal — low DA, explore
+            self._text_goal_da = 0.0
+        else:
+            # Linear interpolation in dead zone
+            self._text_goal_da = (sim - self.text_cold) / (
+                self.text_hot - self.text_cold + 1e-8
+            )
+
+        return self._text_goal_da
+
+    @property
+    def text_goal_da(self) -> float:
+        """Current text-goal DA signal [0, 1]."""
+        return self._text_goal_da
+
+    @property
+    def blended_da(self) -> float:
+        """
+        Combined DA: temporal prediction error + text goal proximity.
+        DA = (1-alpha)*temporal_DA + alpha*text_goal_DA
+        """
+        temporal_da = float(self._state.da)
+        return (
+            (1.0 - self.text_goal_alpha) * temporal_da
+            + self.text_goal_alpha * self._text_goal_da
+        )
+
+
+    def update_text_goal(self, sim: float) -> float:
+        """
+        Update DA from text-goal similarity.
+
+        Args:
+            sim: cosine similarity between visual embedding and
+                 projected text goal (typically 0.14-0.25 for RECON)
+
+        Returns:
+            text_goal_da: [0,1] DA signal from text goal proximity
+                          HOT (→1) = frame matches text goal (exploit)
+                          COLD (→0) = frame far from text goal (explore)
+
+        Biological analogue:
+            Mesolimbic DA fires when sensory input matches expected goal.
+            High text-visual alignment = reward prediction = DA spike.
+        """
+        self._text_goal_sim = float(sim)
+
+        if sim >= self.text_hot:
+            # HOT: at goal — strong DA, exploit
+            self._text_goal_da = 1.0
+        elif sim <= self.text_cold:
+            # COLD: far from goal — low DA, explore
+            self._text_goal_da = 0.0
+        else:
+            # Linear interpolation in dead zone
+            self._text_goal_da = (sim - self.text_cold) / (
+                self.text_hot - self.text_cold + 1e-8
+            )
+
+        return self._text_goal_da
+
+    @property
+    def text_goal_da(self) -> float:
+        """Current text-goal DA signal [0, 1]."""
+        return self._text_goal_da
+
+    @property
+    def blended_da(self) -> float:
+        """
+        Combined DA: temporal prediction error + text goal proximity.
+        DA = (1-alpha)*temporal_DA + alpha*text_goal_DA
+        """
+        temporal_da = float(self._state.da)
+        return (
+            (1.0 - self.text_goal_alpha) * temporal_da
+            + self.text_goal_alpha * self._text_goal_da
+        )
+
+
+    def update_text_goal(self, sim: float) -> float:
+        """Update DA from text-goal visual similarity (calibrated April 2026).
+        HOT=0.245, COLD=0.180, alpha=0.30"""
+        self._text_goal_sim = float(sim)
+        if sim >= 0.245:
+            self._text_goal_da = 1.0
+        elif sim <= 0.180:
+            self._text_goal_da = 0.0
+        else:
+            self._text_goal_da = (sim - 0.180) / (0.245 - 0.180)
+        return self._text_goal_da
+
+    @property
+    def text_goal_da(self) -> float:
+        return getattr(self, '_text_goal_da', 0.5)
+
+    @property
+    def blended_da(self) -> float:
+        """0.7*temporal_DA + 0.3*text_goal_DA"""
+        return 0.70 * float(self._state.da) + 0.30 * self.text_goal_da
 
     def get_attention_gains(self) -> AttentionGains:
         """
@@ -478,6 +618,8 @@ class NeurallyGatedVLM(nn.Module):
                  project: Optional[nn.Module] = None,
                  aphasia_ablation: bool = False):
         super().__init__()
+        self._text_goal_proj = None  # set via set_text_goal()
+        self._text_goal_proj = None  # set via set_text_goal()
         self.vision_model    = vision_model
         self.neuro           = neuro
         self.project         = project          # optional projection (e.g. CLIP)
@@ -529,6 +671,57 @@ class NeurallyGatedVLM(nn.Module):
             return (attn_out,) + rest
         return attn_out
 
+
+    def set_text_goal(self, text_proj: "torch.Tensor") -> None:
+        """
+        Set the projected text goal embedding for DA blending.
+
+        Args:
+            text_proj: (128,) unit-normalised text embedding
+                       = F.normalize(bridge(clip.encode_text(tokens)), dim=-1)
+
+        After calling this, encode() will automatically compute
+        text_goal_da and blend it into the neuromodulator DA signal.
+        """
+        import torch.nn.functional as _F
+        self._text_goal_proj = _F.normalize(
+            text_proj.detach().float(), dim=-1
+        )
+
+    def clear_text_goal(self) -> None:
+        """Remove text goal — revert to temporal-error-only DA."""
+        self._text_goal_proj = None
+
+
+    def set_text_goal(self, text_proj: "torch.Tensor") -> None:
+        """
+        Set the projected text goal embedding for DA blending.
+
+        Args:
+            text_proj: (128,) unit-normalised text embedding
+                       = F.normalize(bridge(clip.encode_text(tokens)), dim=-1)
+
+        After calling this, encode() will automatically compute
+        text_goal_da and blend it into the neuromodulator DA signal.
+        """
+        import torch.nn.functional as _F
+        self._text_goal_proj = _F.normalize(
+            text_proj.detach().float(), dim=-1
+        )
+
+    def clear_text_goal(self) -> None:
+        """Remove text goal — revert to temporal-error-only DA."""
+        self._text_goal_proj = None
+
+
+    def set_text_goal(self, text_proj) -> None:
+        """Set projected CLIP text goal (128-D unit vector)."""
+        import torch.nn.functional as _F
+        self._text_goal_proj = _F.normalize(text_proj.detach().float(), dim=-1)
+
+    def clear_text_goal(self) -> None:
+        self._text_goal_proj = None
+
     def encode(self, img_tensor: torch.Tensor) -> torch.Tensor:
         """
         Encode image with neuromodulator-gated attention.
@@ -536,6 +729,18 @@ class NeurallyGatedVLM(nn.Module):
         """
         # Get current gains BEFORE encoding (predictive gating)
         self._current_gains = self.neuro.get_attention_gains()
+
+        # Text-goal DA: update neuromodulator if goal is set
+        if hasattr(self, '_text_goal_proj') and self._text_goal_proj is not None:
+            import torch.nn.functional as _F
+            # Will be computed after encoding; pre-gate with last known DA
+            _ = self.neuro.blended_da  # access to ensure attribute exists
+
+        # Text-goal DA: update neuromodulator if goal is set
+        if hasattr(self, '_text_goal_proj') and self._text_goal_proj is not None:
+            import torch.nn.functional as _F
+            # Will be computed after encoding; pre-gate with last known DA
+            _ = self.neuro.blended_da  # access to ensure attribute exists
 
         with torch.no_grad():
             # HuggingFace models (CLIP, SmolVLM, …) use pixel_values=
@@ -572,6 +777,28 @@ class NeurallyGatedVLM(nn.Module):
         if self.aphasia_ablation:
             z = torch.zeros_like(z)   # language input zeroed — MD core only
 
+        # Post-encode: compute text-goal similarity if goal set
+        if hasattr(self, '_text_goal_proj') and self._text_goal_proj is not None:
+            import torch.nn.functional as _F
+            try:
+                z_norm = _F.normalize(z.float(), dim=-1)
+                sim = _F.cosine_similarity(
+                    z_norm, self._text_goal_proj.unsqueeze(0)
+                ).item()
+                self.neuro.update_text_goal(sim)
+            except Exception:
+                pass
+        # Post-encode: compute text-goal similarity if goal set
+        if hasattr(self, '_text_goal_proj') and self._text_goal_proj is not None:
+            import torch.nn.functional as _F
+            try:
+                z_norm = _F.normalize(z.float(), dim=-1)
+                sim = _F.cosine_similarity(
+                    z_norm, self._text_goal_proj.unsqueeze(0)
+                ).item()
+                self.neuro.update_text_goal(sim)
+            except Exception:
+                pass
         return z
 
     def remove_hooks(self):
