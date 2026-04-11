@@ -9,11 +9,11 @@ import torch.nn.functional as F
 sys.path.insert(0, os.getcwd())
 
 MODEL_REGISTRY = {
-    'student':   {'params_m': 0.046, 'dim': 128,  'npu': True,  'ms': 0.34,  'auroc': '—',     'quant': 'XINT8'},
-    'dinov2-s':  {'params_m': 21.0,  'dim': 384,  'npu': True,  'ms': 53.76, 'auroc': '—',     'quant': 'XINT8'},
-    'dinov2-b':  {'params_m': 86.0,  'dim': 768,  'npu': False, 'ms': 122.36,   'auroc': '—',     'quant': 'XINT8'},
-    'clip-b32':  {'params_m': 151.0, 'dim': 512,  'npu': False, 'ms': 61.45,   'auroc': '—',     'quant': 'XINT8'},
-    'clip-l14':  {'params_m': 428.0, 'dim': 768,  'npu': False, 'ms': 375.18,   'auroc': '—',     'quant': 'XINT8'},
+    'student':   {'params_m': 0.046, 'dim': 128,  'npu': True,  'ms': 0.34,  'auroc': 'ï¿½',     'quant': 'XINT8'},
+    'dinov2-s':  {'params_m': 21.0,  'dim': 384,  'npu': True,  'ms': 53.76, 'auroc': 'ï¿½',     'quant': 'XINT8'},
+    'dinov2-b':  {'params_m': 86.0,  'dim': 768,  'npu': False, 'ms': 122.36,   'auroc': 'ï¿½',     'quant': 'XINT8'},
+    'clip-b32':  {'params_m': 151.0, 'dim': 512,  'npu': False, 'ms': 61.45,   'auroc': 'ï¿½',     'quant': 'XINT8'},
+    'clip-l14':  {'params_m': 428.0, 'dim': 768,  'npu': False, 'ms': 375.18,   'auroc': 'ï¿½',     'quant': 'XINT8'},
     'vjepa2-l':  {'params_m': 326.0, 'dim': 1024, 'npu': False, 'ms': 1849.0,   'auroc': '0.907', 'quant': 'BF16'},
     'vjepa2-g':  {'params_m': 1034., 'dim': 1536, 'npu': False, 'ms': 0.0,   'auroc': '0.883', 'quant': 'BF16'},
     'nemo-wm':   {'params_m': 0.070, 'dim': 64,   'npu': True,  'ms': 1.32,  'auroc': '0.9999','quant': 'XINT8'},
@@ -97,13 +97,13 @@ def main():
 
     if args.list:
         print(f"\n{'='*72}")
-        print(f"  Vision Models — GMKtec EVO-X2 (Ryzen AI MAX+ 395)")
+        print(f"  Vision Models ï¿½ GMKtec EVO-X2 (Ryzen AI MAX+ 395)")
         print(f"{'='*72}")
         print(f"  {'Model':12s} {'Params':8s} {'Dim':6s} {'NPU':6s} {'ms':6s} {'AUROC':8s} Quant")
         print(f"  {'-'*65}")
         for name,s in MODEL_REGISTRY.items():
-            npu = '?' if s['npu'] else '—'
-            ms  = f"{s['ms']:.2f}" if s['ms']>0 else '—'
+            npu = '?' if s['npu'] else 'ï¿½'
+            ms  = f"{s['ms']:.2f}" if s['ms']>0 else 'ï¿½'
             print(f"  {name:12s} {s['params_m']:6.1f}M  {s['dim']:5d}  {npu:6s} {ms:6s} {s['auroc']:8s} {s['quant']}")
         print(f"\n  NeMo-WM: 40,000x fewer params than V-JEPA 2-G, +0.114 AUROC")
         print(f"  XINT8 = full NPU (LayerNorm on-chip). BF16 = ~48 CPU fallbacks.")
@@ -132,12 +132,12 @@ def main():
 
     if args.model=='all' and args.benchmark:
         print(f"\n{'='*60}")
-        print("  NeMo-WM vs Foundation Models — RECON Navigation")
+        print("  NeMo-WM vs Foundation Models ï¿½ RECON Navigation")
         print(f"{'='*60}")
         rows=[('NeMo-WM','0.07M','0.9999','1.32ms','? XINT8'),
-              ('DINOv2-S','21M','—','0.86ms','? XINT8'),
-              ('V-JEPA 2-L','326M','0.9069','—','? BF16'),
-              ('V-JEPA 2-G','1034M','0.8833','—','? BF16')]
+              ('DINOv2-S','21M','ï¿½','0.86ms','? XINT8'),
+              ('V-JEPA 2-L','326M','0.9069','ï¿½','? BF16'),
+              ('V-JEPA 2-G','1034M','0.8833','ï¿½','? BF16')]
         for r in rows: print(f"  {r[0]:14s} {r[1]:8s} {r[2]:10s} {r[3]:8s} {r[4]}")
 
 if __name__=='__main__': main()
