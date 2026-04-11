@@ -1,4 +1,4 @@
-Ôªø"""
+"""
 run_vision_model.py - Unified Vision Model Launcher for AMD Ryzen AI NPU
 """
 import argparse, time, sys, os
@@ -9,12 +9,12 @@ import torch.nn.functional as F
 sys.path.insert(0, os.getcwd())
 
 MODEL_REGISTRY = {
-    'student':   {'params_m': 0.046, 'dim': 128,  'npu': True,  'ms': 0.34,  'auroc': '‚Äî',     'quant': 'XINT8'},
-    'dinov2-s':  {'params_m': 21.0,  'dim': 384,  'npu': True,  'ms': 0.855, 'auroc': '‚Äî',     'quant': 'XINT8'},
-    'dinov2-b':  {'params_m': 86.0,  'dim': 768,  'npu': False, 'ms': 0.0,   'auroc': '‚Äî',     'quant': 'XINT8'},
-    'clip-b32':  {'params_m': 151.0, 'dim': 512,  'npu': False, 'ms': 0.0,   'auroc': '‚Äî',     'quant': 'XINT8'},
-    'clip-l14':  {'params_m': 428.0, 'dim': 768,  'npu': False, 'ms': 0.0,   'auroc': '‚Äî',     'quant': 'XINT8'},
-    'vjepa2-l':  {'params_m': 326.0, 'dim': 1024, 'npu': False, 'ms': 0.0,   'auroc': '0.907', 'quant': 'BF16'},
+    'student':   {'params_m': 0.046, 'dim': 128,  'npu': True,  'ms': 0.34,  'auroc': 'ó',     'quant': 'XINT8'},
+    'dinov2-s':  {'params_m': 21.0,  'dim': 384,  'npu': True,  'ms': 53.76, 'auroc': 'ó',     'quant': 'XINT8'},
+    'dinov2-b':  {'params_m': 86.0,  'dim': 768,  'npu': False, 'ms': 122.36,   'auroc': 'ó',     'quant': 'XINT8'},
+    'clip-b32':  {'params_m': 151.0, 'dim': 512,  'npu': False, 'ms': 61.45,   'auroc': 'ó',     'quant': 'XINT8'},
+    'clip-l14':  {'params_m': 428.0, 'dim': 768,  'npu': False, 'ms': 375.18,   'auroc': 'ó',     'quant': 'XINT8'},
+    'vjepa2-l':  {'params_m': 326.0, 'dim': 1024, 'npu': False, 'ms': 1849.0,   'auroc': '0.907', 'quant': 'BF16'},
     'vjepa2-g':  {'params_m': 1034., 'dim': 1536, 'npu': False, 'ms': 0.0,   'auroc': '0.883', 'quant': 'BF16'},
     'nemo-wm':   {'params_m': 0.070, 'dim': 64,   'npu': True,  'ms': 1.32,  'auroc': '0.9999','quant': 'XINT8'},
 }
@@ -97,13 +97,13 @@ def main():
 
     if args.list:
         print(f"\n{'='*72}")
-        print(f"  Vision Models ‚Äî GMKtec EVO-X2 (Ryzen AI MAX+ 395)")
+        print(f"  Vision Models ó GMKtec EVO-X2 (Ryzen AI MAX+ 395)")
         print(f"{'='*72}")
         print(f"  {'Model':12s} {'Params':8s} {'Dim':6s} {'NPU':6s} {'ms':6s} {'AUROC':8s} Quant")
-        print(f"  {'‚îÄ'*65}")
+        print(f"  {'-'*65}")
         for name,s in MODEL_REGISTRY.items():
-            npu = '‚úÖ' if s['npu'] else '‚Äî'
-            ms  = f"{s['ms']:.2f}" if s['ms']>0 else '‚Äî'
+            npu = '?' if s['npu'] else 'ó'
+            ms  = f"{s['ms']:.2f}" if s['ms']>0 else 'ó'
             print(f"  {name:12s} {s['params_m']:6.1f}M  {s['dim']:5d}  {npu:6s} {ms:6s} {s['auroc']:8s} {s['quant']}")
         print(f"\n  NeMo-WM: 40,000x fewer params than V-JEPA 2-G, +0.114 AUROC")
         print(f"  XINT8 = full NPU (LayerNorm on-chip). BF16 = ~48 CPU fallbacks.")
@@ -118,7 +118,7 @@ def main():
         if model is None: continue
         if args.benchmark:
             r = benchmark(model)
-            npu = '‚úÖ NPU' if spec['npu'] else 'üü° CPU'
+            npu = '? NPU' if spec['npu'] else '?? CPU'
             print(f"  {name:12s}: median={r['median']:.2f}ms  p95={r['p95']:.2f}ms  {npu}")
         if args.image:
             from PIL import Image
@@ -132,12 +132,13 @@ def main():
 
     if args.model=='all' and args.benchmark:
         print(f"\n{'='*60}")
-        print("  NeMo-WM vs Foundation Models ‚Äî RECON Navigation")
+        print("  NeMo-WM vs Foundation Models ó RECON Navigation")
         print(f"{'='*60}")
-        rows=[('NeMo-WM','0.07M','0.9999','1.32ms','‚úÖ XINT8'),
-              ('DINOv2-S','21M','‚Äî','0.86ms','‚úÖ XINT8'),
-              ('V-JEPA 2-L','326M','0.9069','‚Äî','‚ùå BF16'),
-              ('V-JEPA 2-G','1034M','0.8833','‚Äî','‚ùå BF16')]
+        rows=[('NeMo-WM','0.07M','0.9999','1.32ms','? XINT8'),
+              ('DINOv2-S','21M','ó','0.86ms','? XINT8'),
+              ('V-JEPA 2-L','326M','0.9069','ó','? BF16'),
+              ('V-JEPA 2-G','1034M','0.8833','ó','? BF16')]
         for r in rows: print(f"  {r[0]:14s} {r[1]:8s} {r[2]:10s} {r[3]:8s} {r[4]}")
 
 if __name__=='__main__': main()
+
