@@ -1,7 +1,4 @@
-﻿# Data
-*.hdf5
-*.h5
-recon_data/
+﻿recon_data/
 bearing_data/
 cwru_data/
 mimii_data/
@@ -10,41 +7,25 @@ heart_data/
 smap_data/
 data/
 tiny-imagenet-200/
-
-# Checkpoints
 checkpoints/
 *.pt
 *.onnx
 *.pth
-
-# Output and debug
 outputs/
 results/
 sessions/
-*.png
-*.jpg
-*.svg
-*.json
-debug_*.py
-_fix*.py
-_patch*.py
-fix_*.py
-patch_*.py
-
-# Temp
+mnt/
 __pycache__/
 *.pyc
 *.bak
 *.bak_*
-mnt/
-
-# Logs
 *.log
-*.txt
-
-# Large files
 *.zip
 *.pdf
 *.docx
 *.psd
 *.exe
+*.png
+*.jpg
+da_*.png
+debug_frame_*.png
