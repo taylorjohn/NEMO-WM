@@ -72,3 +72,24 @@ debug_*.py
 # Session files
 4-11.txt
 post_mordem.txt
+*.html
+*.jsx
+*.yaml
+*.txt
+*backup*
+*_backup*
+cortex_16/
+cortex_brain/
+cortex_wm/
+cortex_pe/
+*.tar.gz
+*.npy
+*.db
+*.csv
+*.onnx.data
+language_memory.db
+recon_dataset.tar.gz
+geo_latent_db_*.npy
+cortex_combat_log.csv
+quantized_info.csv
+huggingface_token_jepa2.txt
