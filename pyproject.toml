@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "cortex-brain"
+version = "2.0.0"
+description = "Domain-agnostic cybernetic brain: trading, robotics, and beyond."
+requires-python = ">=3.10"
+
+# Minimal runtime deps
+dependencies = [
+    "numpy>=1.24",
+    "torch>=2.1",
+    "psutil",
+]
+
+[project.optional-dependencies]
+# Install the right extras for your use-case:
+#   pip install -e ".[trading]"
+#   pip install -e ".[robotics]"
+#   pip install -e ".[npu]"
+#   pip install -e ".[dev]"
+
+trading  = ["alpaca-trade-api", "python-dotenv", "pynwb"]
+robotics = ["opencv-python"]
+npu      = ["onnxruntime>=1.17", "scipy"]
+dev      = ["pytest>=8", "pytest-cov", "scipy", "scikit-learn", "ruff"]
+all      = ["cortex-brain[trading,robotics,npu,dev]"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.pytest.ini_options]
+testpaths = ["cortex_brain/tests"]
+log_cli       = true
+log_cli_level = "WARNING"

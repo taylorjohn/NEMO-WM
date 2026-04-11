@@ -1,0 +1,840 @@
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python -c @"
+>> import torch
+>> from train_action_wm import StateEncoder
+>> enc = StateEncoder(5, 128)
+>> print(enc)
+>> x = torch.randn(4, 5)
+>> z = enc(x)
+>> print('Output shape:', z.shape)
+>> print('Params:', sum(p.numel() for p in enc.parameters()))
+>> "@
+StateEncoder(
+  (net): Sequential(
+    (0): Linear(in_features=5, out_features=128, bias=True)
+    (1): LayerNorm((128,), eps=1e-05, elementwise_affine=True)
+    (2): GELU(approximate='none')
+    (3): Linear(in_features=128, out_features=128, bias=True)
+    (4): LayerNorm((128,), eps=1e-05, elementwise_affine=True)
+  )
+)
+Output shape: torch.Size([4, 128])
+Params: 17792
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python -c @"
+>> src = open('train_action_wm.py', encoding='utf-8').read()
+>> # Find StateEncoder class
+>> idx = src.find('class StateEncoder')
+>> print(src[idx:idx+400])
+>> "@
+class StateEncoder(nn.Module):
+    """Encodes raw state observations → latent."""
+
+    def __init__(self, obs_dim: int, d_model: int):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(obs_dim, d_model),
+            nn.LayerNorm(d_model),
+            nn.GELU(),
+            nn.Linear(d_model, d_model),
+            nn.LayerNorm(d_model),
+        )
+
+    def forward(se
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> Copy-Item "$env:USERPROFILE\Downloads\stochastic_encoder.py" "C:\Users\MeteorAI\Desktop\CORTEX\"
+>> python stochastic_encoder.py
+Copy-Item : Cannot find path
+'C:\Users\MeteorAI\Downloads\stochastic_encoder.py' because it does not exist.
+At line:1 char:1
++ Copy-Item "$env:USERPROFILE\Downloads\stochastic_encoder.py" "C:\User ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (C:\Users\Meteor...stic_encoder.
+   py:String) [Copy-Item], ItemNotFoundException
+    + FullyQualifiedErrorId : PathNotFound,Microsoft.PowerShell.Commands.CopyI
+   temCommand
+
+StochasticEncoder self-test
+  Params: 34,304
+  Train: z=torch.Size([8, 64])  KL=0.5000  DA=0.0924
+  Eval:  z=torch.Size([8, 64])  (deterministic=True)
+  Prior KL: 0.5135
+  Loss: {'L_recon': 1.2289700508117676, 'L_kl': 0.5000037550926208, 'L_predict': 0.0, 'L_total': 1.7289738655090332, 'DA': 0.5000037550926208}
+  Backward: OK
+  All assertions passed. ✅
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python -c @"
+>> import torch
+>> from train_action_wm import StateEncoder, ActionConditionedTransition
+>>
+>> # What does the transition model look like?
+>> src = open('train_action_wm.py', encoding='utf-8').read()
+>> idx = src.find('class ActionConditionedTransition')
+>> print(src[idx:idx+500])
+>> "@
+class ActionConditionedTransition(nn.Module):
+    """
+    Single-step transition model with AdaLN-Zero action conditioning.
+    Predicts z_{t+1} from z_t and a_t.
+
+    Uses 3 residual MLP layers, each conditioned via AdaLN-Zero.
+    No transformer — keeps parameter count low for CPU training.
+    """
+
+    def __init__(self, d_model: int, action_dim: int, n_layers: int = 3):
+        super().__init__()
+        self.action_emb = ActionEmbedder(action_dim, d_model)
+        self.layers = nn.ModuleLis
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python -c @"
+>> # What is the 5-dim obs for PushT?
+>> # [agent_x, agent_y, block_x, block_y, block_angle]
+>> # Decoder should reconstruct this from z
+>> import torch
+>> from train_action_wm import StateEncoder
+>> enc = StateEncoder(5, 128)
+>> obs = torch.tensor([[0.5, 0.5, 0.65, 0.65, 0.25]])  # example
+>> z = enc(obs)
+>> print(f'obs={obs.shape} → z={z.shape}')
+>> print(f'obs range: {obs.min():.2f} to {obs.max():.2f}')
+>> "@
+obs=torch.Size([1, 5]) → z=torch.Size([1, 128])
+obs range: 0.25 to 0.65
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+ProprioDecoder self-test
+  Params: 34,181
+  Decode: z=torch.Size([8, 128]) → obs=torch.Size([8, 5])  range=[0.31,0.71]
+  Block decoder: z=torch.Size([8, 128]) → block=torch.Size([8, 3])
+  Loss: {'L_recon': 0.03309866786003113, 'L_total': 0.03309866786003113}
+  Backward: OK
+  Imagine: z_traj=torch.Size([8, 9, 128])  obs_traj=torch.Size([8, 9, 5])
+  Imagination loss: 0.0331  drift=3.2212  cortisol=3.2212
+  Backward: OK
+  All assertions passed. ✅
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python -c @"
+>> import torch
+>> from nemo_flow_policy import NeMoFlowPolicy, NeMoFlowAgent
+>> src = open('nemo_flow_policy.py', encoding='utf-8').read()
+>> # Find the policy init
+>> idx = src.find('class NeMoFlowPolicy')
+>> print(src[idx:idx+600])
+>> "@
+class NeMoFlowPolicy(nn.Module):
+    """
+    Neuromodulated Flow Matching Policy.
+
+    Learns to map (condition, noise) → action_chunk via flow matching.
+    Conditioned on:
+        z         (128) — world model latent
+        block_pos   (2) — decoded block position
+        DA          (1) — GoalDA hot/cold signal
+        goal        (2) — target position
+        t           (1) — flow time in [0,1]
+        x_t       (H*2) — noisy action at time t
+
+    At inference: start from Gaussian noise, single ODE step → clean action.
+
+    The DA conditioning is the key novelty:
+        HOT  (DA→1): low
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python -c @"
+>> import torch
+>> from nemo_flow_policy import NeMoFlowPolicy
+>> pol = NeMoFlowPolicy(H=8)
+>> print('Params:', sum(p.numel() for p in pol.parameters()))
+>> src = open('nemo_flow_policy.py', encoding='utf-8').read()
+>> idx = src.find('def sample')
+>> print(src[idx:idx+400])
+>> "@
+Params: 1961585
+def sample(
+        self,
+        z:         torch.Tensor,   # (1, d_z)
+        block_pos: torch.Tensor,   # (1, 2)
+        da:        torch.Tensor,   # (1, 1)
+        goal:      torch.Tensor,   # (1, 2)
+        n_steps:   int = 1,        # 1 = flow matching (fast), >1 = more accurate
+        H:         Optional[int] = None,
+    ) -> torch.Tensor:
+        """
+        Sample action chunk via ODE in
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> Copy-Item "$env:USERPROFILE\Downloads\nemo_flow_policy_v2.py" "C:\Users\MeteorAI\Desktop\CORTEX\"
+>> python nemo_flow_policy_v2.py
+Copy-Item : Cannot find path
+'C:\Users\MeteorAI\Downloads\nemo_flow_policy_v2.py' because it does not exist.
+At line:1 char:1
++ Copy-Item "$env:USERPROFILE\Downloads\nemo_flow_policy_v2.py" "C:\Use ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (C:\Users\Meteor...ow_policy_v2.
+   py:String) [Copy-Item], ItemNotFoundException
+    + FullyQualifiedErrorId : PathNotFound,Microsoft.PowerShell.Commands.CopyI
+   temCommand
+
+NeMoFlowPolicyV2 self-test
+  Params: 246,808
+  Forward: v=torch.Size([4, 24])
+  Sample: actions=torch.Size([1, 8, 3])  range=[0.00,1.00]
+  GoalDA v2: torch.Size([4, 1])  range=[0.03,0.23]
+  Flow loss: 1.1246  Backward: OK
+  Generating 10 demos...
+  Scripted SR: 20.0%  (expect 30-60% — hard task)
+Phase 1 transfer: 32/32 layers copied
+  Incompatible (zero-init): []
+  Phase 1 transfer: OK  params=246,808
+  All assertions passed. ✅
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> git add stochastic_encoder.py proprio_decoder.py nemo_flow_policy_v2.py
+>> git add checkpoints/cwm/proprio_kctx16_sprint9.pt
+>> git commit -m "Sprint A/B/C: stochastic encoder, proprio decoder, flow policy v2 (orientation)"
+>> git push
+warning: in the working copy of 'nemo_flow_policy_v2.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'proprio_decoder.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'stochastic_encoder.py', LF will be replaced by CRLF the next time Git touches it
+The following paths are ignored by one of your .gitignore files:
+checkpoints
+hint: Use -f if you really want to add them.
+hint: Disable this message with "git config set advice.addIgnoredFile false"
+[main 0601e63] Sprint A/B/C: stochastic encoder, proprio decoder, flow policy v2 (orientation)
+ 3 files changed, 1384 insertions(+)
+ create mode 100644 nemo_flow_policy_v2.py
+ create mode 100644 proprio_decoder.py
+ create mode 100644 stochastic_encoder.py
+Enumerating objects: 6, done.
+Counting objects: 100% (6/6), done.
+Delta compression using up to 32 threads
+Compressing objects: 100% (5/5), done.
+Writing objects: 100% (5/5), 13.69 KiB | 13.69 MiB/s, done.
+Total 5 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (1/1), completed with 1 local object.
+remote: This repository moved. Please use the new location:
+remote:   https://github.com/taylorjohn/NEMO-WM.git
+To https://github.com/taylorjohn/nemo-wm
+   7008e21..0601e63  main -> main
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> Copy-Item "$env:USERPROFILE\Downloads\smap_adaptive.py" "C:\Users\MeteorAI\Desktop\CORTEX\"
+>> python smap_adaptive.py --data smap_data --dataset SMAP
+Copy-Item : Cannot find path 'C:\Users\MeteorAI\Downloads\smap_adaptive.py'
+because it does not exist.
+At line:1 char:1
++ Copy-Item "$env:USERPROFILE\Downloads\smap_adaptive.py" "C:\Users\Met ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (C:\Users\Meteor...map_adaptive.py
+   :String) [Copy-Item], ItemNotFoundException
+    + FullyQualifiedErrorId : PathNotFound,Microsoft.PowerShell.Commands.CopyIte
+   mCommand
+
+
+============================================================
+  SMAP/MSL Adaptive Detector — Sprint E
+============================================================
+  Dataset: SMAP  Channels: 82
+  Detectors: ['pca', 'drift', 'mean_shift', 'regularity', 'long_drift']
+
+No channels loaded successfully
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python pusht_orientation_demos.py --n-demos 500 --mode curriculum
+Generating 500 demos (mode=curriculum)...
+  Demo 100/500  SR=21.0%  mode=curriculum
+  Demo 200/500  SR=21.0%  mode=curriculum
+  Demo 300/500  SR=21.0%  mode=curriculum
+  Demo 400/500  SR=20.5%  mode=curriculum
+  Demo 500/500  SR=19.2%  mode=curriculum
+
+Results:
+  Overall SR: 96/500 = 19.2%
+  full_rotation       : 12/219 = 5.5%
+  small_angle         : 84/281 = 29.9%
+  Avg episode length: 347 steps
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> # Train overnight with curriculum demos
+>> python pusht_orientation_demos.py `
+>>     --n-demos 1000 --mode curriculum `
+>>     --train --n-epochs 100
+Generating 1000 demos (mode=curriculum)...
+  Demo 100/1000  SR=13.0%  mode=curriculum
+  Demo 200/1000  SR=16.5%  mode=curriculum
+  Demo 300/1000  SR=17.0%  mode=curriculum
+  Demo 400/1000  SR=17.2%  mode=curriculum
+  Demo 500/1000  SR=17.4%  mode=curriculum
+  Demo 600/1000  SR=18.2%  mode=curriculum
+  Demo 700/1000  SR=18.3%  mode=curriculum
+  Demo 800/1000  SR=18.5%  mode=curriculum
+  Demo 900/1000  SR=18.2%  mode=curriculum
+  Demo 1000/1000  SR=18.8%  mode=curriculum
+
+Results:
+  Overall SR: 188/1000 = 18.8%
+  full_rotation       : 14/396 = 3.5%
+  small_angle         : 174/604 = 28.8%
+  Avg episode length: 347 steps
+
+Generating 1000 demos (mode=curriculum)...
+  Demo 100/1000  SR=20.0%  mode=curriculum
+  Demo 200/1000  SR=17.0%  mode=curriculum
+  Demo 300/1000  SR=19.0%  mode=curriculum
+  Demo 400/1000  SR=18.5%  mode=curriculum
+  Demo 500/1000  SR=18.8%  mode=curriculum
+  Demo 600/1000  SR=19.7%  mode=curriculum
+  Demo 700/1000  SR=19.7%  mode=curriculum
+  Demo 800/1000  SR=19.2%  mode=curriculum
+  Demo 900/1000  SR=19.6%  mode=curriculum
+  Demo 1000/1000  SR=20.0%  mode=curriculum
+Scripted SR: 20.0%
+Dataset: 336326 samples
+Phase 1 transfer: 32/32 layers copied
+  Incompatible (zero-init): []
+Loaded Phase 1 weights from checkpoints/flow_policy/nemo_flow_best.pt
+  ep  10  loss=0.0888  lr=2.93e-04
+  ep  20  loss=0.0778  lr=2.71e-04
+  ep  30  loss=0.0698  lr=2.38e-04
+  ep  40  loss=0.0655  lr=1.96e-04
+  ep  50  loss=0.0615  lr=1.50e-04
+  ep  60  loss=0.0589  lr=1.04e-04
+  ep  70  loss=0.0560  lr=6.18e-05
+  ep  80  loss=0.0541  lr=2.86e-05
+  ep  90  loss=0.0527  lr=7.34e-06
+  ep 100  loss=0.0519  lr=0.00e+00
+
+Best loss: 0.0519
+Saved: checkpoints/nemo_v2/flow_v2_curriculum_best.pt
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python train_proprio_6c.py `
+>>     --hdf5-dir recon_data/recon_release `
+>>     --k-ctx 64 --epochs 10 `
+>>     --out-ckpt checkpoints/cwm/proprio_kctx64_recon.pt
+  Cortisol: ACTIVE (sensitivity=0.1)
+
+Sprint 6c — Temporal ProprioceptiveEncoder Training
+  Architecture: 64-frame window, sinusoidal PE, attn pooling
+  d_per_frame=8, d_hidden=128, d_model=64
+  Parameters: 26,561  (Sprint 6b: 26,432)
+  Epochs: 10  |  Steps/epoch: 500
+  LR: 0.0003  |  Temp: 0.05
+  k_ctx: 64  |  k_max: 4  |  k_hard_min: 32
+  No GPS (vel+ang+heading+contact+delta_h only)
+  Output: checkpoints/cwm/proprio_kctx64_recon.pt
+
+ProprioPairDatasetTemporal: 10995 files | k_ctx=64, k_max=4, k_hard_min=32, n_neg=7
+ Epoch      Loss    top1_acc            LR     Elapsed
+───────────────────────────────────────────────────────
+     0    0.0564      0.9970      2.93e-04     4417.3s
+  → Saved (best top1_acc=0.9970): checkpoints/cwm/proprio_kctx64_recon.pt
+     1    0.0132      0.9985      2.72e-04     3355.6s
+  → Saved (best top1_acc=0.9985): checkpoints/cwm/proprio_kctx64_recon.pt
+     2    0.0085      0.9992      2.39e-04     3347.5s
+  → Saved (best top1_acc=0.9992): checkpoints/cwm/proprio_kctx64_recon.pt
+     3    0.0063      0.9993      1.97e-04     3340.2s
+  → Saved (best top1_acc=0.9993): checkpoints/cwm/proprio_kctx64_recon.pt
+     4    0.0041      0.9998      1.51e-04     3326.9s
+  → Saved (best top1_acc=0.9998): checkpoints/cwm/proprio_kctx64_recon.pt
+     5    0.0038      0.9997      1.06e-04     3329.4s
+     6    0.0026      0.9999      6.42e-05     3332.8s
+  → Saved (best top1_acc=0.9999): checkpoints/cwm/proprio_kctx64_recon.pt
+  
+  Phase 1 weights transferred from checkpoints/flow_policy/nemo_flow_best.pt
+Policy params: 246,808
+
+Training 100 epochs...
+ Epoch      Loss          LR
+──────────────────────────────
+  ep  10  0.0358  2.93e-04  (~15 min left)
+  ep  20  0.0280  2.71e-04  (~11 min left)
+  ep  30  0.0231  2.38e-04  (~9 min left)
+  ep  40  0.0200  1.96e-04  (~7 min left)
+  ep  50  0.0173  1.50e-04  (~6 min left)
+  ep  60  0.0149  1.04e-04  (~4 min left)
+  ep  70  0.0124  6.18e-05  (~3 min left)
+  ep  80  0.0098  2.86e-05  (~2 min left)
+  ep  90  0.0079  7.34e-06  (~1 min left)
+  ep 100  0.0073  0.00e+00  (~0 min left)
+
+Done in 10.5 min
+Best loss: 0.0073
+Saved: checkpoints/nemo_v2/flow_v2_registry_best.pt
+
+Scripted SR:  49.6%
+Expected learned SR: ~80-100% (flow matching amplifies scripted demos)
+
+Eval:
+  python pusht_physics_registry.py --n-demos 100 --physics rigid_body --planner position
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+Learned SR: 4/50 = 8.0%
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python train_proprio_6c.py `
+>>     --hdf5-dir recon_data/recon_release `
+>>     --k-ctx 64 --epochs 10 `
+>>     --out-ckpt checkpoints/cwm/proprio_kctx64_recon.pt
+  Cortisol: ACTIVE (sensitivity=0.1)
+
+Sprint 6c — Temporal ProprioceptiveEncoder Training
+  Architecture: 64-frame window, sinusoidal PE, attn pooling
+  d_per_frame=8, d_hidden=128, d_model=64
+  Parameters: 26,561  (Sprint 6b: 26,432)
+  Epochs: 10  |  Steps/epoch: 500
+  LR: 0.0003  |  Temp: 0.05
+  k_ctx: 64  |  k_max: 4  |  k_hard_min: 32
+  No GPS (vel+ang+heading+contact+delta_h only)
+  Output: checkpoints/cwm/proprio_kctx64_recon.pt
+
+ProprioPairDatasetTemporal: 10995 files | k_ctx=64, k_max=4, k_hard_min=32, n_neg=7
+ Epoch      Loss    top1_acc            LR     Elapsed
+───────────────────────────────────────────────────────
+     0    0.0564      0.9970      2.93e-04     4417.3s
+  → Saved (best top1_acc=0.9970): checkpoints/cwm/proprio_kctx64_recon.pt
+     1    0.0132      0.9985      2.72e-04     3355.6s
+  → Saved (best top1_acc=0.9985): checkpoints/cwm/proprio_kctx64_recon.pt
+     2    0.0085      0.9992      2.39e-04     3347.5s
+  → Saved (best top1_acc=0.9992): checkpoints/cwm/proprio_kctx64_recon.pt
+     3    0.0063      0.9993      1.97e-04     3340.2s
+  → Saved (best top1_acc=0.9993): checkpoints/cwm/proprio_kctx64_recon.pt
+     4    0.0041      0.9998      1.51e-04     3326.9s
+  → Saved (best top1_acc=0.9998): checkpoints/cwm/proprio_kctx64_recon.pt
+     5    0.0038      0.9997      1.06e-04     3329.4s
+     6    0.0026      0.9999      6.42e-05     3332.8s
+  → Saved (best top1_acc=0.9999): checkpoints/cwm/proprio_kctx64_recon.pt
+     7    0.0022      1.0000      3.14e-05     3341.5s
+  → Saved (best top1_acc=1.0000): checkpoints/cwm/proprio_kctx64_recon.pt
+
+
+lr=8.29e-05
+[ep00 s22600] domain=recon    loss=0.2676  regime=REOBSERVE  DA=0.002 5HT=0.030 ACh=0.486 lr=8.32e-05
+[ep00 s22650] domain=recon    loss=0.1411  regime=REOBSERVE  DA=0.002 5HT=0.032 ACh=0.485 lr=8.35e-05
+[ep00 s22700] domain=recon    loss=0.2591  regime=REOBSERVE  DA=0.002 5HT=0.030 ACh=0.486 lr=8.37e-05
+[ep00 s22750] domain=recon    loss=0.0808  regime=REOBSERVE  DA=0.002 5HT=0.031 ACh=0.485 lr=8.40e-05
+[ep00 s22800] domain=recon    loss=0.1754  regime=REOBSERVE  DA=0.002 5HT=0.033 ACh=0.484 lr=8.43e-05
+[ep00 s22850] domain=recon    loss=0.2713  regime=REOBSERVE  DA=0.002 5HT=0.031 ACh=0.485 lr=8.46e-05
+[ep00 s22900] domain=recon    loss=0.2656  regime=REOBSERVE  DA=0.002 5HT=0.031 ACh=0.485 lr=8.49e-05
+[ep00 s22950] domain=recon    loss=0.2870  regime=REOBSERVE  DA=0.002 5HT=0.031 ACh=0.485 lr=8.52e-05
+[ep00 s23000] domain=recon    loss=0.1721  regime=REOBSERVE  DA=0.002 5HT=0.031 ACh=0.486 lr=8.55e-05
+[ep00 s23050] domain=recon    loss=0.0797  regime=REOBSERVE  DA=0.002 5HT=0.029 ACh=0.486 lr=8.58e-05
+[ep00 s23100] domain=recon    loss=0.2783  regime=REOBSERVE  DA=0.002 5HT=0.032 ACh=0.485 lr=8.61e-05
+[ep00 s23150] domain=recon    loss=0.1216  regime=REOBSERVE  DA=0.002 5HT=0.031 ACh=0.486 lr=8.63e-05
+[ep00 s23200] domain=recon    loss=0.1323  regime=REOBSERVE  DA=0.002 5HT=0.034 ACh=0.484 lr=8.66e-05
+[ep00 s23250] domain=recon    loss=0.0911  regime=REOBSERVE  DA=0.002 5HT=0.033 ACh=0.485 lr=8.69e-05
+[ep00 s23300] domain=recon    loss=0.1418  regime=REOBSERVE  DA=0.002 5HT=0.031 ACh=0.485 lr=8.72e-05
+[ep00 s23350] domain=recon    loss=0.0808  regime=REOBSERVE  DA=0.002 5HT=0.033 ACh=0.484 lr=8.75e-05
+[ep00 s23400] domain=recon    loss=0.2557  regime=REOBSERVE  DA=0.002 5HT=0.031 ACh=0.486 lr=8.78e-05
+[ep00 s23450] domain=recon    loss=0.2723  regime=REOBSERVE  DA=0.002 5HT=0.031 ACh=0.486 lr=8.81e-05
+[ep00 s23500] domain=recon    loss=0.0851  regime=REOBSERVE  DA=0.002 5HT=0.032 ACh=0.485 lr=8.84e-05
+[ep00 s23550] domain=recon    loss=0.0948  regime=REOBSERVE  DA=0.002 5HT=0.029 ACh=0.487 lr=8.87e-05
+[ep00 s23600] domain=recon    loss=0.1610  regime=REOBSERVE  DA=0.002 5HT=0.030 ACh=0.486 lr=8.90e-05
+[ep00 s23650] domain=recon    loss=0.1435  regime=REOBSERVE  DA=0.002 5HT=0.033 ACh=0.484 lr=8.93e-05
+[ep00 s23700] domain=recon    loss=0.2364  regime=REOBSERVE  DA=0.002 5HT=0.030 ACh=0.486 lr=8.96e-05
+[ep00 s23750] domain=recon    loss=0.2374  regime=REOBSERVE  DA=0.002 5HT=0.032 ACh=0.484 lr=8.99e-05
+[ep00 s23800] domain=recon    loss=0.2105  regime=REOBSERVE  DA=0.002 5HT=0.031 ACh=0.485 lr=9.01e-05
+
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python pusht_orientation_demos.py --n-demos 500 --mode curriculum
+Generating 500 demos (mode=curriculum)...
+  Demo 100/500  SR=21.0%  mode=curriculum
+  Demo 200/500  SR=21.0%  mode=curriculum
+  Demo 300/500  SR=21.0%  mode=curriculum
+  Demo 400/500  SR=20.5%  mode=curriculum
+  Demo 500/500  SR=19.2%  mode=curriculum
+
+Results:
+  Overall SR: 96/500 = 19.2%
+  full_rotation       : 12/219 = 5.5%
+  small_angle         : 84/281 = 29.9%
+  Avg episode length: 347 steps
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> # Train overnight with curriculum demos
+>> python pusht_orientation_demos.py `
+>>     --n-demos 1000 --mode curriculum `
+>>     --train --n-epochs 100
+Generating 1000 demos (mode=curriculum)...
+  Demo 100/1000  SR=13.0%  mode=curriculum
+  Demo 200/1000  SR=16.5%  mode=curriculum
+  Demo 300/1000  SR=17.0%  mode=curriculum
+  Demo 400/1000  SR=17.2%  mode=curriculum
+  Demo 500/1000  SR=17.4%  mode=curriculum
+  Demo 600/1000  SR=18.2%  mode=curriculum
+  Demo 700/1000  SR=18.3%  mode=curriculum
+  Demo 800/1000  SR=18.5%  mode=curriculum
+  Demo 900/1000  SR=18.2%  mode=curriculum
+  Demo 1000/1000  SR=18.8%  mode=curriculum
+
+Results:
+  Overall SR: 188/1000 = 18.8%
+  full_rotation       : 14/396 = 3.5%
+  small_angle         : 174/604 = 28.8%
+  Avg episode length: 347 steps
+
+Generating 1000 demos (mode=curriculum)...
+  Demo 100/1000  SR=20.0%  mode=curriculum
+  Demo 200/1000  SR=17.0%  mode=curriculum
+  Demo 300/1000  SR=19.0%  mode=curriculum
+  Demo 400/1000  SR=18.5%  mode=curriculum
+  Demo 500/1000  SR=18.8%  mode=curriculum
+  Demo 600/1000  SR=19.7%  mode=curriculum
+  Demo 700/1000  SR=19.7%  mode=curriculum
+  Demo 800/1000  SR=19.2%  mode=curriculum
+  Demo 900/1000  SR=19.6%  mode=curriculum
+  Demo 1000/1000  SR=20.0%  mode=curriculum
+Scripted SR: 20.0%
+Dataset: 336326 samples
+Phase 1 transfer: 32/32 layers copied
+  Incompatible (zero-init): []
+Loaded Phase 1 weights from checkpoints/flow_policy/nemo_flow_best.pt
+  ep  10  loss=0.0888  lr=2.93e-04
+  ep  20  loss=0.0778  lr=2.71e-04
+  ep  30  loss=0.0698  lr=2.38e-04
+  ep  40  loss=0.0655  lr=1.96e-04
+  ep  50  loss=0.0615  lr=1.50e-04
+  ep  60  loss=0.0589  lr=1.04e-04
+  ep  70  loss=0.0560  lr=6.18e-05
+  ep  80  loss=0.0541  lr=2.86e-05
+  ep  90  loss=0.0527  lr=7.34e-06
+  ep 100  loss=0.0519  lr=0.00e+00
+
+Best loss: 0.0519
+Saved: checkpoints/nemo_v2/flow_v2_curriculum_best.pt
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python eval_recon_auroc.py `
+>>     --head-ckpt checkpoints/cwm/temporal_head_sprint3.pt `
+>>     --cwm-ckpt  checkpoints/cwm/cwm_multidomain_best.pt `
+>>     --hdf5-dir  recon_data/recon_release `
+>>     --n-pairs 1000 --k-pos 4 `
+>>     --proprio-compare --hard-negatives --proprio-no-gps `
+>>     --proprio-ckpt checkpoints/cwm/proprio_kctx64_recon.pt
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints/cwm/cwm_multidomain_best.pt (epoch 18, loss 0.1620)
+TemporalHead loaded: checkpoints/cwm/temporal_head_sprint3.pt (epoch 9, top1_acc=0.939)
+ProprioEncoderTemporal (6c) loaded: checkpoints/cwm/proprio_kctx64_recon.pt (epoch=7, top1_acc=1.0000, k_ctx=64)
+Using ProprioEncoderTemporal (Sprint 6c 4-frame window)
+  Eval: 500 pos, 500 neg [hard (same-file, k>=32)], 10995 files, k<=4
+
+==============================================================
+  Sprint 6: Proprioceptive Dissociation Eval
+  k<=4, n=1000, negatives=hard (same-file, k>=32)
+  Proprio signals: NO GPS (vel+heading+contact only)
+==============================================================
+
+  [Full (VLM + proprio)]
+    AUROC:      0.9925  PASS
+    Pos dist:   0.0069 +/- 0.0142
+    Neg dist:   0.3500 +/- 0.2255
+    Separation: +0.3431
+
+  [No VLM (proprio only)]
+    AUROC:      0.9912  PASS
+    Pos dist:   0.0116 +/- 0.0274
+    Neg dist:   0.6876 +/- 0.4478
+    Separation: +0.6760
+
+  [No proprio (VLM only)]
+    AUROC:      0.8558  PASS
+    Pos dist:   0.0023 +/- 0.0038
+    Neg dist:   0.0139 +/- 0.0174
+    Separation: +0.0116
+
+==============================================================
+  Sprint 6 criterion: No-VLM AUROC > 0.50
+  No-VLM AUROC: 0.9912  >>> DISSOCIATION BEGINNING
+==============================================================
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python -c @"
+>> src = open('eval_recon_auroc.py', encoding='utf-8').read()
+>> idx = src.find('4-frame window')
+>> if idx < 0: idx = src.find('k_ctx')
+>> print(src[max(0,idx-200):idx+400])
+>> "@
+s (Sprint 6 baseline -- expect ~0.50)")
+        proprio_enc.eval()
+    else:
+        proprio_enc = None   # temporal_encoder_fn handles encoding
+        print("Using ProprioEncoderTemporal (Sprint 6c 4-frame window)")
+
+    # Reload base models cleanly for proprio eval
+    enc = StudentEncoder().to(dev)
+    enc_path = Path("checkpoints/dinov2_student/student_best.pt")
+    if enc_path.exists():
+        sd = torch.load(enc_path, map_location="cpu", weights_only=False)
+        enc.load_state_dict(sd.get("model",sd.get("state_dict",sd)), strict=False)
+    enc.eval()
+
+    pe = ParticleEncoder(128, 1
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python -c @"
+>> src = open('eval_recon_auroc.py', encoding='utf-8').read()
+>> idx = src.find('ProprioEncoderTemporal')
+>> print(src[max(0,idx-100):idx+500])
+>> "@
+ 6c: temporal encoder support in embed_fused
+# Patch: detect "arch": "temporal" in checkpoint, load ProprioEncoderTemporal
+# ===========================================================================
+
+def _load_proprio_6c(proprio_ckpt, device):
+    """
+    Detect and load Sprint 6c temporal encoder.
+    Returns callable encoder_fn(hf, t) -> (64,) or None if not 6c checkpoint.
+    """
+    import math as _math
+    pd = torch.load(proprio_ckpt, map_location=device, weights_only=False)
+    if pd.get("arch") != "temporal":
+        return None
+
+    k_ctx       = pd.get("k_ctx",       4)
+    d_per_f
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python -c @"
+>> src = open('eval_recon_auroc.py', encoding='utf-8').read()
+>> idx = src.find('d_per_f')
+>> print(src[idx:idx+600])
+>> "@
+d_per_frame = pd.get("d_per_frame",  8)
+    d_hidden    = pd.get("d_hidden",   128)
+    d_model     = pd.get("d_model",     64)
+
+    # Rebuild sinusoidal PE
+    def _make_pe(k, d):
+        pe  = torch.zeros(k, d)
+        pos = torch.arange(k).unsqueeze(1).float()
+        div = torch.exp(torch.arange(0, d, 2).float() * (-_math.log(10000.0) / d))
+        pe[:, 0::2] = torch.sin(pos * div)
+        n = pe[:, 1::2].shape[1]
+        pe[:, 1::2] = torch.cos(pos * div)[:, :n]
+        return pe
+
+    class _TemporalEnc(nn.Module):
+        def __init__(self):
+            super().__init__()
+            se
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python -c @"
+>> src = open('eval_recon_auroc.py', encoding='utf-8').read()
+>> idx = src.find('k_ctx')
+>> # Find all occurrences
+>> import re
+>> for m in re.finditer(r'.{0,50}k_ctx.{0,80}', src):
+>>     print(m.group())
+>>     print()
+>> "@
+    k_ctx       = pd.get("k_ctx",       4)
+
+            self.register_buffer("pe", _make_pe(k_ctx, d_hidden))
+
+          f"(epoch={epoch}, top1_acc={astr}, k_ctx={k_ctx})")
+
+        for i in range(k_ctx):
+
+            t = max(0, t_end - (k_ctx - 1 - i))
+
+r = torch.tensor(frames, dtype=torch.float32)  # (k_ctx, d_per_frame)
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python -c @"
+>> import h5py, glob, numpy as np
+>> files = glob.glob('recon_data/recon_release/*.hdf5')[:100]
+>> lengths = []
+>> for f in files:
+>>     try:
+>>         with h5py.File(f) as hf:
+>>             lengths.append(len(hf['commands']['linear_velocity']))
+>>     except: pass
+>> lengths = np.array(lengths)
+>> print(f'Min: {lengths.min()}  Max: {lengths.max()}  Mean: {lengths.mean():.0f}')
+>> print(f'Under 96 frames: {(lengths < 96).sum()}/{len(lengths)}')
+>> print(f'Under 32 frames: {(lengths < 32).sum()}/{len(lengths)}')
+>> "@
+Min: 3  Max: 270  Mean: 76
+Under 96 frames: 70/100
+Under 32 frames: 24/100
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python eval_recon_auroc.py `
+>>     --head-ckpt checkpoints/cwm/temporal_head_sprint3.pt `
+>>     --cwm-ckpt  checkpoints/cwm/cwm_multidomain_best.pt `
+>>     --hdf5-dir  recon_data/recon_release `
+>>     --n-pairs 1000 --k-pos 4 `
+>>     --proprio-compare --hard-negatives --proprio-no-gps `
+>>     --proprio-ckpt checkpoints/cwm/proprio_kctx64_recon.pt `
+>>     --max-files 200 --min-traj-len 100
+usage: eval_recon_auroc.py [-h] [--cwm-ckpt CWM_CKPT] [--head-ckpt HEAD_CKPT]
+                           [--hdf5-dir HDF5_DIR] [--n-pairs N_PAIRS] [--k-pos K_POS]
+                           [--max-files MAX_FILES] [--device DEVICE] [--k-sweep]
+                           [--aphasia-ablation] [--aphasia-compare] [--neuromod-compare]
+                           [--proprio-compare] [--proprio-ckpt PROPRIO_CKPT]
+                           [--hard-negatives] [--k-hard-min K_HARD_MIN] [--proprio-no-gps]
+eval_recon_auroc.py: error: unrecognized arguments: --min-traj-len 100
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python eval_recon_auroc.py --help | Select-String "min\|traj\|len\|filter"
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python -c @"
+>> import h5py, glob, numpy as np
+>> files = glob.glob('recon_data/recon_release/*.hdf5')
+>> long_files = []
+>> for f in files:
+>>     try:
+>>         with h5py.File(f) as hf:
+>>             if len(hf['commands']['linear_velocity']) >= 100:
+>>                 long_files.append(f)
+>>     except: pass
+>> print(f'Long files (>=100 frames): {len(long_files)}/{len(files)}')
+>> # Save list
+>> with open('long_recon_files.txt', 'w') as f:
+>>     f.write('\n'.join(long_files))
+>> print('Saved: long_recon_files.txt')
+>> "@
+Long files (>=100 frames): 1668/11835
+Saved: long_recon_files.txt
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python eval_recon_auroc.py `
+>>     --head-ckpt checkpoints/cwm/temporal_head_sprint3.pt `
+>>     --cwm-ckpt  checkpoints/cwm/cwm_multidomain_best.pt `
+>>     --hdf5-dir  recon_data/recon_long `
+>>     --n-pairs 1000 --k-pos 4 `
+>>     --proprio-compare --hard-negatives --proprio-no-gps `
+>>     --proprio-ckpt checkpoints/cwm/proprio_kctx64_recon.pt `
+>>     --max-files 500
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints/cwm/cwm_multidomain_best.pt (epoch 18, loss 0.1620)
+TemporalHead loaded: checkpoints/cwm/temporal_head_sprint3.pt (epoch 9, top1_acc=0.939)
+ProprioEncoderTemporal (6c) loaded: checkpoints/cwm/proprio_kctx64_recon.pt (epoch=7, top1_acc=1.0000, k_ctx=64)
+Using ProprioEncoderTemporal (Sprint 6c 4-frame window)
+  Eval: 500 pos, 500 neg [hard (same-file, k>=32)], 500 files, k<=4
+
+==============================================================
+  Sprint 6: Proprioceptive Dissociation Eval
+  k<=4, n=1000, negatives=hard (same-file, k>=32)
+  Proprio signals: NO GPS (vel+heading+contact only)
+==============================================================
+
+  [Full (VLM + proprio)]
+    AUROC:      0.9999  PASS
+    Pos dist:   0.0191 +/- 0.0208
+    Neg dist:   0.4965 +/- 0.1669
+    Separation: +0.4774
+
+  [No VLM (proprio only)]
+    AUROC:      0.9999  PASS
+    Pos dist:   0.0303 +/- 0.0362
+    Neg dist:   0.9629 +/- 0.3118
+    Separation: +0.9325
+
+  [No proprio (VLM only)]
+    AUROC:      0.8775  PASS
+    Pos dist:   0.0081 +/- 0.0166
+    Neg dist:   0.0433 +/- 0.0473
+    Separation: +0.0353
+
+==============================================================
+  Sprint 6 criterion: No-VLM AUROC > 0.50
+  No-VLM AUROC: 0.9999  >>> DISSOCIATION BEGINNING
+==============================================================
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> # Run k=64 proper AUROC eval now (takes ~3 min) while ep8 runs
+>> python eval_recon_auroc.py `
+>>     --head-ckpt checkpoints/cwm/temporal_head_sprint3.pt `
+>>     --cwm-ckpt  checkpoints/cwm/cwm_multidomain_best.pt `
+>>     --hdf5-dir  recon_data/recon_long `
+>>     --n-pairs 1000 --k-pos 4 `
+>>     --proprio-compare --hard-negatives --proprio-no-gps `
+>>     --proprio-ckpt checkpoints/cwm/proprio_kctx64_recon.pt `
+>>     --max-files 500
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints/cwm/cwm_multidomain_best.pt (epoch 18, loss 0.1620)
+TemporalHead loaded: checkpoints/cwm/temporal_head_sprint3.pt (epoch 9, top1_acc=0.939)
+ProprioEncoderTemporal (6c) loaded: checkpoints/cwm/proprio_kctx64_recon.pt (epoch=7, top1_acc=1.0000, k_ctx=64)
+Using ProprioEncoderTemporal (Sprint 6c 4-frame window)
+  Eval: 500 pos, 500 neg [hard (same-file, k>=32)], 500 files, k<=4
+
+==============================================================
+  Sprint 6: Proprioceptive Dissociation Eval
+  k<=4, n=1000, negatives=hard (same-file, k>=32)
+  Proprio signals: NO GPS (vel+heading+contact only)
+==============================================================
+
+  [Full (VLM + proprio)]
+    AUROC:      0.9999  PASS
+    Pos dist:   0.0172 +/- 0.0193
+    Neg dist:   0.4919 +/- 0.1662
+    Separation: +0.4748
+
+  [No VLM (proprio only)]
+    AUROC:      0.9999  PASS
+    Pos dist:   0.0303 +/- 0.0362
+    Neg dist:   0.9629 +/- 0.3118
+    Separation: +0.9325
+
+  [No proprio (VLM only)]
+    AUROC:      0.8822  PASS
+    Pos dist:   0.0032 +/- 0.0073
+    Neg dist:   0.0201 +/- 0.0253
+    Separation: +0.0169
+
+==============================================================
+  Sprint 6 criterion: No-VLM AUROC > 0.50
+  No-VLM AUROC: 0.9999  >>> DISSOCIATION BEGINNING
+==============================================================
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> # Check if k_ctx=64 finished ep8/9 overnight
+>> python -c @"
+>> import torch
+>> ckpt = torch.load('checkpoints/cwm/proprio_kctx64_recon.pt', map_location='cpu', weights_only=False)
+>> print(f'ep={ckpt[chr(101)+chr(112)+chr(111)+chr(99)+chr(104)]}  top1_acc={ckpt[chr(116)+chr(111)+chr(112)+chr(49)+chr(95)+chr(97)+chr(99)+chr(99)]:.4f}')
+>> "@
+ep=7  top1_acc=1.0000
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+python eval_vlm_calibration.py --sweep all
+  Validation results:
+    text_sim_mean:    0.0790
+    discrimination:   0.0000
+    DA HOT:           0.00
+    DA COLD:          0.93
+    DA NEUTRAL:       0.07
+    gradient_norm:    0.0993
+    overall_score:    0.1199
+    bridge_quality:   0.9998
+
+  Checks:
+    ❌  da_balanced
+    ❌  discrimination
+    ✅  gradient_active
+    ✅  not_all_neutral
+    ✅  bridge_active
+
+============================================================
+  Calibration Complete (9.3s)
+============================================================
+
+  ⚠️  Some checks failed: ['da_balanced', 'discrimination']
+  → Adjust da_threshold_hot / da_threshold_cold
+  → VLM not discriminating locations well
+  → Consider fine-tuning bridge on RECON captions
+
+  Biological signal interpretation:
+    DA temperature 0.010: sharp HOT/COLD boundary
+    Bridge weight 0.10: moderate trust in text projection
+    Fusion alpha 0.10: visual dominant DA signal
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+

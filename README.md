@@ -210,7 +210,7 @@ Documented explicitly per scientific practice:
 John Taylor (independent researcher)
 
 arXiv submission in progress (cs.LG, cs.RO).
-Endorsement received from Dhruv Shah (UC Berkeley).
+Endorsement received. Submission imminent.
 
 Key references: Hasselmo 1999 (ACh), Moser et al. 2008 (grid cells),
 O'Keefe 1971 (place cells), Taube 1998 (head direction),

@@ -1,0 +1,1008 @@
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python aphasia_eval.py
+Loaded 30 frames
+
+Condition              mean_RPE       DA      5HT      E/I Regime
+--------------------------------------------------------------------
+Full model             0.012258   0.0071   0.8562   0.0165 EXPLOIT
+Aphasia ablation       1.000000   1.0000   0.1252   0.6512 FATIGUE
+
+RPE delta: +0.987742
+
+Interpretation:
+  RPE delta ≈ 0  → VLM gate not load-bearing → aphasia claim supported
+  RPE delta >> 0 → VLM gate contributes → report as VLM-dependent finding
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python eval_recon_auroc.py --aphasia-compare
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+
+=== Aphasia Comparison Eval ===
+Running full model...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_best.pt (epoch 29, loss 0.5673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 1000 pos, 1000 neg, 10995 files, k<=4
+
+────────────────────────────────────────────────────
+RECON Quasimetric AUROC -- Sprint 2 [Full model]
+────────────────────────────────────────────────────
+  Pairs:      2000 (1000 pos / 1000 neg)
+  k_pos:      <= 4 steps
+  Pos dist:   0.0003 +/- 0.0006
+  Neg dist:   0.0020 +/- 0.0022
+  Separation: +0.0017 (weak)
+  AUROC:      0.9139
+────────────────────────────────────────────────────
+  Sprint 2 PASSED (>= 0.70)
+
+Running aphasia ablation...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_best.pt (epoch 29, loss 0.5673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 1000 pos, 1000 neg, 10995 files, k<=4
+
+────────────────────────────────────────────────────
+RECON Quasimetric AUROC -- Sprint 2 [APHASIA ABLATION]
+────────────────────────────────────────────────────
+  Pairs:      2000 (1000 pos / 1000 neg)
+  k_pos:      <= 4 steps
+  Pos dist:   0.0000 +/- 0.0000
+  Neg dist:   0.0000 +/- 0.0000
+  Separation: +0.0000 (inverted)
+  AUROC:      0.5000
+────────────────────────────────────────────────────
+  Sprint 2 not met -- gap: 0.2000
+  -> Try epoch 10+ CWM checkpoint
+
+════════════════════════════════════════════════════
+  Aphasia Comparison Result
+════════════════════════════════════════════════════
+  Full model AUROC:    0.9139
+  Aphasia ablation:    0.5000
+  Delta (full-aph):    +0.4139
+────────────────────────────────────────────────────
+  VLM GATE LOAD-BEARING: ablation degrades significantly
+  (AUROC_ablated=0.5000, delta=+0.4139)
+  Report as: language interface necessary for world modeling.
+════════════════════════════════════════════════════
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python eval_recon_auroc.py --aphasia-ablation                        # ablated only
+>> python eval_recon_auroc.py --aphasia-ablation --k-sweep              # k=1..16 ablated
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_best.pt (epoch 29, loss 0.5673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 1000 pos, 1000 neg, 10995 files, k<=4
+
+────────────────────────────────────────────────────
+RECON Quasimetric AUROC -- Sprint 2 [APHASIA ABLATION]
+────────────────────────────────────────────────────
+  Pairs:      2000 (1000 pos / 1000 neg)
+  k_pos:      <= 4 steps
+  Pos dist:   -0.0000 +/- 0.0000
+  Neg dist:   -0.0000 +/- 0.0000
+  Separation: +0.0000 (inverted)
+  AUROC:      0.5000
+────────────────────────────────────────────────────
+  Sprint 2 not met -- gap: 0.2000
+  -> Try epoch 10+ CWM checkpoint
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+
+AUROC vs temporal k (n_pairs=500 each):
+     k     AUROC  Status
+  ────────────────────────────
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_best.pt (epoch 29, loss 0.5673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=1
+     1  0.5000    ----
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_best.pt (epoch 29, loss 0.5673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=2
+     2  0.5000    ----
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_best.pt (epoch 29, loss 0.5673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=4
+     4  0.5000    ----
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_best.pt (epoch 29, loss 0.5673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=8
+     8  0.5000    ----
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_best.pt (epoch 29, loss 0.5673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=16
+    16  0.5000    ----
+
+  Best: k=1 AUROC=0.5000
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python eval_recon_auroc.py --neuromod-compare
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+
+=== Neuromodulator Ablation Study ===
+Three conditions: no-neuromod | frozen (ablation control) | dynamic
+
+Running [No neuromod (baseline)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_best.pt (epoch 29, loss 0.5673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 1000 pos, 1000 neg, 10995 files, k<=4
+
+Running [Frozen (ablation ctrl)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_best.pt (epoch 29, loss 0.5673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 1000 pos, 1000 neg, 10995 files, k<=4
+
+Running [Dynamic (full NeMo-WM)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_best.pt (epoch 29, loss 0.5673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 1000 pos, 1000 neg, 10995 files, k<=4
+
+════════════════════════════════════════════════════════════
+  Neuromodulator Ablation Result  (k<=4, n=2000)
+════════════════════════════════════════════════════════════
+  Condition                       AUROC   Delta vs baseline
+  ──────────────────────────────────────────────────────────
+  No neuromod (baseline)         0.9460                   — ✓
+  Frozen gains (ablation)        0.8827             -0.0633 ✓
+  Dynamic NeMo-WM                0.9004             -0.0457 ✓
+────────────────────────────────────────────────────────────
+  FINDING: Dynamic neuromodulator improves AUROC by +0.0177
+  The seven-signal MD-analog contributes at inference time.
+════════════════════════════════════════════════════════════
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python eval_recon_auroc.py --neuromod-compare
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+
+=== Neuromodulator Ablation Study ===
+Three conditions: no-neuromod | frozen (ablation control) | dynamic
+
+Running [No neuromod (baseline)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_best.pt (epoch 29, loss 0.5673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 1000 pos, 1000 neg, 10995 files, k<=4
+
+Running [Frozen (ablation ctrl)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_best.pt (epoch 29, loss 0.5673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 1000 pos, 1000 neg, 10995 files, k<=4
+
+Running [Dynamic (full NeMo-WM)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_best.pt (epoch 29, loss 0.5673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 1000 pos, 1000 neg, 10995 files, k<=4
+
+════════════════════════════════════════════════════════════
+  Neuromodulator Ablation Result  (k<=4, n=2000)
+════════════════════════════════════════════════════════════
+  Condition                       AUROC   Delta vs baseline
+  ──────────────────────────────────────────────────────────
+  No neuromod (baseline)         0.9460                   — ✓
+  Frozen gains (ablation)        0.8827             -0.0633 ✓
+  Dynamic NeMo-WM                0.9004             -0.0457 ✓
+────────────────────────────────────────────────────────────
+  FINDING: Dynamic neuromodulator improves AUROC by +0.0177
+  The seven-signal MD-analog contributes at inference time.
+════════════════════════════════════════════════════════════
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python eval_recon_auroc.py --neuromod-compare
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+
+=== Neuromodulator Ablation Study ===
+Three conditions: no-neuromod | frozen (ablation control) | dynamic
+
+Running [No neuromod (baseline)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_best.pt (epoch 29, loss 0.5673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 1000 pos, 1000 neg, 10995 files, k<=4
+
+Running [Frozen (ablation ctrl)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_best.pt (epoch 29, loss 0.5673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 1000 pos, 1000 neg, 10995 files, k<=4
+
+Running [Dynamic (full NeMo-WM)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_best.pt (epoch 29, loss 0.5673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 1000 pos, 1000 neg, 10995 files, k<=4
+
+════════════════════════════════════════════════════════════
+  Neuromodulator Ablation Result  (k<=4, n=2000)
+  Note: all conditions use F.normalize for geometry parity
+════════════════════════════════════════════════════════════
+  Condition                       AUROC   Delta vs baseline
+  ──────────────────────────────────────────────────────────
+  No neuromod (baseline)         0.9090                   — ✓
+  Frozen gains (ablation)        0.8917             -0.0174 ✓
+  Dynamic NeMo-WM                0.9194             +0.0103 ✓
+  ──────────────────────────────────────────────────────────
+  Dynamic vs Frozen:  +0.0277  (95% CI ±0.0219, n=2000)
+  Significance:       YES at 95% level
+────────────────────────────────────────────────────────────
+  FINDING: Dynamic neuromodulator improves AUROC by +0.0277 (significant)
+  The seven-signal MD-analog contributes at inference time.
+════════════════════════════════════════════════════════════
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python eval_recon_auroc.py --neuromod-compare --n-pairs 5000
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+
+=== Neuromodulator Ablation Study ===
+Three conditions: no-neuromod | frozen (ablation control) | dynamic
+
+Building shared eval dataset (n=5000, k<=4)...
+  Eval: 2500 pos, 2500 neg, 10995 files, k<=4
+  All three conditions will run on identical pairs.
+
+Running [No neuromod (baseline)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_best.pt (epoch 29, loss 0.5673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+Running [Frozen (ablation ctrl)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_best.pt (epoch 29, loss 0.5673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+Running [Dynamic (full NeMo-WM)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_best.pt (epoch 29, loss 0.5673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+════════════════════════════════════════════════════════════
+  Neuromodulator Ablation Result  (k<=4, n=5000)
+  Note: all conditions use F.normalize for geometry parity
+════════════════════════════════════════════════════════════
+  Condition                       AUROC   Delta vs baseline
+  ──────────────────────────────────────────────────────────
+  No neuromod (baseline)         0.9019                   — ✓
+  Frozen gains (ablation)        0.9161             +0.0142 ✓
+  Dynamic NeMo-WM                0.8847             -0.0172 ✓
+  ──────────────────────────────────────────────────────────
+  Dynamic vs Frozen:  -0.0314  (95% CI ±0.0139, n=5000)
+  Significance:       YES at 95% level
+────────────────────────────────────────────────────────────
+  FINDING: Frozen > Dynamic by 0.0314 (significant)
+  Dynamic gains are miscalibrated for this encoder type.
+════════════════════════════════════════════════════════════
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> conda activate ryzen-ai-1.7.0
+>> cd C:\Users\MeteorAI\Desktop\CORTEX
+>> python eval_recon_auroc.py --neuromod-compare --n-pairs 5000 `
+>>     --cwm-ckpt checkpoints\cwm\cwm_multidomain_best.pt
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+
+=== Neuromodulator Ablation Study ===
+Three conditions: no-neuromod | frozen (ablation control) | dynamic
+
+Building shared eval dataset (n=5000, k<=4)...
+  Eval: 2500 pos, 2500 neg, 10995 files, k<=4
+  All three conditions will run on identical pairs.
+
+Running [No neuromod (baseline)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 3, loss 0.1696)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+Running [Frozen (ablation ctrl)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 3, loss 0.1696)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+Running [Dynamic (full NeMo-WM)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 3, loss 0.1696)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+════════════════════════════════════════════════════════════
+  Neuromodulator Ablation Result  (k<=4, n=5000)
+  Note: all conditions use F.normalize for geometry parity
+════════════════════════════════════════════════════════════
+  Condition                       AUROC   Delta vs baseline
+  ──────────────────────────────────────────────────────────
+  No neuromod (baseline)         0.9285                   — ✓
+  Frozen gains (ablation)        0.9295             +0.0011 ✓
+  Dynamic NeMo-WM                0.9044             -0.0241 ✓
+  ──────────────────────────────────────────────────────────
+  Dynamic vs Frozen:  -0.0251  (95% CI ±0.0139, n=5000)
+  Significance:       YES at 95% level
+────────────────────────────────────────────────────────────
+  FINDING: Frozen > Dynamic by 0.0251 (significant)
+  Dynamic gains are miscalibrated for this encoder type.
+════════════════════════════════════════════════════════════
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python eval_recon_auroc.py --neuromod-compare --n-pairs 5000 `
+>>     --cwm-ckpt checkpoints\cwm\cwm_multidomain_best.pt
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+
+=== Neuromodulator Ablation Study ===
+Three conditions: no-neuromod | frozen (ablation control) | dynamic
+
+Building shared eval dataset (n=5000, k<=4)...
+  Eval: 2500 pos, 2500 neg, 10995 files, k<=4
+  All three conditions will run on identical pairs.
+
+Running [No neuromod (baseline)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+Running [Frozen (ablation ctrl)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+Running [Dynamic (full NeMo-WM)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+════════════════════════════════════════════════════════════
+  Neuromodulator Ablation Result  (k<=4, n=5000)
+  Note: all conditions use F.normalize for geometry parity
+════════════════════════════════════════════════════════════
+  Condition                       AUROC   Delta vs baseline
+  ──────────────────────────────────────────────────────────
+  No neuromod (baseline)         0.9180                   — ✓
+  Frozen gains (ablation)        0.8500             -0.0680 ✓
+  Dynamic NeMo-WM                0.9076             -0.0104 ✓
+  ──────────────────────────────────────────────────────────
+  Dynamic vs Frozen:  +0.0576  (95% CI ±0.0139, n=5000)
+  Significance:       YES at 95% level
+────────────────────────────────────────────────────────────
+  FINDING: Dynamic neuromodulator improves AUROC by +0.0576 (significant)
+  The seven-signal MD-analog contributes at inference time.
+════════════════════════════════════════════════════════════
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python eval_recon_auroc.py --k-sweep --n-pairs 2000 `
+>>     --cwm-ckpt checkpoints\cwm\cwm_multidomain_best.pt
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+
+AUROC vs temporal k (n_pairs=500 each):
+     k     AUROC  Status
+  ────────────────────────────
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=1
+     1  0.9695    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=2
+     2  0.9644    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=4
+     4  0.9347    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=8
+     8  0.8149    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=16
+    16  0.8437    PASS
+
+  Best: k=1 AUROC=0.9695
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> conda activate ryzen-ai-1.7.0
+>> cd C:\Users\MeteorAI\Desktop\CORTEX
+>> python eval_recon_auroc.py --neuromod-compare --n-pairs 5000 `
+>>     --cwm-ckpt checkpoints\cwm\cwm_multidomain_best.pt
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+
+=== Neuromodulator Ablation Study ===
+Three conditions: no-neuromod | frozen (ablation control) | dynamic
+
+Building shared eval dataset (n=5000, k<=4)...
+  Eval: 2500 pos, 2500 neg, 10995 files, k<=4
+  All three conditions will run on identical pairs.
+
+Running [No neuromod (baseline)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 3, loss 0.1696)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+Running [Frozen (ablation ctrl)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 3, loss 0.1696)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+Running [Dynamic (full NeMo-WM)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 3, loss 0.1696)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+════════════════════════════════════════════════════════════
+  Neuromodulator Ablation Result  (k<=4, n=5000)
+  Note: all conditions use F.normalize for geometry parity
+════════════════════════════════════════════════════════════
+  Condition                       AUROC   Delta vs baseline
+  ──────────────────────────────────────────────────────────
+  No neuromod (baseline)         0.9285                   — ✓
+  Frozen gains (ablation)        0.9295             +0.0011 ✓
+  Dynamic NeMo-WM                0.9044             -0.0241 ✓
+  ──────────────────────────────────────────────────────────
+  Dynamic vs Frozen:  -0.0251  (95% CI ±0.0139, n=5000)
+  Significance:       YES at 95% level
+────────────────────────────────────────────────────────────
+  FINDING: Frozen > Dynamic by 0.0251 (significant)
+  Dynamic gains are miscalibrated for this encoder type.
+════════════════════════════════════════════════════════════
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python eval_recon_auroc.py --neuromod-compare --n-pairs 5000 `
+>>     --cwm-ckpt checkpoints\cwm\cwm_multidomain_best.pt
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+
+=== Neuromodulator Ablation Study ===
+Three conditions: no-neuromod | frozen (ablation control) | dynamic
+
+Building shared eval dataset (n=5000, k<=4)...
+  Eval: 2500 pos, 2500 neg, 10995 files, k<=4
+  All three conditions will run on identical pairs.
+
+Running [No neuromod (baseline)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+Running [Frozen (ablation ctrl)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+Running [Dynamic (full NeMo-WM)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+════════════════════════════════════════════════════════════
+  Neuromodulator Ablation Result  (k<=4, n=5000)
+  Note: all conditions use F.normalize for geometry parity
+════════════════════════════════════════════════════════════
+  Condition                       AUROC   Delta vs baseline
+  ──────────────────────────────────────────────────────────
+  No neuromod (baseline)         0.9180                   — ✓
+  Frozen gains (ablation)        0.8500             -0.0680 ✓
+  Dynamic NeMo-WM                0.9076             -0.0104 ✓
+  ──────────────────────────────────────────────────────────
+  Dynamic vs Frozen:  +0.0576  (95% CI ±0.0139, n=5000)
+  Significance:       YES at 95% level
+────────────────────────────────────────────────────────────
+  FINDING: Dynamic neuromodulator improves AUROC by +0.0576 (significant)
+  The seven-signal MD-analog contributes at inference time.
+════════════════════════════════════════════════════════════
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python eval_recon_auroc.py --k-sweep --n-pairs 2000 `
+>>     --cwm-ckpt checkpoints\cwm\cwm_multidomain_best.pt
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+
+AUROC vs temporal k (n_pairs=500 each):
+     k     AUROC  Status
+  ────────────────────────────
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=1
+     1  0.9695    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=2
+     2  0.9644    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=4
+     4  0.9347    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=8
+     8  0.8149    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=16
+    16  0.8437    PASS
+
+  Best: k=1 AUROC=0.9695
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python eval_recon_auroc.py --neuromod-compare --n-pairs 5000 `
+>>     --cwm-ckpt checkpoints\cwm\cwm_multidomain_best.pt
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+
+=== Neuromodulator Ablation Study ===
+Three conditions: no-neuromod | frozen (ablation control) | dynamic
+
+Building shared eval dataset (n=5000, k<=4)...
+  Eval: 2500 pos, 2500 neg, 10995 files, k<=4
+  All three conditions will run on identical pairs.
+
+Running [No neuromod (baseline)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 6, loss 0.1673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+Running [Frozen (ablation ctrl)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 6, loss 0.1673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+Running [Dynamic (full NeMo-WM)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 6, loss 0.1673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+════════════════════════════════════════════════════════════
+  Neuromodulator Ablation Result  (k<=4, n=5000)
+  Note: all conditions use F.normalize for geometry parity
+════════════════════════════════════════════════════════════
+  Condition                       AUROC   Delta vs baseline
+  ──────────────────────────────────────────────────────────
+  No neuromod (baseline)         0.9127                   — ✓
+  Frozen gains (ablation)        0.8698             -0.0429 ✓
+  Dynamic NeMo-WM                0.9463             +0.0336 ✓
+  ──────────────────────────────────────────────────────────
+  Dynamic vs Frozen:  +0.0765  (95% CI ±0.0139, n=5000)
+  Significance:       YES at 95% level
+────────────────────────────────────────────────────────────
+  FINDING: Dynamic neuromodulator improves AUROC by +0.0765 (significant)
+  The seven-signal MD-analog contributes at inference time.
+════════════════════════════════════════════════════════════
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python eval_recon_auroc.py --neuromod-compare --n-pairs 5000 `
+>>     --cwm-ckpt checkpoints\cwm\cwm_multidomain_best.pt
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+
+=== Neuromodulator Ablation Study ===
+Three conditions: no-neuromod | frozen (ablation control) | dynamic
+
+Building shared eval dataset (n=5000, k<=4)...
+  Eval: 2500 pos, 2500 neg, 10995 files, k<=4
+  All three conditions will run on identical pairs.
+
+Running [No neuromod (baseline)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+Running [Frozen (ablation ctrl)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+Running [Dynamic (full NeMo-WM)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+════════════════════════════════════════════════════════════
+  Neuromodulator Ablation Result  (k<=4, n=5000)
+  Note: all conditions use F.normalize for geometry parity
+════════════════════════════════════════════════════════════
+  Condition                       AUROC   Delta vs baseline
+  ──────────────────────────────────────────────────────────
+  No neuromod (baseline)         0.9180                   — ✓
+  Frozen gains (ablation)        0.8500             -0.0680 ✓
+  Dynamic NeMo-WM                0.9076             -0.0104 ✓
+  ──────────────────────────────────────────────────────────
+  Dynamic vs Frozen:  +0.0576  (95% CI ±0.0139, n=5000)
+  Significance:       YES at 95% level
+────────────────────────────────────────────────────────────
+  FINDING: Dynamic neuromodulator improves AUROC by +0.0576 (significant)
+  The seven-signal MD-analog contributes at inference time.
+════════════════════════════════════════════════════════════
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python eval_recon_auroc.py --k-sweep --n-pairs 2000 `
+>>     --cwm-ckpt checkpoints\cwm\cwm_multidomain_best.pt
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+
+AUROC vs temporal k (n_pairs=500 each):
+     k     AUROC  Status
+  ────────────────────────────
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=1
+     1  0.9695    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=2
+     2  0.9644    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=4
+     4  0.9347    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=8
+     8  0.8149    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 5, loss 0.1678)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=16
+    16  0.8437    PASS
+
+  Best: k=1 AUROC=0.9695
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python eval_recon_auroc.py --neuromod-compare --n-pairs 5000 `
+>>     --cwm-ckpt checkpoints\cwm\cwm_multidomain_best.pt
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+
+=== Neuromodulator Ablation Study ===
+Three conditions: no-neuromod | frozen (ablation control) | dynamic
+
+Building shared eval dataset (n=5000, k<=4)...
+  Eval: 2500 pos, 2500 neg, 10995 files, k<=4
+  All three conditions will run on identical pairs.
+
+Running [No neuromod (baseline)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 6, loss 0.1673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+Running [Frozen (ablation ctrl)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 6, loss 0.1673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+Running [Dynamic (full NeMo-WM)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 6, loss 0.1673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+════════════════════════════════════════════════════════════
+  Neuromodulator Ablation Result  (k<=4, n=5000)
+  Note: all conditions use F.normalize for geometry parity
+════════════════════════════════════════════════════════════
+  Condition                       AUROC   Delta vs baseline
+  ──────────────────────────────────────────────────────────
+  No neuromod (baseline)         0.9127                   — ✓
+  Frozen gains (ablation)        0.8698             -0.0429 ✓
+  Dynamic NeMo-WM                0.9463             +0.0336 ✓
+  ──────────────────────────────────────────────────────────
+  Dynamic vs Frozen:  +0.0765  (95% CI ±0.0139, n=5000)
+  Significance:       YES at 95% level
+────────────────────────────────────────────────────────────
+  FINDING: Dynamic neuromodulator improves AUROC by +0.0765 (significant)
+  The seven-signal MD-analog contributes at inference time.
+════════════════════════════════════════════════════════════
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python eval_recon_auroc.py --k-sweep --n-pairs 2000 `
+>>     --cwm-ckpt checkpoints\cwm\cwm_multidomain_best.pt
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+
+AUROC vs temporal k (n_pairs=500 each):
+     k     AUROC  Status
+  ────────────────────────────
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 6, loss 0.1673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=1
+     1  0.9748    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 6, loss 0.1673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=2
+     2  0.9360    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 6, loss 0.1673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=4
+     4  0.9270    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 6, loss 0.1673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=8
+     8  0.8296    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 6, loss 0.1673)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 250 pos, 250 neg, 10995 files, k<=16
+    16  0.7829    PASS
+
+  Best: k=1 AUROC=0.9748
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python eval_recon_auroc.py --k-sweep --n-pairs 5000 `
+>>     --cwm-ckpt checkpoints\cwm\cwm_multidomain_best.pt
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+
+AUROC vs temporal k (n_pairs=1250 each):
+     k     AUROC  Status
+  ────────────────────────────
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 9, loss 0.1650)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 625 pos, 625 neg, 10995 files, k<=1
+     1  0.9491    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 9, loss 0.1650)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 625 pos, 625 neg, 10995 files, k<=2
+     2  0.9285    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 9, loss 0.1650)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 625 pos, 625 neg, 10995 files, k<=4
+     4  0.8370    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 9, loss 0.1650)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 625 pos, 625 neg, 10995 files, k<=8
+     8  0.8146    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 9, loss 0.1650)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 625 pos, 625 neg, 10995 files, k<=16
+    16  0.7728    PASS
+
+  Best: k=1 AUROC=0.9491
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> # Run these once ep11 saves and ep12 has started:
+>> python eval_recon_auroc.py --k-sweep --n-pairs 10000 `
+>>     --cwm-ckpt checkpoints\cwm\cwm_multidomain_best.pt
+>>
+>> python eval_recon_auroc.py --neuromod-compare --n-pairs 5000 `
+>>     --cwm-ckpt checkpoints\cwm\cwm_multidomain_best.pt
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+
+AUROC vs temporal k (n_pairs=2500 each):
+     k     AUROC  Status
+  ────────────────────────────
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 11, loss 0.1641)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 1250 pos, 1250 neg, 10995 files, k<=1
+     1  0.9733    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 11, loss 0.1641)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 1250 pos, 1250 neg, 10995 files, k<=2
+     2  0.9661    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 11, loss 0.1641)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 1250 pos, 1250 neg, 10995 files, k<=4
+     4  0.8593    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 11, loss 0.1641)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 1250 pos, 1250 neg, 10995 files, k<=8
+     8  0.8616    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 11, loss 0.1641)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 1250 pos, 1250 neg, 10995 files, k<=16
+    16  0.7635    PASS
+
+  Best: k=1 AUROC=0.9733
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+
+=== Neuromodulator Ablation Study ===
+Three conditions: no-neuromod | frozen (ablation control) | dynamic
+
+Building shared eval dataset (n=5000, k<=4)...
+  Eval: 2500 pos, 2500 neg, 10995 files, k<=4
+  All three conditions will run on identical pairs.
+
+Running [No neuromod (baseline)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 11, loss 0.1641)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+Running [Frozen (ablation ctrl)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 11, loss 0.1641)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+Running [Dynamic (full NeMo-WM)]...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 11, loss 0.1641)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+
+════════════════════════════════════════════════════════════
+  Neuromodulator Ablation Result  (k<=4, n=5000)
+  Note: all conditions use F.normalize for geometry parity
+════════════════════════════════════════════════════════════
+  Condition                       AUROC   Delta vs baseline
+  ──────────────────────────────────────────────────────────
+  No neuromod (baseline)         0.9183                   — ✓
+  Frozen gains (ablation)        0.8684             -0.0499 ✓
+  Dynamic NeMo-WM                0.9242             +0.0060 ✓
+  ──────────────────────────────────────────────────────────
+  Dynamic vs Frozen:  +0.0559  (95% CI ±0.0139, n=5000)
+  Significance:       YES at 95% level
+────────────────────────────────────────────────────────────
+  FINDING: Dynamic neuromodulator improves AUROC by +0.0559 (significant)
+  The seven-signal MD-analog contributes at inference time.
+════════════════════════════════════════════════════════════
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python eval_recon_auroc.py --k-sweep --n-pairs 10000 `
+>>     --cwm-ckpt checkpoints\cwm\cwm_multidomain_best.pt
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+
+AUROC vs temporal k (n_pairs=2500 each):
+     k     AUROC  Status
+  ────────────────────────────
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 12, loss 0.1638)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 1250 pos, 1250 neg, 10995 files, k<=1
+     1  0.9583    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 12, loss 0.1638)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 1250 pos, 1250 neg, 10995 files, k<=2
+     2  0.9230    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 12, loss 0.1638)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 1250 pos, 1250 neg, 10995 files, k<=4
+     4  0.8578    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 12, loss 0.1638)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 1250 pos, 1250 neg, 10995 files, k<=8
+     8  0.8692    PASS
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 12, loss 0.1638)
+TemporalHead loaded: checkpoints\cwm\temporal_head_best.pt (epoch 9, top1_acc=0.048)
+  Eval: 1250 pos, 1250 neg, 10995 files, k<=16
+    16  0.7794    PASS
+
+  Best: k=1 AUROC=0.9583
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+[ep19 s674750] domain=recon    loss=0.2562  regime=REOBSERVE  DA=0.002 5HT=0.031 ACh=0.486 lr=1.14e-07
+[ep19 s674800] domain=recon    loss=0.0800  regime=REOBSERVE  DA=0.002 5HT=0.030 ACh=0.485 lr=1.12e-07
+[ep19 s674850] domain=recon    loss=0.2369  regime=REOBSERVE  DA=0.002 5HT=0.031 ACh=0.485 lr=1.11e-07
+[ep19 s674900] domain=recon    loss=0.2769  regime=REOBSERVE  DA=0.002 5HT=0.029 ACh=0.487 lr=1.09e-07
+[ep19 s674950] domain=recon    loss=0.0834  regime=REOBSERVE  DA=0.002 5HT=0.029 ACh=0.486 lr=1.08e-07
+[ep19 s675000] domain=recon    loss=0.0930  regime=REOBSERVE  DA=0.002 5HT=0.030 ACh=0.486 lr=1.06e-07
+[ep19 s675050] domain=recon    loss=0.2028  regime=REOBSERVE  DA=0.002 5HT=0.031 ACh=0.485 lr=1.05e-07
+
+Epoch 19  mean_loss=0.1623
+  Per-domain losses:
+    recon       : 0.1623 (33754 batches)
+
+[Epoch 19] Expert specialisation by domain:
+  Domain        Expert0  Expert1  Expert2  Expert3
+  ────────────  ───────  ───────  ───────  ───────
+  recon           25.0%    25.0%    25.0%    25.0%
+
+============================================================
+Multi-domain training complete
+Best loss: 0.1620
+============================================================
+
+[Epoch 20] Expert specialisation by domain:
+  Domain        Expert0  Expert1  Expert2  Expert3
+  ────────────  ───────  ───────  ───────  ───────
+  recon            0.0%     0.0%     0.0%     0.0%
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python grasp_planner.py --benchmark
+grasp_planner self-test...
+  GRASP: action=[0. 0.], loss=0.9947, time=14.0ms
+  MirrorAscent: action=[-0.05  -0.004]
+  regime=EXPLOIT: planner=GRASP, acted=True
+  regime=EXPLORE: planner=MirrorAscent, acted=True
+  regime=REOBSERVE: planner=MirrorAscent, acted=True
+  regime=WAIT: planner=none, acted=False
+  All assertions passed.
+
+
+GRASP Latency Benchmark
+  Device:   cpu
+  K=16, d_model=128, H=8, iters=2
+  Trials:   20
+  Mean:     3.62 ms
+  Median:   3.56 ms
+  P95:      3.90 ms
+  Min/Max:  3.44 / 4.22 ms
+
+  PASS -- median 3.56ms < 10.0ms target
+  GRASP is viable for 4Hz RECON at this config.
+H=8, iters=2 also viable if longer horizon needed.
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python eval_recon_auroc.py `
+>>     --head-ckpt checkpoints\cwm\temporal_head_sprint3.pt `
+>>     --cwm-ckpt checkpoints\cwm\cwm_multidomain_best.pt `
+>>     --hdf5-dir recon_data\recon_release `
+>>     --aphasia-compare
+C:\Users\MeteorAI\Desktop\CORTEX\eval_recon_auroc.py:10: SyntaxWarning: invalid escape sequence '\c'
+  --cwm-ckpt  checkpoints\cwm\cwm_best.pt ^
+
+=== Aphasia Comparison Eval ===
+Running full model...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 18, loss 0.1620)
+TemporalHead loaded: checkpoints\cwm\temporal_head_sprint3.pt (epoch 9, top1_acc=0.939)
+  Eval: 1000 pos, 1000 neg, 10995 files, k<=4
+
+────────────────────────────────────────────────────
+RECON Quasimetric AUROC -- Sprint 2 [Full model (no neuromod)]
+────────────────────────────────────────────────────
+  Pairs:      2000 (1000 pos / 1000 neg)
+  k_pos:      <= 4 steps
+  Pos dist:   0.0016 +/- 0.0025
+  Neg dist:   0.0113 +/- 0.0098
+  Separation: +0.0097 (weak)
+  AUROC:      0.9230
+────────────────────────────────────────────────────
+  Sprint 2 PASSED (>= 0.70)
+
+Running aphasia ablation...
+StudentEncoder loaded: checkpoints\dinov2_student\student_best.pt
+CWM loaded: checkpoints\cwm\cwm_multidomain_best.pt (epoch 18, loss 0.1620)
+TemporalHead loaded: checkpoints\cwm\temporal_head_sprint3.pt (epoch 9, top1_acc=0.939)
+  Eval: 1000 pos, 1000 neg, 10995 files, k<=4
+
+────────────────────────────────────────────────────
+RECON Quasimetric AUROC -- Sprint 2 [APHASIA ABLATION]
+────────────────────────────────────────────────────
+  Pairs:      2000 (1000 pos / 1000 neg)
+  k_pos:      <= 4 steps
+  Pos dist:   0.0000 +/- 0.0000
+  Neg dist:   0.0000 +/- 0.0000
+  Separation: +0.0000 (inverted)
+  AUROC:      0.5000
+────────────────────────────────────────────────────
+  Sprint 2 not met -- gap: 0.2000
+  -> Try epoch 10+ CWM checkpoint
+
+════════════════════════════════════════════════════
+  Aphasia Comparison Result
+════════════════════════════════════════════════════
+  Full model AUROC:    0.9230
+  Aphasia ablation:    0.5000
+  Delta (full-aph):    +0.4230
+────────────────────────────────────────────────────
+  VLM GATE LOAD-BEARING: ablation degrades significantly
+  (AUROC_ablated=0.5000, delta=+0.4230)
+  Report as: language interface necessary for world modeling.
+════════════════════════════════════════════════════
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>

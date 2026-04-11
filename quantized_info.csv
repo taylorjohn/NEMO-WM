@@ -1,0 +1,17 @@
+npu_models\temporal_head_fp32.onnx quantization quantization info,2026-03-28 08:41:01
+quantization stage,time consumed(s),sub stage,time consumed(s)
+pre process,0.34
+,,calibration: collect data (onnx inference + numpy statistics),0.15
+,,calibration: compute data,0.04
+calibration (collect data + compute data),0.20
+static quantization,0.00
+post process(including finetuning),0.00
+e2e,0.6064230999909341
+
+Node Name,Op Type,Activation,Weights,Bias
+node_Gemm_0,Gemm,UINT8,INT8,INT8
+node_linear_1,Gemm,UINT8,INT8,INT8
+
+Op Type,Activation,Weights,Bias
+Gemm,UINT8(2),INT8(2),INT8(2)
+

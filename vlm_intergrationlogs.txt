@@ -1,0 +1,2641 @@
+
+NeMo-WM Phase 2b — Cortisol-Triggered Continual Adaptation
+=================================================================
+  Encoder:      DINO
+  Shift at:     step 100 → industrial
+  Total steps:  200
+  DA threshold: 0.0613 (Phase 1c calibrated)
+
+Loading DINO encoder...
+  ✅ DINOv2-Student loaded
+
+Loading 120 stable RECON frames...
+  ✅ Loaded 120 frames
+
+Running three-way comparison...
+  Stable phase: steps 0-100
+  Shift phase:  steps 100-200 (industrial)
+
+  [STATIC]     [Cortisol] Baseline calibrated: 0.0001
+Traceback (most recent call last):
+  File "C:\Users\MeteorAI\Desktop\CORTEX\vlm_phase2b_cortisol_adapt.py", line 551, in <module>
+    main()
+  File "C:\Users\MeteorAI\Desktop\CORTEX\vlm_phase2b_cortisol_adapt.py", line 493, in main
+    r = run_simulation(
+        ^^^^^^^^^^^^^^^
+  File "C:\Users\MeteorAI\Desktop\CORTEX\vlm_phase2b_cortisol_adapt.py", line 296, in run_simulation
+    for i, (domain, img) in enumerate(all_frames[:n_steps]):
+           ^^^^^^^^^^^^^
+TypeError: cannot unpack non-iterable Image object
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python test_neuro_vlm_gate.py
+
+NeMo-WM Biological Neuromodulator Gate — Test Suite
+============================================================
+Testing biological accuracy and functional correctness
+of neuro_vlm_gate.py
+
+
+============================================================
+  TEST 1 — Signal Dynamics (biological accuracy)
+============================================================
+  ✅ PASS  DA↓ → 5HT↑ (antagonistic, correct biology)
+         DA=0.000 5HT=0.730
+  ✅ PASS  Stable input → EXPLOIT regime
+         regime=EXPLOIT
+  ✅ PASS  DA↑ → 5HT↓ (antagonistic under surprise)
+         DA=0.600 5HT=0.521
+  ✅ PASS  Surprising input → REOBSERVE regime
+         regime=REOBSERVE
+  ✅ PASS  eCB rises with DA (retrograde suppression active)
+         eCB=0.182
+
+============================================================
+  TEST 2 — Attention Gain Computation
+============================================================
+  ✅ PASS  Default state: query_scale near 1.0
+         query_scale=1.000
+  ✅ PASS  Default state: global_gain near 1.0 (no fatigue)
+         global_gain=1.000
+  ✅ PASS  High DA+Cortisol → query_scale > 2.0 (amplified discrepancy)
+         query_scale=4.000
+  ✅ PASS  High Cortisol → threshold_mult > 2.0 (global sensitisation)
+         threshold_mult=3.400
+  ✅ PASS  High Ado (fatigue) → global_gain < 0.6
+         global_gain=0.460
+  ✅ PASS  High ACh → lower temperature (sharper attention)
+         temp(high ACh)=0.714 temp(low ACh)=1.667
+  ✅ PASS  High 5HT → higher topk_suppress (broader attention)
+         topk_suppress=0.450
+
+============================================================
+  TEST 3 — Regime Transitions
+============================================================
+  ✅ PASS  Phase 1: stable input → EXPLOIT
+  ✅ PASS  Phase 2: surprise → REOBSERVE
+         DA=0.316
+  ✅ PASS  Phase 3: sustained REOBSERVE → FATIGUE (Ado accumulates)
+         Ado=1.000
+  ✅ PASS  Phase 4: rest() clears Ado → exit FATIGUE
+         regime=EXPLOIT Ado=0.000
+  ✅ PASS  Phase 5: high cortisol → STRESSED regime
+         cort=0.500
+
+============================================================
+  TEST 4 — Predictive Gating (timing correctness)
+============================================================
+  ✅ PASS  Gains computed BEFORE update use prior state
+         gains_before.query_scale=1.000 da_before=0.000
+  ✅ PASS  Gains after surprise show higher query_scale (predictive)
+         before=1.000 after=1.601
+  ✅ PASS  DA updated correctly after surprise
+         da_before=0.000 da_after=0.300
+  ✅ PASS  Gains sequence lags state by one step (predictive coding)
+         gains=[1.601, 1.986, 2.358, 2.519, 2.631]
+
+============================================================
+  TEST 5 — Real RECON Frames (DINOv2)
+============================================================
+  ✅ PASS  Stable RECON frames: DA within calibrated range
+         DA range: 0.0020–0.0238, threshold=0.0613
+  ✅ PASS  Gains vary with neuromodulator state (not static)
+         query_scale range: 1.000–1.048
+  ✅ PASS  Neuromodulator runs without error on real frames
+         20 frames processed
+  ✅ PASS  Domain shift → REOBSERVE (DA above threshold)
+         DA=0.0682 regime=REOBSERVE
+  ✅ PASS  Post-shift gains amplified vs pre-shift
+         pre=1.016 post=1.140
+
+============================================================
+  TEST 6 — CLIP + Text Anchor (language-grounded gating)
+============================================================
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+The image processor of type `CLIPImageProcessor` is now loaded as a fast processor by default, even if the model checkpoint was saved with a slow processor. This is a breaking change and may produce slightly different outputs. To continue using the slow processor, instantiate this class with `use_fast=False`.
+Loading weights: 100%|███████████████| 398/398 [00:00<00:00, 49755.09it/s]
+CLIPModel LOAD REPORT from: openai/clip-vit-base-patch32
+Key                                  | Status     |  |
+-------------------------------------+------------+--+-
+text_model.embeddings.position_ids   | UNEXPECTED |  |
+vision_model.embeddings.position_ids | UNEXPECTED |  |
+
+Notes:
+- UNEXPECTED    :can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+  ✅ PASS  Matched (outdoor img + outdoor text): DA < mismatch DA
+         matched DA=0.8069 mismatch DA=0.7819
+  ✅ PASS  Text-target DA computed correctly (both in range)
+         matched=0.8069 mismatch=0.7819
+  ✅ PASS  Gains higher after mismatch (language-grounded amplification)
+         pre=1.000 post=2.564
+
+============================================================
+  TEST 7 — Attention Hook (NeurallyGatedVLM)
+============================================================
+Loading weights: 100%|███████████████| 398/398 [00:00<00:00, 44225.43it/s]
+CLIPModel LOAD REPORT from: openai/clip-vit-base-patch32
+Key                                  | Status     |  |
+-------------------------------------+------------+--+-
+text_model.embeddings.position_ids   | UNEXPECTED |  |
+vision_model.embeddings.position_ids | UNEXPECTED |  |
+
+Notes:
+- UNEXPECTED    :can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+  ✅ PASS  NeurallyGatedVLM produces valid embeddings
+         shape=torch.Size([512])
+  ✅ PASS  Hooks registered on vision model
+         60 hooks registered
+  ✅ PASS  High DA/Cortisol state produces different embedding
+         cosine_sim(base, high_da)=0.2370
+  ✅ PASS  Hooks removed cleanly
+
+============================================================
+  TEST SUMMARY
+============================================================
+  Passed: 33/33
+  Failed: 0/33
+
+  ✅ ALL TESTS PASS — biological neuromodulator gate validated
+     Ready for Phase 3 integration with full VLM stack
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> # Copy neuro_vlm_gate.py and test_neuro_vlm_gate.py to CORTEX first, then:
+>>
+>> # Quick first (30 seconds, no downloads)
+>> python test_neuro_vlm_gate.py --quick
+>>
+>> # Then full suite while Tab 2 keeps training
+>> python test_neuro_vlm_gate.py
+
+NeMo-WM Biological Neuromodulator Gate — Test Suite
+============================================================
+Testing biological accuracy and functional correctness
+of neuro_vlm_gate.py
+
+
+============================================================
+  TEST 1 — Signal Dynamics (biological accuracy)
+============================================================
+  ✅ PASS  DA↓ → 5HT↑ (antagonistic, correct biology)
+         DA=0.000 5HT=0.730
+  ✅ PASS  Stable input → EXPLOIT regime
+         regime=EXPLOIT
+  ✅ PASS  DA↑ → 5HT↓ (antagonistic under surprise)
+         DA=0.600 5HT=0.521
+  ✅ PASS  Surprising input → REOBSERVE regime
+         regime=REOBSERVE
+  ✅ PASS  eCB rises with DA (retrograde suppression active)
+         eCB=0.182
+
+============================================================
+  TEST 2 — Attention Gain Computation
+============================================================
+  ✅ PASS  Default state: query_scale near 1.0
+         query_scale=1.000
+  ✅ PASS  Default state: global_gain near 1.0 (no fatigue)
+         global_gain=1.000
+  ✅ PASS  High DA+Cortisol → query_scale > 2.0 (amplified discrepancy)
+         query_scale=4.000
+  ✅ PASS  High Cortisol → threshold_mult > 2.0 (global sensitisation)
+         threshold_mult=3.400
+  ✅ PASS  High Ado (fatigue) → global_gain < 0.6
+         global_gain=0.460
+  ✅ PASS  High ACh → lower temperature (sharper attention)
+         temp(high ACh)=0.714 temp(low ACh)=1.667
+  ✅ PASS  High 5HT → higher topk_suppress (broader attention)
+         topk_suppress=0.450
+
+============================================================
+  TEST 3 — Regime Transitions
+============================================================
+  ✅ PASS  Phase 1: stable input → EXPLOIT
+  ✅ PASS  Phase 2: surprise → REOBSERVE
+         DA=0.309
+  ❌ FAIL  Phase 3: sustained REOBSERVE → FATIGUE (Ado accumulates)
+         Ado=0.280
+  ✅ PASS  Phase 4: rest() clears Ado → exit FATIGUE
+         regime=EXPLOIT Ado=0.000
+  ✅ PASS  Phase 5: high cortisol → STRESSED regime
+         cort=0.500
+
+============================================================
+  TEST 4 — Predictive Gating (timing correctness)
+============================================================
+  ✅ PASS  Gains computed BEFORE update use prior state
+         gains_before.query_scale=1.000 da_before=0.000
+  ✅ PASS  Gains after surprise show higher query_scale (predictive)
+         before=1.000 after=1.563
+  ✅ PASS  DA updated correctly after surprise
+         da_before=0.000 da_after=0.282
+  ✅ PASS  Gains sequence lags state by one step (predictive coding)
+         gains=[1.563, 2.014, 2.355, 2.546, 2.68]
+
+  ⏭  SKIP  Test 5: Real frames (DINOv2) (--quick mode)
+
+  ⏭  SKIP  Test 6: CLIP text anchor (--quick mode)
+
+  ⏭  SKIP  Test 7: Attention hook (--quick mode)
+
+============================================================
+  TEST SUMMARY
+============================================================
+  Passed: 20/21
+  Failed: 1/21
+
+  Failed tests:
+    ❌ Phase 3: sustained REOBSERVE → FATIGUE (Ado accumulates)
+
+  ⚠️  MOSTLY PASSING — check failed tests above
+
+NeMo-WM Biological Neuromodulator Gate — Test Suite
+============================================================
+Testing biological accuracy and functional correctness
+of neuro_vlm_gate.py
+
+
+============================================================
+  TEST 1 — Signal Dynamics (biological accuracy)
+============================================================
+  ✅ PASS  DA↓ → 5HT↑ (antagonistic, correct biology)
+         DA=0.000 5HT=0.730
+  ✅ PASS  Stable input → EXPLOIT regime
+         regime=EXPLOIT
+  ✅ PASS  DA↑ → 5HT↓ (antagonistic under surprise)
+         DA=0.600 5HT=0.521
+  ✅ PASS  Surprising input → REOBSERVE regime
+         regime=REOBSERVE
+  ✅ PASS  eCB rises with DA (retrograde suppression active)
+         eCB=0.182
+
+============================================================
+  TEST 2 — Attention Gain Computation
+============================================================
+  ✅ PASS  Default state: query_scale near 1.0
+         query_scale=1.000
+  ✅ PASS  Default state: global_gain near 1.0 (no fatigue)
+         global_gain=1.000
+  ✅ PASS  High DA+Cortisol → query_scale > 2.0 (amplified discrepancy)
+         query_scale=4.000
+  ✅ PASS  High Cortisol → threshold_mult > 2.0 (global sensitisation)
+         threshold_mult=3.400
+  ✅ PASS  High Ado (fatigue) → global_gain < 0.6
+         global_gain=0.460
+  ✅ PASS  High ACh → lower temperature (sharper attention)
+         temp(high ACh)=0.714 temp(low ACh)=1.667
+  ✅ PASS  High 5HT → higher topk_suppress (broader attention)
+         topk_suppress=0.450
+
+============================================================
+  TEST 3 — Regime Transitions
+============================================================
+  ✅ PASS  Phase 1: stable input → EXPLOIT
+  ✅ PASS  Phase 2: surprise → REOBSERVE
+         DA=0.298
+  ❌ FAIL  Phase 3: sustained REOBSERVE → FATIGUE (Ado accumulates)
+         Ado=0.280
+  ✅ PASS  Phase 4: rest() clears Ado → exit FATIGUE
+         regime=EXPLOIT Ado=0.000
+  ✅ PASS  Phase 5: high cortisol → STRESSED regime
+         cort=0.500
+
+============================================================
+  TEST 4 — Predictive Gating (timing correctness)
+============================================================
+  ✅ PASS  Gains computed BEFORE update use prior state
+         gains_before.query_scale=1.000 da_before=0.000
+  ✅ PASS  Gains after surprise show higher query_scale (predictive)
+         before=1.000 after=1.684
+  ✅ PASS  DA updated correctly after surprise
+         da_before=0.000 da_after=0.342
+  ✅ PASS  Gains sequence lags state by one step (predictive coding)
+         gains=[1.684, 2.055, 2.398, 2.598, 2.739]
+
+============================================================
+  TEST 5 — Real RECON Frames (DINOv2)
+============================================================
+  ✅ PASS  Stable RECON frames: DA within calibrated range
+         DA range: 0.0020–0.0238, threshold=0.0613
+  ❌ FAIL  Gains vary with neuromodulator state (not static)
+         query_scale range: 1.000–1.048
+  ✅ PASS  Neuromodulator runs without error on real frames
+         20 frames processed
+  ✅ PASS  Domain shift → REOBSERVE (DA above threshold)
+         DA=0.0682 regime=REOBSERVE
+  ✅ PASS  Post-shift gains amplified vs pre-shift
+         pre=1.016 post=1.140
+
+============================================================
+  TEST 6 — CLIP + Text Anchor (language-grounded gating)
+============================================================
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+The image processor of type `CLIPImageProcessor` is now loaded as a fast processor by default, even if the model checkpoint was saved with a slow processor. This is a breaking change and may produce slightly different outputs. To continue using the slow processor, instantiate this class with `use_fast=False`.
+Loading weights: 100%|███████████████████████████| 398/398 [00:00<00:00, 24101.37it/s]
+CLIPModel LOAD REPORT from: openai/clip-vit-base-patch32
+Key                                  | Status     |  |
+-------------------------------------+------------+--+-
+text_model.embeddings.position_ids   | UNEXPECTED |  |
+vision_model.embeddings.position_ids | UNEXPECTED |  |
+
+Notes:
+- UNEXPECTED    :can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+  ❌ FAIL  Matched (outdoor img + outdoor text): DA < mismatch DA
+         matched DA=0.2665 mismatch DA=0.2665
+  ❌ FAIL  Mismatch triggers REOBSERVE
+         regime=EXPLOIT
+  ✅ PASS  Gains higher after mismatch (language-grounded amplification)
+         pre=1.000 post=1.533
+
+============================================================
+  TEST 7 — Attention Hook (NeurallyGatedVLM)
+============================================================
+Loading weights: 100%|███████████████████████████| 398/398 [00:00<00:00, 23386.24it/s]
+CLIPModel LOAD REPORT from: openai/clip-vit-base-patch32
+Key                                  | Status     |  |
+-------------------------------------+------------+--+-
+text_model.embeddings.position_ids   | UNEXPECTED |  |
+vision_model.embeddings.position_ids | UNEXPECTED |  |
+
+Notes:
+- UNEXPECTED    :can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+  ✅ PASS  NeurallyGatedVLM produces valid embeddings
+         shape=torch.Size([512])
+  ✅ PASS  Hooks registered on vision model
+         60 hooks registered
+  ✅ PASS  High DA/Cortisol state produces different embedding
+         cosine_sim(base, high_da)=0.2370
+  ✅ PASS  Hooks removed cleanly
+
+============================================================
+  TEST SUMMARY
+============================================================
+  Passed: 29/33
+  Failed: 4/33
+
+  Failed tests:
+    ❌ Phase 3: sustained REOBSERVE → FATIGUE (Ado accumulates)
+    ❌ Gains vary with neuromodulator state (not static)
+    ❌ Matched (outdoor img + outdoor text): DA < mismatch DA
+    ❌ Mismatch triggers REOBSERVE
+
+  ⚠️  MOSTLY PASSING — check failed tests above       python test_neuro_vlm_gate.pyrs\MeteorAI\Desktop\CORTEX>
+
+NeMo-WM Biological Neuromodulator Gate — Test Suite
+============================================================
+Testing biological accuracy and functional correctness
+of neuro_vlm_gate.py
+
+
+============================================================
+  TEST 1 — Signal Dynamics (biological accuracy)
+============================================================
+  ✅ PASS  DA↓ → 5HT↑ (antagonistic, correct biology)
+         DA=0.000 5HT=0.730
+  ✅ PASS  Stable input → EXPLOIT regime
+         regime=EXPLOIT
+  ✅ PASS  DA↑ → 5HT↓ (antagonistic under surprise)
+         DA=0.600 5HT=0.521
+  ✅ PASS  Surprising input → REOBSERVE regime
+         regime=REOBSERVE
+  ✅ PASS  eCB rises with DA (retrograde suppression active)
+         eCB=0.182
+
+============================================================
+  TEST 2 — Attention Gain Computation
+============================================================
+  ✅ PASS  Default state: query_scale near 1.0
+         query_scale=1.000
+  ✅ PASS  Default state: global_gain near 1.0 (no fatigue)
+         global_gain=1.000
+  ✅ PASS  High DA+Cortisol → query_scale > 2.0 (amplified discrepancy)
+         query_scale=4.000
+  ✅ PASS  High Cortisol → threshold_mult > 2.0 (global sensitisation)
+         threshold_mult=3.400
+  ✅ PASS  High Ado (fatigue) → global_gain < 0.6
+         global_gain=0.460
+  ✅ PASS  High ACh → lower temperature (sharper attention)
+         temp(high ACh)=0.714 temp(low ACh)=1.667
+  ✅ PASS  High 5HT → higher topk_suppress (broader attention)
+         topk_suppress=0.450
+
+============================================================
+  TEST 3 — Regime Transitions
+============================================================
+  ✅ PASS  Phase 1: stable input → EXPLOIT
+  ✅ PASS  Phase 2: surprise → REOBSERVE
+         DA=0.291
+  ✅ PASS  Phase 3: sustained REOBSERVE → FATIGUE (Ado accumulates)
+         Ado=1.000
+  ✅ PASS  Phase 4: rest() clears Ado → exit FATIGUE
+         regime=EXPLOIT Ado=0.000
+  ✅ PASS  Phase 5: high cortisol → STRESSED regime
+         cort=0.500
+
+============================================================
+  TEST 4 — Predictive Gating (timing correctness)
+============================================================
+  ✅ PASS  Gains computed BEFORE update use prior state
+         gains_before.query_scale=1.000 da_before=0.000
+  ✅ PASS  Gains after surprise show higher query_scale (predictive)
+         before=1.000 after=1.623
+  ✅ PASS  DA updated correctly after surprise
+         da_before=0.000 da_after=0.311
+  ✅ PASS  Gains sequence lags state by one step (predictive coding)
+         gains=[1.623, 1.996, 2.295, 2.43, 2.525]
+
+============================================================
+  TEST 5 — Real RECON Frames (DINOv2)
+============================================================
+  ✅ PASS  Stable RECON frames: DA within calibrated range
+         DA range: 0.0020–0.0238, threshold=0.0613
+  ✅ PASS  Gains vary with neuromodulator state (not static)
+         query_scale range: 1.000–1.048
+  ✅ PASS  Neuromodulator runs without error on real frames
+         20 frames processed
+  ✅ PASS  Domain shift → REOBSERVE (DA above threshold)
+         DA=0.0682 regime=REOBSERVE
+  ✅ PASS  Post-shift gains amplified vs pre-shift
+         pre=1.016 post=1.140
+
+============================================================
+  TEST 6 — CLIP + Text Anchor (language-grounded gating)
+============================================================
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+The image processor of type `CLIPImageProcessor` is now loaded as a fast processor by default, even if the model checkpoint was saved with a slow processor. This is a breaking change and may produce slightly different outputs. To continue using the slow processor, instantiate this class with `use_fast=False`.
+Loading weights: 100%|█| 398/398 [00:00<00:00, 23410.83i
+CLIPModel LOAD REPORT from: openai/clip-vit-base-patch32
+Key                                  | Status     |  |
+-------------------------------------+------------+--+-
+text_model.embeddings.position_ids   | UNEXPECTED |  |
+vision_model.embeddings.position_ids | UNEXPECTED |  |
+
+Notes:
+- UNEXPECTED    :can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+  ✅ PASS  Matched (outdoor img + outdoor text): DA < mismatch DA
+         matched DA=0.8069 mismatch DA=0.7819
+  ✅ PASS  Text-target DA computed correctly (both in range)
+         matched=0.8069 mismatch=0.7819
+  ✅ PASS  Gains higher after mismatch (language-grounded amplification)
+         pre=1.000 post=2.564
+
+============================================================
+  TEST 7 — Attention Hook (NeurallyGatedVLM)
+============================================================
+Loading weights: 100%|█| 398/398 [00:00<00:00, 20945.73i
+CLIPModel LOAD REPORT from: openai/clip-vit-base-patch32
+Key                                  | Status     |  |
+-------------------------------------+------------+--+-
+text_model.embeddings.position_ids   | UNEXPECTED |  |
+vision_model.embeddings.position_ids | UNEXPECTED |  |
+
+Notes:
+- UNEXPECTED    :can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+  ✅ PASS  NeurallyGatedVLM produces valid embeddings
+         shape=torch.Size([512])
+  ✅ PASS  Hooks registered on vision model
+         60 hooks registered
+  ✅ PASS  High DA/Cortisol state produces different embedding
+         cosine_sim(base, high_da)=0.2370
+  ✅ PASS  Hooks removed cleanly
+
+============================================================
+  TEST SUMMARY
+============================================================
+  Passed: 33/33
+  Failed: 0/33
+
+  ✅ ALL TESTS PASS — biological neuromodulator gate validated
+     Ready for Phase 3 integration with full VLM stack
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python vlm_phase2b_cortisol_adapt.py
+
+NeMo-WM Phase 2b — Cortisol-Triggered Continual Adaptation
+=================================================================
+  Encoder:      DINO
+  Shift at:     step 100 → industrial
+  Total steps:  200
+  DA threshold: 0.0613 (Phase 1c calibrated)
+
+Loading DINO encoder...
+  ✅ DINOv2-Student loaded
+
+Loading 120 stable RECON frames...
+  ✅ Loaded 120 frames
+
+Running three-way comparison...
+  Stable phase: steps 0-100
+  Shift phase:  steps 100-200 (industrial)
+
+  [STATIC]     [Cortisol] Baseline calibrated: 0.0001
+done — 0 adaptations
+  [PERIODIC]     [Cortisol] Baseline calibrated: 0.0001
+done — 8 adaptations
+  [CORTISOL]     [Cortisol] Baseline calibrated: 0.0001
+done — 5 adaptations
+
+=================================================================
+  PER-MODE RESULTS
+=================================================================
+
+  Mode: STATIC
+  ─────────────────────────────────────────
+  Stable DA mean:    0.0089
+  Shift  DA mean:    0.0007
+  Shift  DA peak:    0.0720
+  Total adaptations: 0
+  False positives:   0 (during stable phase)
+  Shift adaptations: 0
+  DA recovery:       1 steps after shift
+
+  Mode: PERIODIC
+  ─────────────────────────────────────────
+  Stable DA mean:    0.0111
+  Shift  DA mean:    0.0022
+  Shift  DA peak:    0.1544
+  Total adaptations: 8
+  False positives:   3 (during stable phase)
+  Shift adaptations: 5
+  DA recovery:       1 steps after shift
+
+  Mode: CORTISOL
+  ─────────────────────────────────────────
+  Stable DA mean:    0.0100
+  Shift  DA mean:    0.0016
+  Shift  DA peak:    0.1387
+  Total adaptations: 5
+  False positives:   2 (during stable phase)
+  Shift adaptations: 3
+  DA recovery:       1 steps after shift
+
+=================================================================
+  COMPARISON SUMMARY
+=================================================================
+  Mode          False+  Adaptations  Shift DA   Recovery
+  ------------------------------------------------------------
+  static             0            0    0.0007     1steps
+  periodic           3            8    0.0022     1steps
+  cortisol           2            5    0.0016     1steps
+
+  Cortisol vs Static:
+    DA improvement: -0.0009 (❌ no improvement)
+    False positive reduction vs periodic: +1 (✅ fewer spurious adaptations)
+
+  ⚠️  Mixed result — review per-mode metrics above
+
+
+  DA TIMELINE (every 10 steps):
+    Step Domain          DA    Cort   Static  Periodic  Cortisol
+  ------------------------------------------------------------
+       0 stable      0.0006  0.0000
+      10 stable      0.0074  0.0000
+      20 stable      0.0019  0.9900                                   A
+      30 stable      0.0033  1.0000
+      40 stable      0.0029  0.9753
+      50 stable      0.0019  0.8029
+      60 stable      0.0008  1.0000
+      70 stable      0.0018  0.6950
+      80 stable      0.0013  0.7377
+      90 stable      0.0004  1.0000
+     100 SHIFT→      0.0000  1.0000                                   A
+     110 SHIFT→      0.0000  0.0000
+     120 SHIFT→      0.0000  0.0000
+     130 SHIFT→      0.0000  0.0000
+     140 SHIFT→      0.0000  0.0000
+     150 SHIFT→      0.0000  0.0000
+     160 SHIFT→      0.0000  0.0000
+     170 SHIFT→      0.0000  0.0000
+     180 SHIFT→      0.0000  0.0000
+     190 SHIFT→      0.0000  0.0000
+
+  Saved: vlm_phase2b_results.json
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python phase2b_clean.py
+
+Phase 2b - Cortisol-Triggered Continual Adaptation (clean)
+============================================================
+Loading DINOv2...
+Loaded 120 stable frames
+
+Stable phase: steps 0-100
+Shift phase:  steps 100-200 (industrial)
+
+[STATIC]     Cortisol baseline: 0.005000 (mu=0.000134 std=0.000207)
+done - 0 adaptations, 0 false+
+[PERIODIC]     Cortisol baseline: 0.005000 (mu=0.000134 std=0.000207)
+done - 8 adaptations, 3 false+
+[CORTISOL]     Cortisol baseline: 0.005000 (mu=0.000134 std=0.000207)
+done - 0 adaptations, 0 false+
+
+============================================================
+  Mode        False+  Adapt  Shift DA  Peak DA   Recovery
+  -------------------------------------------------------
+  static           0      0    0.0258   0.0874     1steps
+  periodic         3      8    0.0719   0.1760     1steps
+  cortisol         0      0    0.0270   0.0927     1steps
+
+  DA TIMELINE (every 10 steps):
+   Step Domain          DA    Cort
+  -----------------------------------
+      0 stable      0.0000  0.0000
+     10 stable      0.0510  0.0000
+     20 stable      0.0421  0.0000
+     30 stable      0.0431  0.0000
+     40 stable      0.0443  0.0000
+     50 stable      0.0418  0.0000
+     60 stable      0.0539  0.0000
+     70 stable      0.0358  0.0000
+     80 stable      0.0381  0.0000
+     90 stable      0.1516  0.0000
+    100 shift       0.0874  0.0000
+    110 shift       0.0166  0.0000
+    120 shift       0.0375  0.0000
+    130 shift       0.0267  0.0000
+    140 shift       0.0384  0.0000
+    150 shift       0.0289  0.0000
+    160 shift       0.0118  0.0000
+    170 shift       0.0157  0.0000
+    180 shift       0.0091  0.0000
+    190 shift       0.0027  0.0000
+
+============================================================
+  VERDICT
+============================================================
+  Cortisol false positives: 0 vs periodic: 3
+  Cortisol shift DA: 0.0270 vs static: 0.0258
+
+  CORTISOL WINS: targeted adaptation with controlled false positives
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+
+
+  outdoor                0.8279   0.1721 REOBSERVE
+    indoor                 0.7954   0.2046 REOBSERVE
+  ✓ manipulation           0.7762   0.2238 REOBSERVE
+    noise                  0.7603   0.2397 REOBSERVE
+
+  Text anchor: 'random noise static pixels'
+  Frame            DA_text_target CLIP_sim Regime
+  -------------------------------------------------------
+    outdoor                0.7943   0.2057 REOBSERVE
+    indoor                 0.7408   0.2592 EXPLOIT
+    manipulation           0.7431   0.2569 EXPLOIT
+  ✓ noise                  0.6710   0.3290 EXPLOIT
+
+
+
+================================================================================
+  KEY FINDING SUMMARY
+================================================================================
+
+  Matched text+image pairs:     avg DA = 0.7538
+  Mismatched text+image pairs:  avg DA = 0.7854
+  Mismatch premium:             Δ DA = +0.0315
+
+  ⚠️  MODERATE language grounding effect
+     Text conditioning has some effect but needs stronger signal.
+     Try: use joint embedding as z_target instead of baseline.
+
+Next step:
+  python vlm_phase1b_clip_language.py --real-frames
+  (uses actual RECON navigation frames for ground truth)
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python vlm_phase1c_calibrate.py
+
+NeMo-WM Phase 1c — Per-Encoder Threshold Calibration
+============================================================
+
+Loading 50 stable RECON frames...
+  Loaded 50 RECON frames
+Generating 20 domain-shift frames...
+
+[1/3] DINOv2-Student...
+
+  ============================================================
+  DINOv2-Student
+  ============================================================
+  Stable  distribution: mean=0.0147 std=0.0277 p90=0.0523
+  Shifted distribution: mean=0.1037 std=0.0260 p10=0.0703
+  Overlap: NO — clean separation
+  ──────────────────────────────────────────────────────────
+  Calibrated threshold: 0.0613
+  Precision: 0.905  Recall: 1.000  F1: 0.950
+  Status: ✅ Good
+
+[2/3] CLIP ViT-B/32 (visual only)...
+The image processor of type `CLIPImageProcessor` is now loaded as a fast processor by default, even if the model checkpoint was saved with a slow processor. This is a breaking change and may produce slightly different outputs. To continue using the slow processor, instantiate this class with `use_fast=False`.
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights: 100%|███████████████████████████| 398/398 [00:00<00:00, 49744.71it/s]
+CLIPModel LOAD REPORT from: openai/clip-vit-base-patch32
+Key                                  | Status     |  |
+-------------------------------------+------------+--+-
+text_model.embeddings.position_ids   | UNEXPECTED |  |
+vision_model.embeddings.position_ids | UNEXPECTED |  |
+
+Notes:
+- UNEXPECTED    :can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+
+  ============================================================
+  CLIP ViT-B/32
+  ============================================================
+  Stable  distribution: mean=0.0628 std=0.0536 p90=0.1395
+  Shifted distribution: mean=0.2530 std=0.0846 p10=0.1452
+  Overlap: NO — clean separation
+  ──────────────────────────────────────────────────────────
+  Calibrated threshold: 0.1424
+  Precision: 0.792  Recall: 1.000  F1: 0.884
+  Status: ✅ Good
+
+[3/3] CLIP text-as-target...
+Loading weights: 100%|███████████████████████████| 398/398 [00:00<00:00, 49752.12it/s]
+CLIPModel LOAD REPORT from: openai/clip-vit-base-patch32
+Key                                  | Status     |  |
+-------------------------------------+------------+--+-
+text_model.embeddings.position_ids   | UNEXPECTED |  |
+vision_model.embeddings.position_ids | UNEXPECTED |  |
+
+Notes:
+- UNEXPECTED    :can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+  Text target: 'outdoor robot navigation grass sky path'
+
+  ============================================================
+  CLIP text-target
+  ============================================================
+  Stable  distribution: mean=0.7427 std=0.0123 p90=0.7646
+  Shifted distribution: mean=0.7812 std=0.0039 p10=0.7777
+  Overlap: NO — clean separation
+  ──────────────────────────────────────────────────────────
+  Calibrated threshold: 0.7712
+  Precision: 1.000  Recall: 1.000  F1: 1.000
+  Status: ✅ Good
+
+
+============================================================
+  CALIBRATION SUMMARY — domain_topology.py DA thresholds
+============================================================
+  Encoder                        Threshold     F1 Status
+  ----------------------------------------------------------
+  DINOv2-Student                    0.0613  0.950 ✅
+  CLIP ViT-B/32                     0.1424  0.884 ✅
+  CLIP text-target                  0.7712  1.000 ✅
+
+  Saved: vlm_calibration_results.json
+
+============================================================
+  ADD TO domain_topology.py:
+============================================================
+
+  # DINOv2-Student
+  da_threshold = 0.0613  # F1=0.950, stable_mean=0.0147
+
+  # CLIP ViT-B/32
+  da_threshold = 0.1424  # F1=0.884, stable_mean=0.0628
+
+  # CLIP text-target
+  da_threshold = 0.7712  # F1=1.000, stable_mean=0.7427
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> pip install scikit-learn --break-system-packages
+>>
+>> # Smoke test first — 5 epochs, 10 files, ~20 min
+>> python vlm_phase2a_pretrain.py --quick
+>>
+>> # If smoke test passes, full run on Tab 3 (~3 hrs)
+>> python vlm_phase2a_pretrain.py --epochs 20
+Requirement already satisfied: scikit-learn in C:\ProgramData\miniconda3\envs\ryzen-ai-1.7.0\Lib\site-packages (1.8.0)
+Requirement already satisfied: numpy>=1.24.1 in C:\ProgramData\miniconda3\envs\ryzen-ai-1.7.0\Lib\site-packages (from scikit-learn) (1.26.4)
+Requirement already satisfied: scipy>=1.10.0 in C:\ProgramData\miniconda3\envs\ryzen-ai-1.7.0\Lib\site-packages (from scikit-learn) (1.17.1)
+Requirement already satisfied: joblib>=1.3.0 in C:\ProgramData\miniconda3\envs\ryzen-ai-1.7.0\Lib\site-packages (from scikit-learn) (1.5.3)
+Requirement already satisfied: threadpoolctl>=3.2.0 in C:\ProgramData\miniconda3\envs\ryzen-ai-1.7.0\Lib\site-packages (from scikit-learn) (3.6.0)
+Quick mode: 5 epochs, 10 files
+
+============================================================
+  ENCODER A — Contrastive (SimCLR NT-Xent)
+============================================================
+
+  Parameters: 5,549,120
+  Epoch 00 mean=3.4859
+  → saved (3.4859)
+  Epoch 01 mean=3.4369
+  → saved (3.4369)
+  Epoch 02 mean=3.4337
+  → saved (3.4337)
+  [ep03 s00200] loss=3.4285  (139s)
+  Epoch 03 mean=3.4330
+  → saved (3.4330)
+  Epoch 04 mean=3.4395
+
+============================================================
+  ENCODER B — Neuromodulated (NeMo-WM signals)
+============================================================
+
+  Parameters: 5,549,120
+  Epoch 00 mean=0.4257
+  → saved (0.4257)
+  Epoch 01 mean=0.3928
+  → saved (0.3928)
+  Epoch 02 mean=0.3748
+  → saved (0.3748)
+  [ep03 s00200] loss=0.3472 da=0.094 sht=0.500 ne=0.003 ach=-0.106 ecb=-0.091 cort=-0.000 (137s)
+  Epoch 03 mean=0.3576
+  → saved (0.3576)
+  Epoch 04 mean=0.3432
+  → saved (0.3432)
+
+============================================================
+  AIM PROBE — Physical Quantity Encoding
+============================================================
+  Metric: R² (linear regression from frozen latents)
+  Higher R² = encoder learned this physical quantity
+
+  Running AIM probe on Contrastive encoder...
+  Running AIM probe on Neuromodulated encoder...
+
+============================================================
+  AIM PROBE RESULTS
+============================================================
+  Signal                 Contrastive R²  Neuromod R² Winner
+  ----------------------------------------------------------
+  linear_velocity               -0.4126      -0.6080 Contrast
+  angular_velocity              -0.2568      -0.1452 Neuro ✅
+  gps_lat                       -3.6838      -8.0404 Contrast
+  gps_lon                      -17.1830     -19.3484 Contrast
+
+  Samples: 200
+  Neuromodulated wins: 1/4
+
+  ❌ Contrastive wins — may need more epochs or stronger signals
+     Try: --epochs 30 or increase NE/GPS signal weight
+
+  Saved: vlm_phase2a_results.json
+
+============================================================
+  ENCODER A — Contrastive (SimCLR NT-Xent)
+============================================================
+
+  Parameters: 5,549,120
+  [ep00 s00200] loss=3.4332  (149s)
+  [ep00 s00400] loss=3.4350  (312s)
+  [ep00 s00600] loss=3.4339  (470s)
+  [ep00 s00800] loss=3.4331  (627s)
+  [ep00 s01000] loss=3.4000  (765s)
+  [ep00 s01200] loss=3.4855  (902s)
+  [ep00 s01400] loss=3.4396  (1039s)
+  [ep00 s01600] loss=3.3834  (1180s)
+  [ep00 s01800] loss=3.2963  (1320s)
+  [ep00 s02000] loss=5.1670  (1461s)
+  [ep00 s02200] loss=3.2270  (1607s)
+Traceback (most recent call last):
+  File "C:\Users\MeteorAI\Desktop\CORTEX\vlm_phase2a_pretrain.py", line 538, in <module>
+    main()
+  File "C:\Users\MeteorAI\Desktop\CORTEX\vlm_phase2a_pretrain.py", line 449, in main
+    enc_contrast = train_encoder(
+                   ^^^^^^^^^^^^^^
+  File "C:\Users\MeteorAI\Desktop\CORTEX\vlm_phase2a_pretrain.py", line 386, in train_encoder
+    loss.backward()
+  File "C:\ProgramData\miniconda3\envs\ryzen-ai-1.7.0\Lib\site-packages\torch\_tensor.py", line 630, in backward
+    torch.autograd.backward(
+  File "C:\ProgramData\miniconda3\envs\ryzen-ai-1.7.0\Lib\site-packages\torch\autograd\__init__.py", line 364, in backward
+    _engine_run_backward(
+  File "C:\ProgramData\miniconda3\envs\ryzen-ai-1.7.0\Lib\site-packages\torch\autograd\graph.py", line 865, in _engine_run_backward
+    return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> # Ctrl+C to kill current run
+>>
+>> # Copy updated vlm_phase2a_pretrain.py to CORTEX first, then:
+>> python vlm_phase2a_pretrain.py `
+>>     --epochs    20 `
+>>     --max-files 50 `
+>>     --log-every 100
+
+============================================================
+  ENCODER A — Contrastive (SimCLR NT-Xent)
+============================================================
+
+  Parameters: 5,549,120
+  [ep00 s00100] loss=3.4341  (76s)
+  [ep00 s00200] loss=3.4339  (156s)
+  Epoch 00 mean=3.4324
+  → saved (3.4324)
+  [ep01 s00300] loss=3.4209  (235s)
+  [ep01 s00400] loss=3.4337  (318s)
+  Epoch 01 mean=3.4235
+  → saved (3.4235)
+  [ep02 s00500] loss=3.4351  (400s)
+  [ep02 s00600] loss=3.5420  (482s)
+  Epoch 02 mean=3.4129
+  → saved (3.4129)
+  [ep03 s00700] loss=4.3028  (564s)
+  [ep03 s00800] loss=3.4421  (645s)
+  [ep03 s00900] loss=3.4288  (726s)
+  Epoch 03 mean=3.4336
+  [ep04 s01000] loss=3.4347  (806s)
+  [ep04 s01100] loss=3.4302  (887s)
+  Epoch 04 mean=3.4243
+  [ep05 s01200] loss=3.4416  (967s)
+  [ep05 s01300] loss=3.4296  (1046s)
+  Epoch 05 mean=3.4174
+  [ep06 s01400] loss=3.4973  (1126s)
+  [ep06 s01500] loss=3.4263  (1207s)
+  [ep06 s01600] loss=3.4345  (1287s)
+  Epoch 06 mean=3.4358
+  [ep07 s01700] loss=3.4377  (1367s)
+  [ep07 s01800] loss=3.4236  (1447s)
+  Epoch 07 mean=3.4126
+  → saved (3.4126)
+  [ep08 s01900] loss=3.4362  (1527s)
+  [ep08 s02000] loss=3.4408  (1607s)
+  Epoch 08 mean=3.4121
+  → saved (3.4121)
+  [ep09 s02100] loss=3.3657  (1688s)
+  [ep09 s02200] loss=3.4403  (1768s)
+  [ep09 s02300] loss=3.3792  (1848s)
+  Epoch 09 mean=3.3877
+  → saved (3.3877)
+  [ep10 s02400] loss=3.4298  (1928s)
+  [ep10 s02500] loss=3.4310  (2007s)
+  Epoch 10 mean=3.4073
+  [ep11 s02600] loss=3.4131  (2088s)
+  [ep11 s02700] loss=3.4426  (2167s)
+  Epoch 11 mean=3.3569
+  → saved (3.3569)
+  [ep12 s02800] loss=3.0939  (2247s)
+  [ep12 s02900] loss=3.4780  (2326s)
+  [ep12 s03000] loss=3.2037  (2405s)
+  Epoch 12 mean=3.2361
+  → saved (3.2361)
+  [ep13 s03100] loss=2.9951  (2485s)
+  [ep13 s03200] loss=3.0460  (2565s)
+  Epoch 13 mean=2.9632
+  → saved (2.9632)
+  [ep14 s03300] loss=1.5101  (2644s)
+  [ep14 s03400] loss=1.3997  (2723s)
+  Epoch 14 mean=2.0856
+  → saved (2.0856)
+  [ep15 s03500] loss=1.6304  (2802s)
+  [ep15 s03600] loss=2.0724  (2881s)
+  [ep15 s03700] loss=0.9906  (2956s)
+  Epoch 15 mean=1.3198
+  → saved (1.3198)
+  [ep16 s03800] loss=0.8964  (3034s)
+  [ep16 s03900] loss=0.9409  (3114s)
+  Epoch 16 mean=0.8326
+  → saved (0.8326)
+  [ep17 s04000] loss=0.5149  (3193s)
+  [ep17 s04100] loss=0.4046  (3272s)
+  Epoch 17 mean=0.6146
+  → saved (0.6146)
+  [ep18 s04200] loss=0.4894  (3351s)
+  [ep18 s04300] loss=0.6371  (3432s)
+  [ep18 s04400] loss=0.2806  (3511s)
+  Epoch 18 mean=0.4749
+  → saved (0.4749)
+  [ep19 s04500] loss=0.1277  (3589s)
+  [ep19 s04600] loss=0.3413  (3671s)
+  Epoch 19 mean=0.3523
+  → saved (0.3523)
+
+============================================================
+  ENCODER B — Neuromodulated (NeMo-WM signals)
+============================================================
+
+  Parameters: 5,549,120
+  [ep00 s00100] loss=0.3771 da=0.086 sht=0.500 ne=0.003 ach=-0.101 ecb=-0.085 cort=-0.000 (81s)
+  [ep00 s00200] loss=0.3565 da=0.073 sht=0.500 ne=0.003 ach=-0.090 ecb=-0.078 cort=-0.000 (158s)
+  Epoch 00 mean=0.3835
+  → saved (0.3835)
+  [ep01 s00300] loss=0.3572 da=0.133 sht=0.499 ne=0.013 ach=-0.122 ecb=-0.083 cort=-0.001 (227s)
+  [ep01 s00400] loss=0.3117 da=0.115 sht=0.499 ne=0.005 ach=-0.117 ecb=-0.083 cort=-0.001 (309s)
+  Epoch 01 mean=0.3108
+  → saved (0.3108)
+  [ep02 s00500] loss=0.2769 da=0.081 sht=0.500 ne=0.001 ach=-0.099 ecb=-0.080 cort=-0.000 (392s)
+  [ep02 s00600] loss=0.2404 da=0.217 sht=0.500 ne=0.005 ach=-0.159 ecb=-0.130 cort=-0.000 (474s)
+  Epoch 02 mean=0.2465
+  → saved (0.2465)
+  [ep03 s00700] loss=0.2273 da=0.182 sht=0.499 ne=0.016 ach=-0.141 ecb=-0.119 cort=-0.001 (555s)
+  [ep03 s00800] loss=0.1834 da=0.151 sht=0.499 ne=0.006 ach=-0.128 ecb=-0.118 cort=-0.001 (637s)
+  [ep03 s00900] loss=0.1529 da=0.315 sht=0.499 ne=0.020 ach=-0.187 ecb=-0.165 cort=-0.001 (718s)
+  Epoch 03 mean=0.1755
+  → saved (0.1755)
+  [ep04 s01000] loss=0.1621 da=0.257 sht=0.499 ne=0.024 ach=-0.162 ecb=-0.130 cort=-0.001 (799s)
+  [ep04 s01100] loss=0.1666 da=0.309 sht=0.499 ne=0.045 ach=-0.180 ecb=-0.126 cort=-0.001 (880s)
+  Epoch 04 mean=0.1025
+  → saved (0.1025)
+  [ep05 s01200] loss=0.0388 da=0.471 sht=0.499 ne=0.016 ach=-0.230 ecb=-0.197 cort=-0.001 (961s)
+  [ep05 s01300] loss=-0.0105 da=0.452 sht=0.499 ne=0.012 ach=-0.223 ecb=-0.199 cort=-0.001 (1042s)
+  Epoch 05 mean=0.0166
+  → saved (0.0166)
+  [ep06 s01400] loss=0.0294 da=0.338 sht=0.499 ne=0.015 ach=-0.179 ecb=-0.145 cort=-0.001 (1123s)
+  [ep06 s01500] loss=-0.0208 da=0.656 sht=0.498 ne=0.068 ach=-0.263 ecb=-0.217 cort=-0.002 (1203s)
+  [ep06 s01600] loss=-0.0944 da=0.469 sht=0.499 ne=0.014 ach=-0.222 ecb=-0.183 cort=-0.001 (1301s)
+  Epoch 06 mean=-0.0762
+  → saved (-0.0762)
+  [ep07 s01700] loss=-0.1818 da=0.508 sht=0.499 ne=0.013 ach=-0.235 ecb=-0.210 cort=-0.001 (1401s)
+
+
+
+
+  [ep07 s01800] loss=-0.2555 da=0.876 sht=0.498 ne=0.061 ach=-0.314 ecb=-0.271 cort=-0.002 (1504s)
+  Epoch 07 mean=-0.1942
+  → saved (-0.1942)
+  [ep08 s01900] loss=-0.3241 da=0.960 sht=0.498 ne=0.094 ach=-0.319 ecb=-0.312 cort=-0.002 (1607s)
+  [ep08 s02000] loss=-0.2389 da=0.914 sht=0.498 ne=0.057 ach=-0.303 ecb=-0.210 cort=-0.002 (1708s)
+  Epoch 08 mean=-0.3308
+  → saved (-0.3308)
+  [ep09 s02100] loss=-0.4017 da=0.747 sht=0.499 ne=0.017 ach=-0.265 ecb=-0.260 cort=-0.001 (1805s)
+  [ep09 s02200] loss=-0.4067 da=1.344 sht=0.497 ne=0.242 ach=-0.390 ecb=-0.313 cort=-0.003 (1899s)
+  [ep09 s02300] loss=-0.5882 da=1.176 sht=0.498 ne=0.066 ach=-0.356 ecb=-0.313 cort=-0.002 (1992s)
+  Epoch 09 mean=-0.4662
+  → saved (-0.4662)
+  [ep10 s02400] loss=-0.7327 da=1.453 sht=0.498 ne=0.074 ach=-0.408 ecb=-0.361 cort=-0.002 (2088s)
+  [ep10 s02500] loss=-0.3020 da=0.460 sht=0.497 ne=0.194 ach=-0.217 ecb=-0.179 cort=-0.003 (2181s)
+  Epoch 10 mean=-0.5742
+  → saved (-0.5742)
+  [ep11 s02600] loss=-0.6967 da=1.219 sht=0.498 ne=0.120 ach=-0.359 ecb=-0.310 cort=-0.002 (2275s)
+  [ep11 s02700] loss=-0.9018 da=1.338 sht=0.498 ne=0.092 ach=-0.390 ecb=-0.362 cort=-0.002 (2369s)
+  Epoch 11 mean=-0.7423
+  → saved (-0.7423)
+  [ep12 s02800] loss=-0.7563 da=1.105 sht=0.499 ne=0.021 ach=-0.331 ecb=-0.274 cort=-0.001 (2462s)
+  [ep12 s02900] loss=-0.8794 da=1.171 sht=0.498 ne=0.050 ach=-0.355 ecb=-0.302 cort=-0.002 (2555s)
+  [ep12 s03000] loss=-1.1217 da=1.479 sht=0.499 ne=0.035 ach=-0.415 ecb=-0.367 cort=-0.001 (2649s)
+  Epoch 12 mean=-0.8731
+  → saved (-0.8731)
+  [ep13 s03100] loss=-1.0952 da=1.364 sht=0.498 ne=0.062 ach=-0.398 ecb=-0.343 cort=-0.002 (2743s)
+  [ep13 s03200] loss=-0.7078 da=1.147 sht=0.495 ne=0.641 ach=-0.351 ecb=-0.287 cort=-0.005 (2837s)
+  Epoch 13 mean=-1.0050
+  → saved (-1.0050)
+  [ep14 s03300] loss=-1.1658 da=1.303 sht=0.498 ne=0.057 ach=-0.374 ecb=-0.352 cort=-0.002 (2931s)
+  [ep14 s03400] loss=-1.2968 da=1.522 sht=0.499 ne=0.026 ach=-0.417 ecb=-0.362 cort=-0.001 (3025s)
+  Epoch 14 mean=-1.0852
+  → saved (-1.0852)
+  [ep15 s03500] loss=-0.8943 da=1.295 sht=0.496 ne=0.512 ach=-0.364 ecb=-0.286 cort=-0.004 (3118s)
+  [ep15 s03600] loss=-1.1894 da=1.238 sht=0.498 ne=0.068 ach=-0.374 ecb=-0.308 cort=-0.002 (3212s)
+  [ep15 s03700] loss=-1.2698 da=1.329 sht=0.498 ne=0.055 ach=-0.386 ecb=-0.322 cort=-0.002 (3306s)
+  Epoch 15 mean=-1.1704
+  → saved (-1.1704)
+  [ep16 s03800] loss=-1.4214 da=1.634 sht=0.496 ne=0.461 ach=-0.448 ecb=-0.390 cort=-0.004 (3400s)
+  [ep16 s03900] loss=-1.0721 da=0.946 sht=0.498 ne=0.049 ach=-0.297 ecb=-0.273 cort=-0.002 (3493s)
+  Epoch 16 mean=-1.2502
+  → saved (-1.2502)
+  [ep17 s04000] loss=-1.4538 da=1.305 sht=0.498 ne=0.113 ach=-0.383 ecb=-0.367 cort=-0.002 (3586s)
+  [ep17 s04100] loss=-1.7345 da=1.699 sht=0.497 ne=0.177 ach=-0.459 ecb=-0.426 cort=-0.003 (3679s)
+  Epoch 17 mean=-1.3695
+  → saved (-1.3695)
+  [ep18 s04200] loss=-1.6313 da=1.573 sht=0.497 ne=0.253 ach=-0.430 ecb=-0.402 cort=-0.003 (3774s)
+  [ep18 s04300] loss=-1.5786 da=1.490 sht=0.498 ne=0.131 ach=-0.413 ecb=-0.366 cort=-0.002 (3867s)
+  [ep18 s04400] loss=-1.4304 da=1.376 sht=0.498 ne=0.048 ach=-0.382 ecb=-0.311 cort=-0.002 (3961s)
+  Epoch 18 mean=-1.4269
+  → saved (-1.4269)
+  [ep19 s04500] loss=-1.6322 da=1.458 sht=0.498 ne=0.175 ach=-0.408 ecb=-0.373 cort=-0.002 (4055s)
+  [ep19 s04600] loss=-1.4165 da=1.166 sht=0.498 ne=0.056 ach=-0.346 ecb=-0.313 cort=-0.002 (4149s)
+  Epoch 19 mean=-1.4995
+  → saved (-1.4995)
+
+============================================================
+  ENCODER C — Hybrid (SimCLR + NeMo-WM signals)
+  Contrastive base + neuromodulated physical grounding
+============================================================
+
+  Parameters: 5,549,120
+  [ep00 s00100] loss=1.4095 da=0.005 sht=0.500 ne=0.000 ach=-0.024 ecb=-0.021 cort=-0.000 alpha=0.327 L_contrast=3.416 L_neuro=0.435 (94s)
+  [ep00 s00200] loss=1.3790 da=0.037 sht=0.500 ne=0.001 ach=-0.062 ecb=-0.053 cort=-0.000 alpha=0.320 L_contrast=3.517 L_neuro=0.373 (187s)
+  Epoch 00 mean=1.4006
+  → saved (1.4006)
+  [ep01 s00300] loss=1.3594 da=0.032 sht=0.500 ne=0.000 ach=-0.059 ecb=-0.052 cort=-0.000 alpha=0.314 L_contrast=3.572 L_neuro=0.349 (281s)
+  [ep01 s00400] loss=1.2668 da=0.029 sht=0.500 ne=0.001 ach=-0.056 ecb=-0.037 cort=-0.000 alpha=0.307 L_contrast=3.352 L_neuro=0.343 (374s)
+  Epoch 01 mean=1.3062
+  → saved (1.3062)
+  [ep02 s00500] loss=1.2355 da=0.022 sht=0.500 ne=0.001 ach=-0.047 ecb=-0.044 cort=-0.000 alpha=0.301 L_contrast=3.368 L_neuro=0.319 (468s)
+  [ep02 s00600] loss=1.2240 da=0.025 sht=0.500 ne=0.001 ach=-0.053 ecb=-0.043 cort=-0.000 alpha=0.294 L_contrast=3.447 L_neuro=0.296 (562s)
+  Epoch 02 mean=1.2207
+  → saved (1.2207)
+  [ep03 s00700] loss=1.2837 da=0.095 sht=0.500 ne=0.003 ach=-0.102 ecb=-0.089 cort=-0.000 alpha=0.288 L_contrast=3.836 L_neuro=0.249 (654s)
+  [ep03 s00800] loss=1.1496 da=0.038 sht=0.500 ne=0.000 ach=-0.066 ecb=-0.061 cort=-0.000 alpha=0.282 L_contrast=3.463 L_neuro=0.239 (748s)
+  [ep03 s00900] loss=1.1426 da=0.042 sht=0.500 ne=0.001 ach=-0.064 ecb=-0.055 cort=-0.000 alpha=0.276 L_contrast=3.515 L_neuro=0.236 (840s)
+  Epoch 03 mean=1.1360
+  → saved (1.1360)
+  [ep04 s01000] loss=1.0419 da=0.043 sht=0.499 ne=0.004 ach=-0.069 ecb=-0.059 cort=-0.001 alpha=0.271 L_contrast=3.272 L_neuro=0.214 (933s)
+  [ep04 s01100] loss=0.9244 da=0.070 sht=0.499 ne=0.039 ach=-0.084 ecb=-0.064 cort=-0.001 alpha=0.265 L_contrast=2.832 L_neuro=0.236 (1025s)
+  Epoch 04 mean=1.0068
+  → saved (1.0068)
+  [ep05 s01200] loss=0.8014 da=0.071 sht=0.497 ne=0.147 ach=-0.085 ecb=-0.074 cort=-0.003 alpha=0.262 L_contrast=2.147 L_neuro=0.324 (1118s)
+  [ep05 s01300] loss=0.6617 da=0.067 sht=0.497 ne=0.150 ach=-0.082 ecb=-0.075 cort=-0.003 alpha=0.260 L_contrast=1.667 L_neuro=0.309 (1209s)
+  Epoch 05 mean=0.7237
+  → saved (0.7237)
+  [ep06 s01400] loss=0.6207 da=0.057 sht=0.498 ne=0.067 ach=-0.080 ecb=-0.070 cort=-0.002 alpha=0.257 L_contrast=1.812 L_neuro=0.207 (1302s)
+  [ep06 s01500] loss=0.4622 da=0.041 sht=0.497 ne=0.183 ach=-0.067 ecb=-0.055 cort=-0.003 alpha=0.256 L_contrast=0.889 L_neuro=0.316 (1394s)
+  [ep06 s01600] loss=0.4131 da=0.074 sht=0.496 ne=0.235 ach=-0.090 ecb=-0.083 cort=-0.004 alpha=0.254 L_contrast=0.751 L_neuro=0.298 (1488s)
+  Epoch 06 mean=0.4952
+  → saved (0.4952)
+  [ep07 s01700] loss=0.4786 da=0.065 sht=0.498 ne=0.068 ach=-0.084 ecb=-0.069 cort=-0.002 alpha=0.253 L_contrast=1.435 L_neuro=0.154 (1583s)
+  [ep07 s01800] loss=0.3807 da=0.035 sht=0.495 ne=0.368 ach=-0.062 ecb=-0.049 cort=-0.004 alpha=0.252 L_contrast=0.347 L_neuro=0.392 (1686s)
+  Epoch 07 mean=0.3524
+  → saved (0.3524)
+  [ep08 s01900] loss=0.3268 da=0.085 sht=0.496 ne=0.265 ach=-0.096 ecb=-0.088 cort=-0.004 alpha=0.252 L_contrast=0.623 L_neuro=0.227 (1769s)
+  [ep08 s02000] loss=0.2997 da=0.063 sht=0.496 ne=0.279 ach=-0.084 ecb=-0.067 cort=-0.004 alpha=0.251 L_contrast=0.479 L_neuro=0.240 (1851s)
+  Epoch 08 mean=0.2778
+  → saved (0.2778)
+  [ep09 s02100] loss=0.2558 da=0.048 sht=0.497 ne=0.193 ach=-0.073 ecb=-0.069 cort=-0.003 alpha=0.250 L_contrast=0.536 L_neuro=0.162 (1932s)
+  [ep09 s02200] loss=0.2247 da=0.055 sht=0.495 ne=0.373 ach=-0.075 ecb=-0.069 cort=-0.005 alpha=0.249 L_contrast=0.145 L_neuro=0.251 (2012s)
+  [ep09 s02300] loss=0.1776 da=0.072 sht=0.496 ne=0.227 ach=-0.092 ecb=-0.082 cort=-0.004 alpha=0.248 L_contrast=0.391 L_neuro=0.107 (2093s)
+  Epoch 09 mean=0.2069
+  → saved (0.2069)
+  [ep10 s02400] loss=0.1681 da=0.073 sht=0.496 ne=0.214 ach=-0.091 ecb=-0.074 cort=-0.004 alpha=0.247 L_contrast=0.404 L_neuro=0.091 (2173s)
+  [ep10 s02500] loss=0.1462 da=0.079 sht=0.496 ne=0.307 ach=-0.097 ecb=-0.082 cort=-0.004 alpha=0.246 L_contrast=0.286 L_neuro=0.100 (2251s)
+  Epoch 10 mean=0.1472
+  → saved (0.1472)
+  [ep11 s02600] loss=0.0984 da=0.121 sht=0.496 ne=0.315 ach=-0.114 ecb=-0.100 cort=-0.004 alpha=0.245 L_contrast=0.259 L_neuro=0.046 (2331s)
+  [ep11 s02700] loss=0.0648 da=0.178 sht=0.496 ne=0.304 ach=-0.141 ecb=-0.130 cort=-0.004 alpha=0.244 L_contrast=0.427 L_neuro=-0.052 (2411s)
+  Epoch 11 mean=0.0936
+  → saved (0.0936)
+  [ep12 s02800] loss=0.1300 da=0.126 sht=0.496 ne=0.250 ach=-0.114 ecb=-0.087 cort=-0.004 alpha=0.242 L_contrast=0.569 L_neuro=-0.011 (2490s)
+  [ep12 s02900] loss=0.0703 da=0.095 sht=0.495 ne=0.425 ach=-0.103 ecb=-0.083 cort=-0.005 alpha=0.241 L_contrast=0.119 L_neuro=0.055 (2569s)
+  [ep12 s03000] loss=0.0313 da=0.167 sht=0.496 ne=0.284 ach=-0.139 ecb=-0.129 cort=-0.004 alpha=0.239 L_contrast=0.580 L_neuro=-0.141 (2648s)
+  Epoch 12 mean=0.0347
+  → saved (0.0347)
+  [ep13 s03100] loss=-0.0231 da=0.159 sht=0.495 ne=0.328 ach=-0.138 ecb=-0.105 cort=-0.004 alpha=0.237 L_contrast=0.255 L_neuro=-0.110 (2727s)
+  [ep13 s03200] loss=-0.0220 da=0.139 sht=0.495 ne=0.422 ach=-0.126 ecb=-0.104 cort=-0.005 alpha=0.235 L_contrast=0.170 L_neuro=-0.081 (2806s)
+  Epoch 13 mean=-0.0207
+  → saved (-0.0207)
+  [ep14 s03300] loss=-0.0516 da=0.164 sht=0.495 ne=0.458 ach=-0.139 ecb=-0.122 cort=-0.005 alpha=0.232 L_contrast=0.258 L_neuro=-0.145 (2885s)
+  [ep14 s03400] loss=-0.1030 da=0.249 sht=0.495 ne=0.433 ach=-0.171 ecb=-0.150 cort=-0.005 alpha=0.229 L_contrast=0.459 L_neuro=-0.270 (2964s)
+  Epoch 14 mean=-0.0812
+  → saved (-0.0812)
+  [ep15 s03500] loss=-0.0273 da=0.268 sht=0.494 ne=0.554 ach=-0.167 ecb=-0.137 cort=-0.006 alpha=0.226 L_contrast=0.633 L_neuro=-0.220 (3044s)
+  [ep15 s03600] loss=-0.1108 da=0.218 sht=0.495 ne=0.362 ach=-0.159 ecb=-0.141 cort=-0.005 alpha=0.223 L_contrast=0.613 L_neuro=-0.319 (3124s)
+  [ep15 s03700] loss=-0.1300 da=0.368 sht=0.494 ne=0.529 ach=-0.210 ecb=-0.181 cort=-0.006 alpha=0.219 L_contrast=0.980 L_neuro=-0.442 (3204s)
+  Epoch 15 mean=-0.1438
+  → saved (-0.1438)
+  [ep16 s03800] loss=-0.2256 da=0.272 sht=0.495 ne=0.460 ach=-0.179 ecb=-0.157 cort=-0.005 alpha=0.216 L_contrast=0.425 L_neuro=-0.405 (3284s)
+  [ep16 s03900] loss=-0.1908 da=0.211 sht=0.495 ne=0.345 ach=-0.158 ecb=-0.138 cort=-0.005 alpha=0.212 L_contrast=0.551 L_neuro=-0.390 (3364s)
+  Epoch 16 mean=-0.2060
+  → saved (-0.2060)
+  [ep17 s04000] loss=-0.2515 da=0.379 sht=0.494 ne=0.621 ach=-0.214 ecb=-0.182 cort=-0.006 alpha=0.208 L_contrast=0.783 L_neuro=-0.522 (3445s)
+  [ep17 s04100] loss=-0.3541 da=0.341 sht=0.493 ne=0.681 ach=-0.203 ecb=-0.186 cort=-0.006 alpha=0.203 L_contrast=0.333 L_neuro=-0.529 (3524s)
+  Epoch 17 mean=-0.2738
+  → saved (-0.2738)
+  [ep18 s04200] loss=-0.3470 da=0.366 sht=0.494 ne=0.609 ach=-0.211 ecb=-0.188 cort=-0.006 alpha=0.199 L_contrast=0.628 L_neuro=-0.589 (3604s)
+  [ep18 s04300] loss=-0.4028 da=0.357 sht=0.493 ne=0.686 ach=-0.207 ecb=-0.197 cort=-0.006 alpha=0.195 L_contrast=0.468 L_neuro=-0.614 (3683s)
+  [ep18 s04400] loss=-0.4071 da=0.372 sht=0.494 ne=0.630 ach=-0.204 ecb=-0.191 cort=-0.006 alpha=0.191 L_contrast=0.529 L_neuro=-0.627 (3763s)
+  Epoch 18 mean=-0.3489
+  → saved (-0.3489)
+  [ep19 s04500] loss=-0.4407 da=0.465 sht=0.493 ne=0.691 ach=-0.234 ecb=-0.209 cort=-0.007 alpha=0.186 L_contrast=0.852 L_neuro=-0.736 (3843s)
+  [ep19 s04600] loss=-0.4705 da=0.390 sht=0.494 ne=0.659 ach=-0.216 ecb=-0.197 cort=-0.006 alpha=0.182 L_contrast=0.613 L_neuro=-0.711 (3922s)
+  Epoch 19 mean=-0.4116
+  → saved (-0.4116)
+
+============================================================
+  AIM PROBE — Physical Quantity Encoding
+============================================================
+  Metric: R² (linear regression from frozen latents)
+  Higher R² = encoder learned this physical quantity
+
+  Running AIM probe on Contrastive encoder...
+    AIM probe: 30 held-out files
+  Running AIM probe on Neuromodulated encoder...
+    AIM probe: 30 held-out files
+  Running AIM probe on Hybrid encoder...
+    AIM probe: 30 held-out files
+
+============================================================
+  AIM PROBE RESULTS
+============================================================
+  Signal                 Contrast R²  Neuro R²  Hybrid R² Winner
+  -----------------------------------------------------------------
+  linear_velocity            -1.7321   -2.7147    -5.0470 Contrast
+  angular_velocity           -0.0777   -1.0035    -0.1848 Contrast
+  gps_lat                   -35.2582  -79.7200   -98.7068 Contrast
+  gps_lon                   -23.4272   -6.7456   -22.4526 Neuro ✅
+
+  Samples: 233
+  Hybrid wins:        0/4
+  Neuromodulated wins:1/4
+  Contrastive wins:   3/4
+
+  ❌ Contrastive wins — may need more epochs
+
+  Saved: vlm_phase2a_results.json
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python probe_only.py
+>> python probe_only.py --held-out
+
+Phase 2a AIM Probe - In-distribution evaluation
+============================================================
+Mode: in-distribution (training files), n=800
+
+  Probing A_contrastive (ep=19 loss=0.8355)
+    n=0 samples
+  Probing B_neuromodulated (ep=19 loss=-1.4995)
+    n=0 samples
+  Probing C_hybrid (ep=19 loss=-0.4116)
+    n=0 samples
+
+======================================================================
+  Signal              A Contrast    B Neuro   C Hybrid Winner
+  -----------------------------------------------------------------
+  linear_vel                 nan        nan        nan  A
+  angular_vel                nan        nan        nan  A
+  gps_lat                    nan        nan        nan  A
+  gps_lon                    nan        nan        nan  A
+
+  Wins: A=4 B=0 C=0
+
+  Winner: Contrastive
+  CONTRASTIVE WINS - note: all encoders undertrained at 20 epochs
+  Alpha drift 0.327->0.182 shows neuro signals learned to dominate
+
+  Saved: vlm_phase2a_indist_results.json
+
+Phase 2a AIM Probe - In-distribution evaluation
+============================================================
+Mode: held-out, n=800
+
+  Probing A_contrastive (ep=19 loss=0.8355)
+    n=0 samples
+  Probing B_neuromodulated (ep=19 loss=-1.4995)
+    n=0 samples
+  Probing C_hybrid (ep=19 loss=-0.4116)
+    n=0 samples
+
+======================================================================
+  Signal              A Contrast    B Neuro   C Hybrid Winner
+  -----------------------------------------------------------------
+  linear_vel                 nan        nan        nan  A
+  angular_vel                nan        nan        nan  A
+  gps_lat                    nan        nan        nan  A
+  gps_lon                    nan        nan        nan  A
+
+  Wins: A=4 B=0 C=0
+
+  Winner: Contrastive
+  CONTRASTIVE WINS - note: all encoders undertrained at 20 epochs
+  Alpha drift 0.327->0.182 shows neuro signals learned to dominate
+
+  Saved: vlm_phase2a_indist_results.json
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> # Check checkpoints exist
+>> dir checkpoints\cwm\
+>>
+>> # Check HDF5 path
+>> dir recon_data\recon_release\ | select -first 5
+
+
+    Directory: C:\Users\MeteorAI\Desktop\CORTEX\checkpoints\cwm
+
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----          4/3/2026   5:22 PM        7131631 cwm_best.pt
+-a----          4/4/2026  12:43 PM        7133331 cwm_multidomain_best.pt
+-a----          4/5/2026   5:28 AM        7132819 cwm_no_cortisol_best.pt
+-a----          4/5/2026   1:08 AM        7132522 cwm_pushtoom_best.pt
+-a----          4/4/2026   9:26 PM        7133180 cwm_random_encoder_best.pt
+-a----          4/3/2026   4:30 PM        7133331 cwm_sprint3_ep18_best.pt
+-a----          4/3/2026   2:54 PM        7133180 cwm_tab1_rerun_latest.pt
+-a----          4/3/2026   5:22 PM        7131631 cwm_tab2_ep29_best.pt
+-a----          4/4/2026   7:05 PM       46136081 geo_latent_db.pt
+-a----          4/2/2026   7:38 AM         170215 temporal_head_best.pt
+-a----          4/5/2026   8:38 PM       22249493 vit_tiny_contrastive.pt
+-a----          4/5/2026   9:17 PM       22248639 vit_tiny_hybrid.pt
+-a----          4/5/2026   8:11 PM       22250031 vit_tiny_neuromodulated.pt
+
+
+    Directory: C:\Users\MeteorAI\Desktop\CORTEX\recon_data\recon_release
+
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        10/29/2021   2:22 PM        9752356 jackal_2019-08-02-16-23-30_0_r00.hdf5
+-a----        10/29/2021   2:22 PM       17829128 jackal_2019-08-02-16-23-30_0_r01.hdf5
+-a----        10/29/2021   2:22 PM        8075963 jackal_2019-08-02-16-24-30_1_r00.hdf5
+-a----        10/29/2021   2:22 PM       13725704 jackal_2019-08-02-16-24-30_1_r01.hdf5
+-a----        10/29/2021   2:22 PM       20691086 jackpython phase2a_hybrid.py `00.hdf5
+>>     --epochs    20 `
+>>     --max-files 50 `
+>>     --log-every 100\Users\MeteorAI\Desktop\CORTEX>
+
+Phase 2a - Encoder C: Hybrid (Contrastive + NeMo-WM)
+============================================================
+Loads existing A+B checkpoints, trains C from scratch
+Then runs AIM probe on all three
+
+Training Encoder C - Hybrid...
+  Params: 5,549,120
+  [ep00 s00100] loss=1.8955 da=0.0067 ne=0.0001 alpha=0.492 L_c=3.3987 L_n=0.4378 (68s)
+  [ep00 s00200] loss=1.8693 da=0.0075 ne=0.0 alpha=0.485 L_c=3.4279 L_n=0.404 (145s)
+  Epoch 00 mean=1.8981
+  -> saved (1.8981)
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python neuro_vlm_poc_suite.py
+
+NeMo-WM VLM -- Multi-Domain Proof of Concept Suite
+============================================================
+Encoder: Synthetic (image statistics, no GPU needed)
+
+  ==========================================================
+  TEST 1 -- Medical Imaging -- Chest X-ray anomaly
+  Text anchor: 'normal chest X-ray clear lungs no lesions'
+  ==========================================================
+  Stable DA: mean=0.0506
+  Shift  DA: mean=0.0370
+  Threshold: 0.0001
+  F1=0.437  P=0.279  R=1.000  False+=49
+  FAIL  Medical Imaging -- Chest X-ray anomaly
+
+  ==========================================================
+  TEST 2 -- Industrial QC -- Verbal defect specification
+  Text anchor: 'clean weld seam no cracks uniform surface'
+  ==========================================================
+  Stable DA: mean=0.0051
+  Shift  DA: mean=0.0048
+  Threshold: 0.0002
+  F1=0.437  P=0.279  R=1.000  False+=49
+  FAIL  Industrial QC -- Verbal defect specification
+
+  ==========================================================
+  TEST 3 -- Satellite Imagery -- Crop stress detection
+  Text anchor: 'healthy green agricultural field no stress'
+  ==========================================================
+  Stable DA: mean=0.0501
+  Shift  DA: mean=0.0290
+  Threshold: 0.0004
+  F1=0.452  P=0.292  R=1.000  False+=46
+  FAIL  Satellite Imagery -- Crop stress detection
+
+  ==========================================================
+  TEST 4 -- Surgical Robotics -- Intraoperative anomaly
+  Text anchor: 'normal tissue plane healthy vasculature'
+  ==========================================================
+  Stable DA: mean=0.0369
+  Shift  DA: mean=0.0333
+  Threshold: 0.0011
+  F1=0.474  P=0.316  R=0.947  False+=39
+  FAIL  Surgical Robotics -- Intraoperative anomaly
+
+  ==========================================================
+  TEST 5 -- Drug Discovery -- Cell morphology shift
+  Text anchor: 'healthy cell normal morphology intact membrane'
+  ==========================================================
+  Stable DA: mean=0.0339
+  Shift  DA: mean=0.0333
+  Threshold: 0.0488
+  F1=0.537  P=0.500  R=0.579  False+=11
+  FAIL  Drug Discovery -- Cell morphology shift
+
+  ==========================================================
+  TEST 6 -- Financial Markets -- Order book anomaly
+  Text anchor: 'balanced order book normal bid ask spread'
+  ==========================================================
+  Stable DA: mean=0.0008
+  Shift  DA: mean=0.0003
+  Threshold: 0.0000
+  F1=0.442  P=0.284  R=1.000  False+=48
+  FAIL  Financial Markets -- Order book anomaly
+
+  ==========================================================
+  TEST 7 -- Structural Health -- Bridge deck degradation
+  Text anchor: 'intact bridge deck no visible cracking'
+  ==========================================================
+  Stable DA: mean=0.0235
+  Shift  DA: mean=0.0352
+  Threshold: 0.0572
+  F1=0.514  P=0.562  R=0.474  False+=7
+  FAIL  Structural Health -- Bridge deck degradation
+
+  ==========================================================
+  TEST 8 -- Wildlife Monitoring -- Animal presence
+  Text anchor: 'empty forest path no animals visible'
+  ==========================================================
+  Stable DA: mean=0.1026
+  Shift  DA: mean=0.0942
+  Threshold: 0.0601
+  F1=0.457  P=0.314  R=0.842  False+=35
+  FAIL  Wildlife Monitoring -- Animal presence
+
+  ==========================================================
+  TEST 9 -- Autonomous Driving -- Road condition shift
+  Text anchor: 'clear dry road normal traffic conditions'
+  ==========================================================
+  Stable DA: mean=0.0259
+  Shift  DA: mean=0.0537
+  Threshold: 0.0459
+  F1=0.757  P=0.778  R=0.737  False+=4
+  PASS  Autonomous Driving -- Road condition shift
+
+  ==========================================================
+  TEST 10 -- Cortisol Restraint (cross-domain)
+  Claim: cortisol does NOT fire on stable sequences
+  ==========================================================
+    chest_normal         n=30 DA_mean=0.0509 baseline=0.1772 false+=0
+    weld_normal          n=30 DA_mean=0.0049 baseline=0.0127 false+=0
+    field_healthy        n=30 DA_mean=0.0450 baseline=0.1569 false+=0
+    bridge_normal        n=30 DA_mean=0.0308 baseline=0.1294 false+=0
+    road_clear           n=30 DA_mean=0.0231 baseline=0.0632 false+=0
+
+  Total false positives: 0
+  PASS  Cortisol restraint across all stable domains
+
+
+============================================================
+  TEST SUITE SUMMARY
+============================================================
+  Passed: 2/10
+
+  #    Domain                                       F1  False+ Status
+  -----------------------------------------------------------------
+  1    Medical Imaging -- Chest X-ray anomaly    0.437      49  FAIL
+  2    Industrial QC -- Verbal defect specification  0.437      49  FAIL
+  3    Satellite Imagery -- Crop stress detection  0.452      46  FAIL
+  4    Surgical Robotics -- Intraoperative anomaly  0.474      39  FAIL
+  5    Drug Discovery -- Cell morphology shift   0.537      11  FAIL
+  6    Financial Markets -- Order book anomaly   0.442      48  FAIL
+  7    Structural Health -- Bridge deck degradation  0.514       7  FAIL
+  8    Wildlife Monitoring -- Animal presence    0.457      35  FAIL
+  9    Autonomous Driving -- Road condition shift  0.757       4  PASS
+  10   Cortisol restraint                        0.000       0  PASS
+
+  Encoder: synthetic (no GPU needed)
+
+  SIGNIFICANT FAILURES -- review encoder or threshold logic
+
+  Saved: neuro_vlm_poc_results.json
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python neuro_vlm_poc_suite.py --dino
+
+NeMo-WM VLM -- Multi-Domain Proof of Concept Suite
+============================================================
+Encoder: DINOv2-Student
+
+  ==========================================================
+  TEST 1 -- Medical Imaging -- Chest X-ray anomaly
+  Text anchor: 'normal chest X-ray clear lungs no lesions'
+  ==========================================================
+  Stable DA: mean=0.0855
+  Shift  DA: mean=0.0842
+  Threshold: 0.0095
+  F1=0.447  P=0.288  R=1.000  False+=47
+  FAIL  Medical Imaging -- Chest X-ray anomaly
+
+  ==========================================================
+  TEST 2 -- Industrial QC -- Verbal defect specification
+  Text anchor: 'clean weld seam no cracks uniform surface'
+  ==========================================================
+  Stable DA: mean=0.0602
+  Shift  DA: mean=0.0658
+  Threshold: 0.0007
+  F1=0.437  P=0.279  R=1.000  False+=49
+  FAIL  Industrial QC -- Verbal defect specification
+
+  ==========================================================
+  TEST 3 -- Satellite Imagery -- Crop stress detection
+  Text anchor: 'healthy green agricultural field no stress'
+  ==========================================================
+  Stable DA: mean=0.0115
+  Shift  DA: mean=0.0093
+  Threshold: 0.0002
+  F1=0.437  P=0.279  R=1.000  False+=49
+  FAIL  Satellite Imagery -- Crop stress detection
+
+  ==========================================================
+  TEST 4 -- Surgical Robotics -- Intraoperative anomaly
+  Text anchor: 'normal tissue plane healthy vasculature'
+  ==========================================================
+  Stable DA: mean=0.0759
+  Shift  DA: mean=0.0653
+  Threshold: 0.0040
+  F1=0.442  P=0.284  R=1.000  False+=48
+  FAIL  Surgical Robotics -- Intraoperative anomaly
+
+  ==========================================================
+  TEST 5 -- Drug Discovery -- Cell morphology shift
+  Text anchor: 'healthy cell normal morphology intact membrane'
+  ==========================================================
+  Stable DA: mean=0.0694
+  Shift  DA: mean=0.0653
+  Threshold: 0.0040
+  F1=0.494  P=0.328  R=1.000  False+=39
+  FAIL  Drug Discovery -- Cell morphology shift
+
+  ==========================================================
+  TEST 6 -- Financial Markets -- Order book anomaly
+  Text anchor: 'balanced order book normal bid ask spread'
+  ==========================================================
+  Stable DA: mean=0.0010
+  Shift  DA: mean=0.0003
+  Threshold: 0.0001
+  F1=0.437  P=0.279  R=1.000  False+=49
+  FAIL  Financial Markets -- Order book anomaly
+
+  ==========================================================
+  TEST 7 -- Structural Health -- Bridge deck degradation
+  Text anchor: 'intact bridge deck no visible cracking'
+  ==========================================================
+  Stable DA: mean=0.1325
+  Shift  DA: mean=0.1548
+  Threshold: 0.0035
+  F1=0.437  P=0.279  R=1.000  False+=49
+  FAIL  Structural Health -- Bridge deck degradation
+
+  ==========================================================
+  TEST 8 -- Wildlife Monitoring -- Animal presence
+  Text anchor: 'empty forest path no animals visible'
+  ==========================================================
+  Stable DA: mean=0.0368
+  Shift  DA: mean=0.0260
+  Threshold: 0.0020
+  F1=0.437  P=0.279  R=1.000  False+=49
+  FAIL  Wildlife Monitoring -- Animal presence
+
+  ==========================================================
+  TEST 9 -- Autonomous Driving -- Road condition shift
+  Text anchor: 'clear dry road normal traffic conditions'
+  ==========================================================
+  Stable DA: mean=0.0352
+  Shift  DA: mean=0.0896
+  Threshold: 0.0909
+  F1=0.562  P=0.692  R=0.474  False+=4
+  FAIL  Autonomous Driving -- Road condition shift
+
+  ==========================================================
+  TEST 10 -- Cortisol Restraint (cross-domain)
+  Claim: cortisol does NOT fire on stable sequences
+  ==========================================================
+    chest_normal         n=30 DA_mean=0.0848 baseline=0.2892 false+=0
+    weld_normal          n=30 DA_mean=0.0595 baseline=0.2289 false+=0
+    field_healthy        n=30 DA_mean=0.0128 baseline=0.0519 false+=0
+    bridge_normal        n=30 DA_mean=0.1336 baseline=0.5088 false+=0
+    road_clear           n=30 DA_mean=0.0324 baseline=0.1333 false+=0
+
+  Total false positives: 0
+  PASS  Cortisol restraint across all stable domains
+
+
+============================================================
+  TEST SUITE SUMMARY
+============================================================
+  Passed: 1/10
+
+  #    Domain                                       F1  False+ Status
+  -----------------------------------------------------------------
+  1    Medical Imaging -- Chest X-ray anomaly    0.447      47  FAIL
+  2    Industrial QC -- Verbal defect specification  0.437      49  FAIL
+  3    Satellite Imagery -- Crop stress detection  0.437      49  FAIL
+  4    Surgical Robotics -- Intraoperative anomaly  0.442      48  FAIL
+  5    Drug Discovery -- Cell morphology shift   0.494      39  FAIL
+  6    Financial Markets -- Order book anomaly   0.437      49  FAIL
+  7    Structural Health -- Bridge deck degradation  0.437      49  FAIL
+  8    Wildlife Monitoring -- Animal presence    0.437      49  FAIL
+  9    Autonomous Driving -- Road condition shift  0.562       4  FAIL
+  10   Cortisol restraint                        0.000       0  PASS
+
+  Encoder: DINOv2/CLIP
+
+  SIGNIFICANT FAILURES -- review encoder or threshold logic
+
+  Saved: neuro_vlm_poc_results.json
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python neuro_vlm_poc_suite.py
+>> python neuro_vlm_poc_suite.py --dino
+
+NeMo-WM VLM -- Multi-Domain Proof of Concept Suite
+============================================================
+Encoder: Synthetic (image statistics, no GPU needed)
+
+  ==========================================================
+  TEST 1 -- Medical Imaging -- Chest X-ray anomaly
+  Text anchor: 'normal chest X-ray clear lungs no lesions'
+  ==========================================================
+  Stable DA: mean=0.0280
+  Shift  DA: mean=0.0312
+  Threshold: 0.0124
+  F1=0.488  P=0.323  R=1.000  False+=42
+  FAIL  Medical Imaging -- Chest X-ray anomaly
+
+  ==========================================================
+  TEST 2 -- Industrial QC -- Verbal defect specification
+  Text anchor: 'clean weld seam no cracks uniform surface'
+  ==========================================================
+  Stable DA: mean=0.0028
+  Shift  DA: mean=0.0034
+  Threshold: 0.0023
+  F1=0.548  P=0.405  R=0.850  False+=25
+  FAIL  Industrial QC -- Verbal defect specification
+
+  ==========================================================
+  TEST 3 -- Satellite Imagery -- Crop stress detection
+  Text anchor: 'healthy green agricultural field no stress'
+  ==========================================================
+  Stable DA: mean=0.0321
+  Shift  DA: mean=0.0957
+  Threshold: 0.0604
+  F1=0.889  P=0.800  R=1.000  False+=5
+  PASS  Satellite Imagery -- Crop stress detection
+
+  ==========================================================
+  TEST 4 -- Surgical Robotics -- Intraoperative anomaly
+  Text anchor: 'normal tissue plane healthy vasculature'
+  ==========================================================
+  Stable DA: mean=0.0198
+  Shift  DA: mean=0.0260
+  Threshold: 0.0164
+  F1=0.548  P=0.405  R=0.850  False+=25
+  FAIL  Surgical Robotics -- Intraoperative anomaly
+
+  ==========================================================
+  TEST 5 -- Drug Discovery -- Cell morphology shift
+  Text anchor: 'healthy cell normal morphology intact membrane'
+  ==========================================================
+  Stable DA: mean=0.0196
+  Shift  DA: mean=0.0260
+  Threshold: 0.0164
+  F1=0.596  P=0.459  R=0.850  False+=20
+  FAIL  Drug Discovery -- Cell morphology shift
+
+  ==========================================================
+  TEST 6 -- Financial Markets -- Order book anomaly
+  Text anchor: 'balanced order book normal bid ask spread'
+  ==========================================================
+  Stable DA: mean=0.0004
+  Shift  DA: mean=0.0194
+  Threshold: 0.0157
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Financial Markets -- Order book anomaly
+
+  ==========================================================
+  TEST 7 -- Structural Health -- Bridge deck degradation
+  Text anchor: 'intact bridge deck no visible cracking'
+  ==========================================================
+  Stable DA: mean=0.0119
+  Shift  DA: mean=0.0181
+  Threshold: 0.0045
+  F1=0.475  P=0.317  R=0.950  False+=41
+  FAIL  Structural Health -- Bridge deck degradation
+
+  ==========================================================
+  TEST 8 -- Wildlife Monitoring -- Animal presence
+  Text anchor: 'empty forest path no animals visible'
+  ==========================================================
+  Stable DA: mean=0.0605
+  Shift  DA: mean=0.0697
+  Threshold: 0.0284
+  F1=0.548  P=0.377  R=1.000  False+=33
+  FAIL  Wildlife Monitoring -- Animal presence
+
+  ==========================================================
+  TEST 9 -- Autonomous Driving -- Road condition shift
+  Text anchor: 'clear dry road normal traffic conditions'
+  ==========================================================
+  Stable DA: mean=0.0148
+  Shift  DA: mean=0.4281
+  Threshold: 0.4208
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Autonomous Driving -- Road condition shift
+
+  ==========================================================
+  TEST 10 -- Cortisol Restraint (cross-domain)
+  Claim: cortisol does NOT fire on stable sequences
+  ==========================================================
+    chest_normal         n=30 DA_mean=0.0509 baseline=0.1772 false+=0
+    weld_normal          n=30 DA_mean=0.0049 baseline=0.0127 false+=0
+    field_healthy        n=30 DA_mean=0.0450 baseline=0.1569 false+=0
+    bridge_normal        n=30 DA_mean=0.0308 baseline=0.1294 false+=0
+    road_clear           n=30 DA_mean=0.0231 baseline=0.0632 false+=0
+
+  Total false positives: 0
+  PASS  Cortisol restraint across all stable domains
+
+
+============================================================
+  TEST SUITE SUMMARY
+============================================================
+  Passed: 4/10
+
+  #    Domain                                       F1  False+ Status
+  -----------------------------------------------------------------
+  1    Medical Imaging -- Chest X-ray anomaly    0.488      42  FAIL
+  2    Industrial QC -- Verbal defect specification  0.548      25  FAIL
+  3    Satellite Imagery -- Crop stress detection  0.889       5  PASS
+  4    Surgical Robotics -- Intraoperative anomaly  0.548      25  FAIL
+  5    Drug Discovery -- Cell morphology shift   0.596      20  FAIL
+  6    Financial Markets -- Order book anomaly   1.000       0  PASS
+  7    Structural Health -- Bridge deck degradation  0.475      41  FAIL
+  8    Wildlife Monitoring -- Animal presence    0.548      33  FAIL
+  9    Autonomous Driving -- Road condition shift  1.000       0  PASS
+  10   Cortisol restraint                        0.000       0  PASS
+
+  Encoder: synthetic (no GPU needed)
+
+  SIGNIFICANT FAILURES -- review encoder or threshold logic
+
+  Saved: neuro_vlm_poc_results.json
+
+NeMo-WM VLM -- Multi-Domain Proof of Concept Suite
+============================================================
+Encoder: DINOv2-Student
+
+  ==========================================================
+  TEST 1 -- Medical Imaging -- Chest X-ray anomaly
+  Text anchor: 'normal chest X-ray clear lungs no lesions'
+  ==========================================================
+  Stable DA: mean=0.0501
+  Shift  DA: mean=0.0560
+  Threshold: 0.0132
+  F1=0.452  P=0.297  R=0.950  False+=45
+  FAIL  Medical Imaging -- Chest X-ray anomaly
+
+  ==========================================================
+  TEST 2 -- Industrial QC -- Verbal defect specification
+  Text anchor: 'clean weld seam no cracks uniform surface'
+  ==========================================================
+  Stable DA: mean=0.0375
+  Shift  DA: mean=0.0403
+  Threshold: 0.0074
+  F1=0.471  P=0.308  R=1.000  False+=45
+  FAIL  Industrial QC -- Verbal defect specification
+
+  ==========================================================
+  TEST 3 -- Satellite Imagery -- Crop stress detection
+  Text anchor: 'healthy green agricultural field no stress'
+  ==========================================================
+  Stable DA: mean=0.0077
+  Shift  DA: mean=0.2379
+  Threshold: 0.2090
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Satellite Imagery -- Crop stress detection
+
+  ==========================================================
+  TEST 4 -- Surgical Robotics -- Intraoperative anomaly
+  Text anchor: 'normal tissue plane healthy vasculature'
+  ==========================================================
+  Stable DA: mean=0.0384
+  Shift  DA: mean=0.0427
+  Threshold: 0.0165
+  F1=0.482  P=0.317  R=1.000  False+=43
+  FAIL  Surgical Robotics -- Intraoperative anomaly
+
+  ==========================================================
+  TEST 5 -- Drug Discovery -- Cell morphology shift
+  Text anchor: 'healthy cell normal morphology intact membrane'
+  ==========================================================
+  Stable DA: mean=0.0366
+  Shift  DA: mean=0.0427
+  Threshold: 0.0165
+  F1=0.541  P=0.370  R=1.000  False+=34
+  FAIL  Drug Discovery -- Cell morphology shift
+
+  ==========================================================
+  TEST 6 -- Financial Markets -- Order book anomaly
+  Text anchor: 'balanced order book normal bid ask spread'
+  ==========================================================
+  Stable DA: mean=0.0005
+  Shift  DA: mean=0.0130
+  Threshold: 0.0116
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Financial Markets -- Order book anomaly
+
+  ==========================================================
+  TEST 7 -- Structural Health -- Bridge deck degradation
+  Text anchor: 'intact bridge deck no visible cracking'
+  ==========================================================
+  Stable DA: mean=0.0906
+  Shift  DA: mean=0.1045
+  Threshold: 0.1136
+  F1=0.489  P=0.440  R=0.550  False+=14
+  FAIL  Structural Health -- Bridge deck degradation
+
+  ==========================================================
+  TEST 8 -- Wildlife Monitoring -- Animal presence
+  Text anchor: 'empty forest path no animals visible'
+  ==========================================================
+  Stable DA: mean=0.0230
+  Shift  DA: mean=0.0227
+  Threshold: 0.0034
+  F1=0.449  P=0.290  R=1.000  False+=49
+  FAIL  Wildlife Monitoring -- Animal presence
+
+  ==========================================================
+  TEST 9 -- Autonomous Driving -- Road condition shift
+  Text anchor: 'clear dry road normal traffic conditions'
+  ==========================================================
+  Stable DA: mean=0.0229
+  Shift  DA: mean=0.2273
+  Threshold: 0.1709
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Autonomous Driving -- Road condition shift
+
+  ==========================================================
+  TEST 10 -- Cortisol Restraint (cross-domain)
+  Claim: cortisol does NOT fire on stable sequences
+  ==========================================================
+    chest_normal         n=30 DA_mean=0.0848 baseline=0.2892 false+=0
+    weld_normal          n=30 DA_mean=0.0595 baseline=0.2289 false+=0
+    field_healthy        n=30 DA_mean=0.0128 baseline=0.0519 false+=0
+    bridge_normal        n=30 DA_mean=0.1336 baseline=0.5088 false+=0
+    road_clear           n=30 DA_mean=0.0324 baseline=0.1333 false+=0
+
+  Total false positives: 0
+  PASS  Cortisol restraint across all stable domains
+
+
+============================================================
+  TEST SUITE SUMMARY
+============================================================
+  Passed: 4/10
+
+  #    Domain                                       F1  False+ Status
+  -----------------------------------------------------------------
+  1    Medical Imaging -- Chest X-ray anomaly    0.452      45  FAIL
+  2    Industrial QC -- Verbal defect specification  0.471      45  FAIL
+  3    Satellite Imagery -- Crop stress detection  1.000       0  PASS
+  4    Surgical Robotics -- Intraoperative anomaly  0.482      43  FAIL
+  5    Drug Discovery -- Cell morphology shift   0.541      34  FAIL
+  6    Financial Markets -- Order book anomaly   1.000       0  PASS
+  7    Structural Health -- Bridge deck degradation  0.489      14  FAIL
+  8    Wildlife Monitoring -- Animal presence    0.449      49  FAIL
+  9    Autonomous Driving -- Road condition shift  1.000       0  PASS
+  10   Cortisol restraint                        0.000       0  PASS
+
+  Encoder: DINOv2/CLIP
+
+  SIGNIFICANT FAILURES -- review encoder or threshold logic
+
+  Saved: neuro_vlm_poc_results.json
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python neuro_vlm_poc_suite.py
+>> python neuro_vlm_poc_suite.py --dino
+
+NeMo-WM VLM -- Multi-Domain Proof of Concept Suite
+============================================================
+Encoder: Synthetic (image statistics, no GPU needed)
+
+  ==========================================================
+  TEST 1 -- Medical Imaging -- Chest X-ray anomaly
+  Text anchor: 'normal chest X-ray clear lungs no lesions'
+  ==========================================================
+  Stable DA: mean=0.0280
+  Shift  DA: mean=0.0362
+  Threshold: 0.0366
+  F1=0.489  P=0.440  R=0.550  False+=14
+  FAIL  Medical Imaging -- Chest X-ray anomaly
+
+  ==========================================================
+  TEST 2 -- Industrial QC -- Verbal defect specification
+  Text anchor: 'clean weld seam no cracks uniform surface'
+  ==========================================================
+  Stable DA: mean=0.0792
+  Shift  DA: mean=0.1070
+  Threshold: 0.0255
+  F1=0.594  P=0.432  R=0.950  False+=25
+  FAIL  Industrial QC -- Verbal defect specification
+
+  ==========================================================
+  TEST 3 -- Satellite Imagery -- Crop stress detection
+  Text anchor: 'healthy green agricultural field no stress'
+  ==========================================================
+  Stable DA: mean=0.0321
+  Shift  DA: mean=0.0957
+  Threshold: 0.0604
+  F1=0.889  P=0.800  R=1.000  False+=5
+  PASS  Satellite Imagery -- Crop stress detection
+
+  ==========================================================
+  TEST 4 -- Surgical Robotics -- Intraoperative anomaly
+  Text anchor: 'normal tissue plane healthy vasculature'
+  ==========================================================
+  Stable DA: mean=0.0006
+  Shift  DA: mean=0.1517
+  Threshold: 0.1086
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Surgical Robotics -- Intraoperative anomaly
+
+  ==========================================================
+  TEST 5 -- Drug Discovery -- Cell morphology shift
+  Text anchor: 'healthy cell normal morphology intact membrane'
+  ==========================================================
+  Stable DA: mean=0.0005
+  Shift  DA: mean=0.1517
+  Threshold: 0.1086
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Drug Discovery -- Cell morphology shift
+
+  ==========================================================
+  TEST 6 -- Financial Markets -- Order book anomaly
+  Text anchor: 'balanced order book normal bid ask spread'
+  ==========================================================
+  Stable DA: mean=0.0004
+  Shift  DA: mean=0.0194
+  Threshold: 0.0157
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Financial Markets -- Order book anomaly
+
+  ==========================================================
+  TEST 7 -- Structural Health -- Bridge deck degradation
+  Text anchor: 'intact bridge deck no visible cracking'
+  ==========================================================
+  Stable DA: mean=0.0119
+  Shift  DA: mean=0.3250
+  Threshold: 0.2589
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Structural Health -- Bridge deck degradation
+
+  ==========================================================
+  TEST 8 -- Wildlife Monitoring -- Animal presence
+  Text anchor: 'empty forest path no animals visible'
+  ==========================================================
+  Stable DA: mean=0.0605
+  Shift  DA: mean=0.0621
+  Threshold: 0.0245
+  F1=0.541  P=0.370  R=1.000  False+=34
+  FAIL  Wildlife Monitoring -- Animal presence
+
+  ==========================================================
+  TEST 9 -- Autonomous Driving -- Road condition shift
+  Text anchor: 'clear dry road normal traffic conditions'
+  ==========================================================
+  Stable DA: mean=0.0148
+  Shift  DA: mean=0.4281
+  Threshold: 0.4208
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Autonomous Driving -- Road condition shift
+
+  ==========================================================
+  TEST 10 -- Cortisol Restraint (cross-domain)
+  Claim: cortisol does NOT fire on stable sequences
+  ==========================================================
+    chest_normal         n=30 DA_mean=0.0509 baseline=0.1772 false+=0
+    weld_normal          n=30 DA_mean=0.1454 baseline=0.4649 false+=0
+    field_healthy        n=30 DA_mean=0.0450 baseline=0.1569 false+=0
+    bridge_normal        n=30 DA_mean=0.0308 baseline=0.1294 false+=0
+    road_clear           n=30 DA_mean=0.0231 baseline=0.0632 false+=0
+
+  Total false positives: 0
+  PASS  Cortisol restraint across all stable domains
+
+
+============================================================
+  TEST SUITE SUMMARY
+============================================================
+  Passed: 7/10
+
+  #    Domain                                       F1  False+ Status
+  -----------------------------------------------------------------
+  1    Medical Imaging -- Chest X-ray anomaly    0.489      14  FAIL
+  2    Industrial QC -- Verbal defect specification  0.594      25  FAIL
+  3    Satellite Imagery -- Crop stress detection  0.889       5  PASS
+  4    Surgical Robotics -- Intraoperative anomaly  1.000       0  PASS
+  5    Drug Discovery -- Cell morphology shift   1.000       0  PASS
+  6    Financial Markets -- Order book anomaly   1.000       0  PASS
+  7    Structural Health -- Bridge deck degradation  1.000       0  PASS
+  8    Wildlife Monitoring -- Animal presence    0.541      34  FAIL
+  9    Autonomous Driving -- Road condition shift  1.000       0  PASS
+  10   Cortisol restraint                        0.000       0  PASS
+
+  Encoder: synthetic (no GPU needed)
+
+  MOSTLY PASSING -- 3 tests need tuning
+
+  Saved: neuro_vlm_poc_results.json
+
+NeMo-WM VLM -- Multi-Domain Proof of Concept Suite
+============================================================
+Encoder: DINOv2-Student
+
+  ==========================================================
+  TEST 1 -- Medical Imaging -- Chest X-ray anomaly
+  Text anchor: 'normal chest X-ray clear lungs no lesions'
+  ==========================================================
+  Stable DA: mean=0.0501
+  Shift  DA: mean=0.0785
+  Threshold: 0.0556
+  F1=0.618  P=0.486  R=0.850  False+=18
+  PASS  Medical Imaging -- Chest X-ray anomaly
+
+  ==========================================================
+  TEST 2 -- Industrial QC -- Verbal defect specification
+  Text anchor: 'clean weld seam no cracks uniform surface'
+  ==========================================================
+  Stable DA: mean=0.0321
+  Shift  DA: mean=0.0424
+  Threshold: 0.0095
+  F1=0.500  P=0.333  R=1.000  False+=40
+  FAIL  Industrial QC -- Verbal defect specification
+
+  ==========================================================
+  TEST 3 -- Satellite Imagery -- Crop stress detection
+  Text anchor: 'healthy green agricultural field no stress'
+  ==========================================================
+  Stable DA: mean=0.0077
+  Shift  DA: mean=0.2379
+  Threshold: 0.2090
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Satellite Imagery -- Crop stress detection
+
+  ==========================================================
+  TEST 4 -- Surgical Robotics -- Intraoperative anomaly
+  Text anchor: 'normal tissue plane healthy vasculature'
+  ==========================================================
+  Stable DA: mean=0.0244
+  Shift  DA: mean=0.3136
+  Threshold: 0.2543
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Surgical Robotics -- Intraoperative anomaly
+
+  ==========================================================
+  TEST 5 -- Drug Discovery -- Cell morphology shift
+  Text anchor: 'healthy cell normal morphology intact membrane'
+  ==========================================================
+  Stable DA: mean=0.0242
+  Shift  DA: mean=0.3136
+  Threshold: 0.2543
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Drug Discovery -- Cell morphology shift
+
+  ==========================================================
+  TEST 6 -- Financial Markets -- Order book anomaly
+  Text anchor: 'balanced order book normal bid ask spread'
+  ==========================================================
+  Stable DA: mean=0.0005
+  Shift  DA: mean=0.0130
+  Threshold: 0.0116
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Financial Markets -- Order book anomaly
+
+  ==========================================================
+  TEST 7 -- Structural Health -- Bridge deck degradation
+  Text anchor: 'intact bridge deck no visible cracking'
+  ==========================================================
+  Stable DA: mean=0.0906
+  Shift  DA: mean=0.1524
+  Threshold: 0.1271
+  F1=0.735  P=0.621  R=0.900  False+=11
+  PASS  Structural Health -- Bridge deck degradation
+
+  ==========================================================
+  TEST 8 -- Wildlife Monitoring -- Animal presence
+  Text anchor: 'empty forest path no animals visible'
+  ==========================================================
+  Stable DA: mean=0.0230
+  Shift  DA: mean=0.0344
+  Threshold: 0.0155
+  F1=0.571  P=0.419  R=0.900  False+=25
+  FAIL  Wildlife Monitoring -- Animal presence
+
+  ==========================================================
+  TEST 9 -- Autonomous Driving -- Road condition shift
+  Text anchor: 'clear dry road normal traffic conditions'
+  ==========================================================
+  Stable DA: mean=0.0229
+  Shift  DA: mean=0.2273
+  Threshold: 0.1709
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Autonomous Driving -- Road condition shift
+
+  ==========================================================
+  TEST 10 -- Cortisol Restraint (cross-domain)
+  Claim: cortisol does NOT fire on stable sequences
+  ==========================================================
+    chest_normal         n=30 DA_mean=0.0848 baseline=0.2892 false+=0
+    weld_normal          n=30 DA_mean=0.0457 baseline=0.2005 false+=0
+    field_healthy        n=30 DA_mean=0.0128 baseline=0.0519 false+=0
+    bridge_normal        n=30 DA_mean=0.1336 baseline=0.5088 false+=0
+    road_clear           n=30 DA_mean=0.0324 baseline=0.1333 false+=0
+
+  Total false positives: 0
+  PASS  Cortisol restraint across all stable domains
+
+
+============================================================
+  TEST SUITE SUMMARY
+============================================================
+  Passed: 8/10
+
+  #    Domain                                       F1  False+ Status
+  -----------------------------------------------------------------
+  1    Medical Imaging -- Chest X-ray anomaly    0.618      18  PASS
+  2    Industrial QC -- Verbal defect specification  0.500      40  FAIL
+  3    Satellite Imagery -- Crop stress detection  1.000       0  PASS
+  4    Surgical Robotics -- Intraoperative anomaly  1.000       0  PASS
+  5    Drug Discovery -- Cell morphology shift   1.000       0  PASS
+  6    Financial Markets -- Order book anomaly   1.000       0  PASS
+  7    Structural Health -- Bridge deck degradation  0.735      11  PASS
+  8    Wildlife Monitoring -- Animal presence    0.571      25  FAIL
+  9    Autonomous Driving -- Road condition shift  1.000       0  PASS
+  10   Cortisol restraint                        0.000       0  PASS
+
+  Encoder: DINOv2/CLIP
+
+  MOSTLY PASSING -- 2 tests need tuning
+
+  Saved: neuro_vlm_poc_results.json
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python neuro_vlm_poc_suite.py
+>> python neuro_vlm_poc_suite.py --dino
+
+NeMo-WM VLM -- Multi-Domain Proof of Concept Suite
+============================================================
+Encoder: Synthetic (image statistics, no GPU needed)
+
+  ==========================================================
+  TEST 1 -- Medical Imaging -- Chest X-ray anomaly
+  Text anchor: 'normal chest X-ray clear lungs no lesions'
+  ==========================================================
+  Stable DA: mean=0.0280
+  Shift  DA: mean=0.0362
+  Threshold: 0.0366
+  F1=0.489  P=0.440  R=0.550  False+=14
+  FAIL  Medical Imaging -- Chest X-ray anomaly
+
+  ==========================================================
+  TEST 2 -- Industrial QC -- Verbal defect specification
+  Text anchor: 'clean weld seam no cracks uniform surface'
+  ==========================================================
+  Stable DA: mean=0.0792
+  Shift  DA: mean=0.5247
+  Threshold: 0.4834
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Industrial QC -- Verbal defect specification
+
+  ==========================================================
+  TEST 3 -- Satellite Imagery -- Crop stress detection
+  Text anchor: 'healthy green agricultural field no stress'
+  ==========================================================
+  Stable DA: mean=0.0321
+  Shift  DA: mean=0.0957
+  Threshold: 0.0604
+  F1=0.889  P=0.800  R=1.000  False+=5
+  PASS  Satellite Imagery -- Crop stress detection
+
+  ==========================================================
+  TEST 4 -- Surgical Robotics -- Intraoperative anomaly
+  Text anchor: 'normal tissue plane healthy vasculature'
+  ==========================================================
+  Stable DA: mean=0.0006
+  Shift  DA: mean=0.1517
+  Threshold: 0.1086
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Surgical Robotics -- Intraoperative anomaly
+
+  ==========================================================
+  TEST 5 -- Drug Discovery -- Cell morphology shift
+  Text anchor: 'healthy cell normal morphology intact membrane'
+  ==========================================================
+  Stable DA: mean=0.0005
+  Shift  DA: mean=0.1517
+  Threshold: 0.1086
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Drug Discovery -- Cell morphology shift
+
+  ==========================================================
+  TEST 6 -- Financial Markets -- Order book anomaly
+  Text anchor: 'balanced order book normal bid ask spread'
+  ==========================================================
+  Stable DA: mean=0.0004
+  Shift  DA: mean=0.0194
+  Threshold: 0.0157
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Financial Markets -- Order book anomaly
+
+  ==========================================================
+  TEST 7 -- Structural Health -- Bridge deck degradation
+  Text anchor: 'intact bridge deck no visible cracking'
+  ==========================================================
+  Stable DA: mean=0.0119
+  Shift  DA: mean=0.3250
+  Threshold: 0.2589
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Structural Health -- Bridge deck degradation
+
+  ==========================================================
+  TEST 8 -- Wildlife Monitoring -- Animal presence
+  Text anchor: 'empty forest path no animals visible'
+  ==========================================================
+  Stable DA: mean=0.0605
+  Shift  DA: mean=0.3136
+  Threshold: 0.2383
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Wildlife Monitoring -- Animal presence
+
+  ==========================================================
+  TEST 9 -- Autonomous Driving -- Road condition shift
+  Text anchor: 'clear dry road normal traffic conditions'
+  ==========================================================
+  Stable DA: mean=0.0148
+  Shift  DA: mean=0.4281
+  Threshold: 0.4208
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Autonomous Driving -- Road condition shift
+
+  ==========================================================
+  TEST 10 -- Cortisol Restraint (cross-domain)
+  Claim: cortisol does NOT fire on stable sequences
+  ==========================================================
+    chest_normal         n=30 DA_mean=0.0509 baseline=0.1772 false+=0
+    weld_normal          n=30 DA_mean=0.1454 baseline=0.4649 false+=0
+    field_healthy        n=30 DA_mean=0.0450 baseline=0.1569 false+=0
+    bridge_normal        n=30 DA_mean=0.0308 baseline=0.1294 false+=0
+    road_clear           n=30 DA_mean=0.0231 baseline=0.0632 false+=0
+
+  Total false positives: 0
+  PASS  Cortisol restraint across all stable domains
+
+
+============================================================
+  TEST SUITE SUMMARY
+============================================================
+  Passed: 9/10
+
+  #    Domain                                       F1  False+ Status
+  -----------------------------------------------------------------
+  1    Medical Imaging -- Chest X-ray anomaly    0.489      14  FAIL
+  2    Industrial QC -- Verbal defect specification  1.000       0  PASS
+  3    Satellite Imagery -- Crop stress detection  0.889       5  PASS
+  4    Surgical Robotics -- Intraoperative anomaly  1.000       0  PASS
+  5    Drug Discovery -- Cell morphology shift   1.000       0  PASS
+  6    Financial Markets -- Order book anomaly   1.000       0  PASS
+  7    Structural Health -- Bridge deck degradation  1.000       0  PASS
+  8    Wildlife Monitoring -- Animal presence    1.000       0  PASS
+  9    Autonomous Driving -- Road condition shift  1.000       0  PASS
+  10   Cortisol restraint                        0.000       0  PASS
+
+  Encoder: synthetic (no GPU needed)
+
+  MOSTLY PASSING -- 1 tests need tuning
+
+  Saved: neuro_vlm_poc_results.json
+
+NeMo-WM VLM -- Multi-Domain Proof of Concept Suite
+============================================================
+Encoder: DINOv2-Student
+
+  ==========================================================
+  TEST 1 -- Medical Imaging -- Chest X-ray anomaly
+  Text anchor: 'normal chest X-ray clear lungs no lesions'
+  ==========================================================
+  Stable DA: mean=0.0501
+  Shift  DA: mean=0.0785
+  Threshold: 0.0556
+  F1=0.618  P=0.486  R=0.850  False+=18
+  PASS  Medical Imaging -- Chest X-ray anomaly
+
+  ==========================================================
+  TEST 2 -- Industrial QC -- Verbal defect specification
+  Text anchor: 'clean weld seam no cracks uniform surface'
+  ==========================================================
+  Stable DA: mean=0.0321
+  Shift  DA: mean=0.0779
+  Threshold: 0.0600
+  F1=0.816  P=0.690  R=1.000  False+=9
+  PASS  Industrial QC -- Verbal defect specification
+
+  ==========================================================
+  TEST 3 -- Satellite Imagery -- Crop stress detection
+  Text anchor: 'healthy green agricultural field no stress'
+  ==========================================================
+  Stable DA: mean=0.0077
+  Shift  DA: mean=0.2379
+  Threshold: 0.2090
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Satellite Imagery -- Crop stress detection
+
+  ==========================================================
+  TEST 4 -- Surgical Robotics -- Intraoperative anomaly
+  Text anchor: 'normal tissue plane healthy vasculature'
+  ==========================================================
+  Stable DA: mean=0.0244
+  Shift  DA: mean=0.3136
+  Threshold: 0.2543
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Surgical Robotics -- Intraoperative anomaly
+
+  ==========================================================
+  TEST 5 -- Drug Discovery -- Cell morphology shift
+  Text anchor: 'healthy cell normal morphology intact membrane'
+  ==========================================================
+  Stable DA: mean=0.0242
+  Shift  DA: mean=0.3136
+  Threshold: 0.2543
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Drug Discovery -- Cell morphology shift
+
+  ==========================================================
+  TEST 6 -- Financial Markets -- Order book anomaly
+  Text anchor: 'balanced order book normal bid ask spread'
+  ==========================================================
+  Stable DA: mean=0.0005
+  Shift  DA: mean=0.0130
+  Threshold: 0.0116
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Financial Markets -- Order book anomaly
+
+  ==========================================================
+  TEST 7 -- Structural Health -- Bridge deck degradation
+  Text anchor: 'intact bridge deck no visible cracking'
+  ==========================================================
+  Stable DA: mean=0.0906
+  Shift  DA: mean=0.1524
+  Threshold: 0.1271
+  F1=0.735  P=0.621  R=0.900  False+=11
+  PASS  Structural Health -- Bridge deck degradation
+
+  ==========================================================
+  TEST 8 -- Wildlife Monitoring -- Animal presence
+  Text anchor: 'empty forest path no animals visible'
+  ==========================================================
+  Stable DA: mean=0.0230
+  Shift  DA: mean=0.0315
+  Threshold: 0.0226
+  F1=0.702  P=0.541  R=1.000  False+=17
+  PASS  Wildlife Monitoring -- Animal presence
+
+  ==========================================================
+  TEST 9 -- Autonomous Driving -- Road condition shift
+  Text anchor: 'clear dry road normal traffic conditions'
+  ==========================================================
+  Stable DA: mean=0.0229
+  Shift  DA: mean=0.2273
+  Threshold: 0.1709
+  F1=1.000  P=1.000  R=1.000  False+=0
+  PASS  Autonomous Driving -- Road condition shift
+
+  ==========================================================
+  TEST 10 -- Cortisol Restraint (cross-domain)
+  Claim: cortisol does NOT fire on stable sequences
+  ==========================================================
+    chest_normal         n=30 DA_mean=0.0848 baseline=0.2892 false+=0
+    weld_normal          n=30 DA_mean=0.0457 baseline=0.2005 false+=0
+    field_healthy        n=30 DA_mean=0.0128 baseline=0.0519 false+=0
+    bridge_normal        n=30 DA_mean=0.1336 baseline=0.5088 false+=0
+    road_clear           n=30 DA_mean=0.0324 baseline=0.1333 false+=0
+
+  Total false positives: 0
+  PASS  Cortisol restraint across all stable domains
+
+
+============================================================
+  TEST SUITE SUMMARY
+============================================================
+  Passed: 10/10
+
+  #    Domain                                       F1  False+ Status
+  -----------------------------------------------------------------
+  1    Medical Imaging -- Chest X-ray anomaly    0.618      18  PASS
+  2    Industrial QC -- Verbal defect specification  0.816       9  PASS
+  3    Satellite Imagery -- Crop stress detection  1.000       0  PASS
+  4    Surgical Robotics -- Intraoperative anomaly  1.000       0  PASS
+  5    Drug Discovery -- Cell morphology shift   1.000       0  PASS
+  6    Financial Markets -- Order book anomaly   1.000       0  PASS
+  7    Structural Health -- Bridge deck degradation  0.735      11  PASS
+  8    Wildlife Monitoring -- Animal presence    0.702      17  PASS
+  9    Autonomous Driving -- Road condition shift  1.000       0  PASS
+  10   Cortisol restraint                        0.000       0  PASS
+
+  Encoder: DINOv2/CLIP
+
+  ALL PASS -- NeMo-WM VLM architecture validated across
+  10 domains using synthetic proof-of-concept data.
+  Ready for real domain data integration.
+
+  Saved: neuro_vlm_poc_results.json
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python final_aim_probe.py
+
+Final AIM Probe -- All Four ViT-Tiny Encoders
+=================================================================
+In-distribution (first 40 files), n=800
+
+  Probing A_contrastive (ep=19 loss=0.8355)...
+    n=0 samples
+  Probing B_neuro_original (ep=19 loss=-1.4995)...
+    n=0 samples
+  Probing B_neuro_fixed (ep=19 loss=0.4562)...
+    n=0 samples
+  Probing C_hybrid (ep=19 loss=-0.1401)...
+    n=0 samples
+
+===========================================================================
+  Signal               A_contrastive  B_neuro_origin   B_neuro_fixed        C_hybrid
+  ----------------------------------------------------------------------
+  linear_vel                   nan *           nan             nan             nan
+  angular_vel                  nan *           nan             nan             nan
+  gps_lat                      nan *           nan             nan             nan
+  gps_lon                      nan *           nan             nan             nan
+
+  Wins: A_contrastive=4 B_neuro_original=0 B_neuro_fixed=0 C_hybrid=0
+  Overall winner: Contrastive
+
+  CONTRASTIVE wins -- need more data or epochs for neuro signals
+
+  Key comparison -- Fixed vs Original NeuroLoss:
+    linear_vel         original=nan  fixed=nan  delta=+nan (same)
+    angular_vel        original=nan  fixed=nan  delta=+nan (same)
+    gps_lat            original=nan  fixed=nan  delta=+nan (same)
+    gps_lon            original=nan  fixed=nan  delta=+nan (same)
+
+  Saved: final_aim_probe_results.json
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python final_aim_probe.py
+
+Final AIM Probe -- All Four ViT-Tiny Encoders
+=================================================================
+In-distribution (first 40 files), n=800
+
+  Probing A_contrastive (ep=19 loss=0.8355)...
+    Found 40 files in recon_data/recon_release
+    n=395 samples
+  Probing B_neuro_original (ep=19 loss=-1.4995)...
+    Found 40 files in recon_data/recon_release
+    n=395 samples
+  Probing B_neuro_fixed (ep=19 loss=0.4562)...
+    Found 40 files in recon_data/recon_release
+    n=395 samples
+  Probing C_hybrid (ep=19 loss=-0.1401)...
+    Found 40 files in recon_data/recon_release
+    n=395 samples
+
+===========================================================================
+  Signal               A_contrastive  B_neuro_origin   B_neuro_fixed        C_hybrid
+  ----------------------------------------------------------------------
+  linear_vel               -0.0442 *       -0.7181         -1.8160         -0.1024
+  angular_vel              -0.0790         -0.2605         -0.2630         -0.0704 *
+  gps_lat                   0.1643          0.5029 *        0.3366          0.2270
+  gps_lon                   0.0832          0.3086 *       -0.4966         -0.0586
+
+  Wins: A_contrastive=1 B_neuro_original=2 B_neuro_fixed=0 C_hybrid=1
+  Overall winner: Neuro(broken)
+
+  Key comparison -- Fixed vs Original NeuroLoss:
+    linear_vel         original=-0.7181  fixed=-1.8160  delta=-1.0979 (worse)
+    angular_vel        original=-0.2605  fixed=-0.2630  delta=-0.0025 (worse)
+    gps_lat            original=0.5029  fixed=0.3366  delta=-0.1663 (worse)
+    gps_lon            original=0.3086  fixed=-0.4966  delta=-0.8052 (worse)
+
+  Saved: final_aim_probe_results.json
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python -c "
+>> with open('train_vit_temporal_split.py') as f:
+>>     code = f.read()
+>> code = code.replace(
+>>     'from train_encoder_b_fixed import ViTTiny as ViTTinyBase  # type: ignore',
+>>     '# ViTTinyBase loaded inline'
+>> )
+>> with open('train_vit_temporal_split.py', 'w') as f:
+>>     f.write(code)
+>> print('fixed')
+>> "
+fixed
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python train_vit_temporal_split.py `
+>>     --max-files 200 `
+>>     --epochs    10 `
+>>     --log-every 200
+
+ViT-Tiny Temporal Split -- Phase 2a Next Step
+============================================================
+Improvements over baseline:
+  1. Temporal pairs (t, t+4) instead of augmentation pairs
+  2. Split projection heads (vel=32 spatial=32 general=64)
+  3. Fixed NeuroLoss (positive signals, inverse 5HT)
+134s): 200, Epochs: 10, k=4
+  [ep00 s00400] loss=1.5883 da=0.0011 sht=0.4994 ne=0.0 ach=0.2725 ecb=0.1139 temp=0.8316 (271s)
+  [ep00 s00600] loss=1.5332 da=0.0007 sht=0.4996 ne=0.0 ach=0.1387 ecb=0.2401 temp=0.8316 (413s)
+  [ep00 s00800] loss=1.3854 da=0.0006 sht=0.4997 ne=0.0 ach=0.1664 ecb=0.1358 temp=0.8319 (557s)
+  Epoch 00 mean=1.5876
+  -> saved (1.5876)
+  [ep01 s01000] loss=1.2639 da=0.0002 sht=0.4999 ne=0.0 ach=0.1569 ecb=0.0842 temp=0.8318 (701s)
+  [ep01 s01200] loss=1.2792 da=0.0002 sht=0.4999 ne=0.0 ach=0.192 ecb=0.1256 temp=0.8318 (844s)
+  [ep01 s01400] loss=1.1871 da=0.0002 sht=0.4999 ne=0.0 ach=0.058 ecb=0.225 temp=0.8318 (988s)
+  [ep01 s01600] loss=1.0526 da=0.0003 sht=0.4998 ne=0.0 ach=0.0579 ecb=0.1568 temp=0.8318 (1130s)
+  Epoch 01 mean=1.2327
+  -> saved (1.2327)
+  [ep02 s01800] loss=0.9351 da=0.0001 sht=0.4999 ne=0.0 ach=0.0576 ecb=0.0903 temp=0.8318 (1271s)
+  [ep02 s02000] loss=0.9586 da=0.0002 sht=0.4999 ne=0.0 ach=0.1089 ecb=0.1113 temp=0.8318 (1413s)
+  [ep02 s02200] loss=1.0508 da=0.0001 sht=0.4999 ne=0.0 ach=0.1691 ecb=0.1992 temp=0.8318 (1557s)
+  [ep02 s02400] loss=0.8751 da=0.0001 sht=0.5 ne=0.0 ach=0.0825 ecb=0.1752 temp=0.8318 (1700s)
+  Epoch 02 mean=0.9645
+  -> saved (0.9645)
+  [ep03 s02600] loss=0.8354 da=0.0001 sht=0.5 ne=0.0 ach=0.0848 ecb=0.1743 temp=0.8318 (1843s)
+  [ep03 s02800] loss=0.7706 da=0.0001 sht=0.5 ne=0.0 ach=0.0871 ecb=0.1295 temp=0.8318 (1986s)
+  [ep03 s03000] loss=0.7315 da=0.0001 sht=0.5 ne=0.0 ach=0.0937 ecb=0.1156 temp=0.8318 (2131s)
+  [ep03 s03200] loss=0.6901 da=0.0001 sht=0.5 ne=0.0 ach=0.0652 ecb=0.1589 temp=0.8318 (2276s)
+  Epoch 03 mean=0.7595
+  -> saved (0.7595)
+  [ep04 s03400] loss=0.6769 da=0.0001 sht=0.5 ne=0.0 ach=0.0237 ecb=0.2911 temp=0.8318 (2420s)
+  [ep04 s03600] loss=0.6393 da=0.0001 sht=0.5 ne=0.0 ach=0.0766 ecb=0.161 temp=0.8318 (2566s)
+  [ep04 s03800] loss=0.5708 da=0.0001 sht=0.5 ne=0.0 ach=0.032 ecb=0.2032 temp=0.8318 (2712s)
+  [ep04 s04000] loss=0.6271 da=0.0001 sht=0.4999 ne=0.0 ach=0.0831 ecb=0.2146 temp=0.8318 (2857s)
+  [ep04 s04200] loss=0.5496 da=0.0001 sht=0.5 ne=0.0 ach=0.0378 ecb=0.2514 temp=0.8318 (3002s)
+  Epoch 04 mean=0.6094
+  -> saved (0.6094)
+  [ep05 s04400] loss=0.5639 da=0.0001 sht=0.4999 ne=0.0 ach=0.0312 ecb=0.3814 temp=0.8318 (3148s)
+  [ep05 s04600] loss=0.5417 da=0.0001 sht=0.5 ne=0.0 ach=0.0771 ecb=0.2223 temp=0.8318 (3294s)
+  [ep05 s04800] loss=0.4959 da=0.0 sht=0.5 ne=0.0 ach=0.0308 ecb=0.3759 temp=0.8318 (3440s)
+  [ep05 s05000] loss=0.4487 da=0.0001 sht=0.5 ne=0.0 ach=0.0292 ecb=0.3466 temp=0.8318 (3586s)
+  Epoch 05 mean=0.4864
+  -> saved (0.4864)
+  [ep06 s05200] loss=0.4065 da=0.0 sht=0.5 ne=0.0 ach=0.0507 ecb=0.1916 temp=0.8318 (3731s)
+  [ep06 s05400] loss=0.3919 da=0.0 sht=0.5 ne=0.0 ach=0.0557 ecb=0.165 temp=0.8318 (3877s)
+  [ep06 s05600] loss=0.3502 da=0.0 sht=0.5 ne=0.0 ach=0.0219 ecb=0.2853 temp=0.8318 (4022s)
+  [ep06 s05800] loss=0.3427 da=0.0 sht=0.5 ne=0.0 ach=0.0376 ecb=0.2323 temp=0.8318 (4167s)
+  Epoch 06 mean=0.3790
+  -> saved (0.3790)
+  [ep07 s06000] loss=0.3366 da=0.0 sht=0.5 ne=0.0 ach=0.0249 ecb=0.3723 temp=0.8318 (4313s)
+  [ep07 s06200] loss=0.2659 da=0.0 sht=0.5 ne=0.0 ach=0.0135 ecb=0.2054 temp=0.8318 (4459s)
+  [ep07 s06400] loss=0.3774 da=0.0 sht=0.5 ne=0.0 ach=0.0692 ecb=0.3112 temp=0.8318 (4604s)
+  [ep07 s06600] loss=0.3246 da=0.0 sht=0.5 ne=0.0 ach=0.035 ecb=0.43 temp=0.8318 (4750s)
+  Epoch 07 mean=0.3131
+  -> saved (0.3131)
+  [ep08 s06800] loss=0.2572 da=0.0 sht=0.5 ne=0.0 ach=0.0281 ecb=0.2229 temp=0.8318 (4896s)
+  [ep08 s07000] loss=0.2478 da=0.0 sht=0.5 ne=0.0 ach=0.026 ecb=0.2687 temp=0.8318 (5042s)
+  [ep08 s07200] loss=0.2316 da=0.0 sht=0.5 ne=0.0 ach=0.0368 ecb=0.1264 temp=0.8318 (5188s)
+  [ep08 s07400] loss=0.2303 da=0.0 sht=0.5 ne=0.0 ach=0.0254 ecb=0.3385 temp=0.8318 (5334s)
+  [ep08 s07600] loss=0.2133 da=0.0 sht=0.5 ne=0.0 ach=0.0292 ecb=0.2641 temp=0.8318 (5480s)
+  Epoch 08 mean=0.2533
+  -> saved (0.2533)
+  [ep09 s07800] loss=0.2054 da=0.0 sht=0.5 ne=0.0 ach=0.0349 ecb=0.2022 temp=0.8318 (5626s)
+  [ep09 s08000] loss=0.1778 da=0.0 sht=0.5 ne=0.0 ach=0.0239 ecb=0.2222 temp=0.8318 (5772s)
+  [ep09 s08200] loss=0.1507 da=0.0 sht=0.5 ne=0.0 ach=0.014 ecb=0.2209 temp=0.8318 (5917s)
+  [ep09 s08400] loss=0.1457 da=0.0 sht=0.5 ne=0.0 ach=0.0143 ecb=0.2484 temp=0.8318 (6062s)
+  Epoch 09 mean=0.1974
+  -> saved (0.1974)
+
+============================================================
+AIM PROBE (in-distribution, split encoder)
+============================================================
+Probing ViT-Tiny Temporal+Split (this run)...
+  n=395 samples
+Traceback (most recent call last):
+  File "C:\Users\MeteorAI\Desktop\CORTEX\train_vit_temporal_split.py", line 388, in <module>
+    ea = ViTTinyBase()
+         ^^^^^^^^^^^
+NameError: name 'ViTTinyBase' is not defined
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
+
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX> python -c "
+>> with open('final_aim_probe.py') as f:
+>>     code = f.read()
+>>
+>> # Add temporal split checkpoint to the probe list
+>> code = code.replace(
+>>     '    \"C_hybrid\":            \"checkpoints/cwm/vit_tiny_hybrid.pt\",',
+>>     '    \"C_hybrid\":            \"checkpoints/cwm/vit_tiny_hybrid.pt\",\n    \"D_temporal_split\":    \"checkpoints/cwm/vit_tiny_temporal_split.pt\",'
+>> )
+>>
+>> with open('final_aim_probe.py', 'w') as f:
+>>     f.write(code)
+>> print('added D_temporal_split')
+>> "
+>> python final_aim_probe.py
+  File "<string>", line 7
+    '    " C_hybrid\:
+    ^
+SyntaxError: unterminated string literal (detected at line 7)
+
+Final AIM Probe -- All Four ViT-Tiny Encoders
+=================================================================
+In-distribution (first 40 files), n=800
+
+  Probing A_contrastive (ep=19 loss=0.8355)...
+    Found 40 files in recon_data/recon_release
+    n=395 samples
+  Probing B_neuro_original (ep=19 loss=-1.4995)...
+    Found 40 files in recon_data/recon_release
+    n=395 samples
+  Probing B_neuro_fixed (ep=19 loss=0.4562)...
+    Found 40 files in recon_data/recon_release
+    n=395 samples
+  Probing C_hybrid (ep=19 loss=-0.1401)...
+    Found 40 files in recon_data/recon_release
+    n=395 samples
+
+===========================================================================
+  Signal               A_contrastive  B_neuro_origin   B_neuro_fixed        C_hybrid
+  ----------------------------------------------------------------------
+  linear_vel               -0.0442 *       -0.7181         -1.8160         -0.1024
+  angular_vel              -0.0790         -0.2605         -0.2630         -0.0704 *
+  gps_lat                   0.1643          0.5029 *        0.3366          0.2270
+  gps_lon                   0.0832          0.3086 *       -0.4966         -0.0586
+
+  Wins: A_contrastive=1 B_neuro_original=2 B_neuro_fixed=0 C_hybrid=1
+  Overall winner: Neuro(broken)
+
+  Key comparison -- Fixed vs Original NeuroLoss:
+    linear_vel         original=-0.7181  fixed=-1.8160  delta=-1.0979 (worse)
+    angular_vel        original=-0.2605  fixed=-0.2630  delta=-0.0025 (worse)
+    gps_lat            original=0.5029  fixed=0.3366  delta=-0.1663 (worse)
+    gps_lon            original=0.3086  fixed=-0.4966  delta=-0.8052 (worse)
+
+  Saved: final_aim_probe_results.json
+(ryzen-ai-1.7.0) PS C:\Users\MeteorAI\Desktop\CORTEX>
