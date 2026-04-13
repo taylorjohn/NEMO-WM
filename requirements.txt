@@ -1,0 +1,27 @@
+# NeMo-WM: Neuromodulated World Models
+# Python 3.11+ required
+
+# Core
+torch>=2.1.0
+numpy>=1.24.0
+h5py>=3.9.0
+scipy>=1.11.0
+scikit-learn>=1.3.0
+tqdm>=4.65.0
+
+# Vision
+Pillow>=10.0.0
+torchvision>=0.16.0
+
+# CLIP (for SemanticHead / CLIPBridge)
+git+https://github.com/openai/CLIP.git
+
+# FAISS (GPS retrieval)
+faiss-cpu>=1.7.4
+
+# Weights & Biases (optional, for experiment tracking)
+# wandb>=0.16.0
+
+# AMD NPU deployment (optional, Ryzen AI SDK 1.7.0)
+# onnxruntime>=1.17.0
+# See: https://ryzenai.docs.amd.com/en/latest/
