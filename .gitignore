@@ -1,100 +1,18 @@
-﻿# Data directories
-recon_data/
-bearing_data/
-cwru_data/
-mimii_data/
-cardiac_data/
-heart_data/
-smap_data/
-data/
-tiny-imagenet-200/
-maze_frames/
-phase2_*/
-goals/
-lineage/
-predictors/
-npu_models/
-weights/
-
-# Checkpoints and models
-checkpoints/
+﻿*.npy
+*.pkl
 *.pt
-*.onnx
 *.pth
-
-# Outputs
-outputs/
-results/
-sessions/
-mnt/
-benchmark_data/
-
-# Python
+*.onnx
+*.tar.gz
+*.rar
+*.7z
+*.mp4
+*.wav
+*.csv
 __pycache__/
 *.pyc
-*.bak
-*.bak_*
-
-# Media and docs
-*.log
-*.zip
-*.pdf
-*.docx
-*.psd
-*.exe
-*.png
-*.jpg
-*.svg
-da_*.png
-debug_frame_*.png
-
-# Temp fix/patch scripts
-_fix*.py
-_patch*.py
-_add*.py
-fix_*.py
-patch_*.py
-diagnose_*.py
-debug_*.py
-
-# JSON results (large)
-*.json
-
-# Old/backup files
-*OLD*
-*old*
-*.bak_recon
-*.bak_neuro
-
-# Env
-.env
-
-# Session files
-4-11.txt
-post_mordem.txt
-*.html
-*.jsx
-*.yaml
-*.txt
-*backup*
-*_backup*
-cortex_16/
-cortex_brain/
-cortex_wm/
-cortex_pe/
-*.tar.gz
-*.npy
-*.db
-*.csv
-*.onnx.data
-language_memory.db
-recon_dataset.tar.gz
-geo_latent_db_*.npy
-cortex_combat_log.csv
-quantized_info.csv
-huggingface_token_jepa2.txt
-huggingface_token_jepa2.txt
-*.token
-*_token*
-*token*.txt
-.env
+checkpoints/
+data/
+outputs/overnight_checkpoints/
+.DS_Store
+Thumbs.db

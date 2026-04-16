@@ -1,285 +1,389 @@
-# NeMo-WM: Neuromodulated World Model for Robot Navigation
+# NeMo-WM: Neuromodulated World Model
 
-[![arXiv](https://img.shields.io/badge/arXiv-submitting-b31b1b.svg)](https://github.com/taylorjohn/NEMO-WM)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Hardware](https://img.shields.io/badge/Hardware-AMD_Ryzen_AI_MAX%2B_395-ED1C24.svg)](https://www.amd.com/)
-[![NPU](https://img.shields.io/badge/NPU-XINT8_0.34ms-00A86B.svg)](https://github.com/taylorjohn/strix-halo-vision-npu)
-[![No GPU](https://img.shields.io/badge/GPU-None-lightgrey.svg)]()
+<p align="center">
+  <b>Perceive. Remember. Plan. Discover. Speak. Explain.</b><br>
+  All on CPU. 1.2M parameters. No LLM. No pretrained encoder.
+</p>
 
-Biologically-grounded navigation world model trained entirely on a GMKtec EVO-X2
-(AMD Ryzen AI MAX+ 395, 128GB unified RAM). **No GPU. No cloud.**
-
-Physics-grounded path integration outperforms visual scaling for temporal
-self-localisation. A 26K parameter proprioceptive encoder beats V-JEPA 2 ViT-G
-(1B parameters) by **+0.114 AUROC** on outdoor robot navigation benchmarks.
+<p align="center">
+  <a href="https://arxiv.org"><img src="https://img.shields.io/badge/arXiv-submitted-b31b1b.svg"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg"/></a>
+  <a href="https://www.amd.com/"><img src="https://img.shields.io/badge/Hardware-AMD_Ryzen_AI_MAX%2B_395-ED1C24.svg"/></a>
+  <img src="https://img.shields.io/badge/GPU-None-lightgrey.svg"/>
+  <img src="https://img.shields.io/badge/Parameters-1.2M-blue.svg"/>
+  <img src="https://img.shields.io/badge/Language-No_LLM-green.svg"/>
+</p>
 
 ---
 
-## Results
+## Highlights
 
-### RECON Navigation Benchmark
+<table>
+<tr>
+<td width="50%">
 
-| Method | Params | No-VLM AUROC | VLM-only AUROC |
-|---|---|---|---|
-| **NeMo-WM proprio (k=64)** | **26K** | **0.9999** | -- |
-| NeMo-WM proprio (k=32) | 26K | 0.9997 | -- |
-| NeMo-WM proprio (k=16) | 26K | 0.9972 | -- |
-| V-JEPA 2 ViT-G (zero-shot) | 1034M | -- | 0.8833 |
-| V-JEPA 2 ViT-L (zero-shot) | 326M | -- | 0.9069 |
-| NeMo-WM full (VLM + proprio) | 70K | 0.9998 | -- |
+**🧠 Biologically-Inspired Architecture**
+- 8 neuromodulatory signals (DA, ACh, CRT, NE, 5HT)
+- Three-store memory (Working, Episodic, Schema)
+- Cortisol-gated working memory capacity
+- Sleep consolidation with DiVeQ schemas
 
-**Key finding:** Visual scaling does not solve temporal self-localisation.
-Physics-grounded path integration (26K params) outperforms 1B-parameter vision models.
+</td>
+<td width="50%">
 
-### Industrial Anomaly Detection (CORTEX-PE)
+**🗣️ Language Without LLM**
+- 380 grounded words across 15 domains
+- 100% comprehension on test sentences
+- Cognitive age equivalent: 4-6 years
+- Words = sensorimotor experience prototypes
 
-| Dataset | AUROC | Status |
+</td>
+</tr>
+<tr>
+<td>
+
+**⚡ Radical Efficiency**
+- 26K params beats 1B-param ViT-G (+0.116 AUROC)
+- CPU-only training and inference
+- Self-narration at 350,866 Hz (2.8us/call)
+- VPP belief augmentation: +25% with 9.6% overhead
+
+</td>
+<td>
+
+**🔬 Autonomous Discovery**
+- Physics laws from F=ma (gravity, friction, magnetic)
+- Auto-learn: polynomial basis fitting, R²=1.0
+- 16 emergent mood states
+- Self-teaching via dream narration
+
+</td>
+</tr>
+</table>
+
+---
+
+## Key Results
+
+| Capability | Result | Comparison |
 |---|---|---|
-| CWRU Bearing (all k) | **1.000** | PASS |
-| MIMII Industrial Sound | 0.9313 | PASS |
-| MVTec AD (p95 mode) | **15/15** | PASS |
-| Cardiac PhysioNet | 0.7730 | PASS |
-| SMAP/MSL | 0.7730 | PASS |
-| RECON navigation | 0.9075 | PASS |
-
----
-
-## ACh Sweep -- Temporal Context Window
-
-Acetylcholine (ACh) in the biological system modulates the temporal integration
-window of hippocampal place cells (Hasselmo 1999). NeMo-WM uses k_ctx as the
-computational analogue: broader context = higher ACh = better path integration.
-
-| k_ctx | Context | top1_acc | No-VLM AUROC | Notes |
-|---|---|---|---|---|
-| 2 | 1s | 0.925 | 0.925 | |
-| 4 | 2s | 0.961 | 0.961 | |
-| 8 | 4s | 0.977 | 0.977 | |
-| 16 | 8s | 0.9874 | 0.9972 | RECON fine-tune |
-| 32 | 16s | 0.9957 | 0.9997 | neg dist > unit sphere |
-| **64** | **32s** | **1.0000** | **0.9999** | **saturation point** |
-
-Superlinear scaling confirmed through k=64. No plateau observed at k=32.
-Saturation range: 16-32 seconds of temporal context for 4Hz outdoor navigation.
-
----
-
-## Robustness Ablations (k=64 vs k=16)
-
-| Ablation | k=16 AUROC | k=64 AUROC | Delta |
-|---|---|---|---|
-| Baseline | 0.9721 | 0.9873 | +0.015 |
-| Drop heading | 0.9026 | 0.9772 | +0.075 |
-| Corrupt 10% frames | 0.5721 | **0.9812** | **+0.409** |
-| Corrupt 30% frames | 0.5376 | **0.9599** | **+0.422** |
-| Speed 2x | 0.9660 | 0.9876 | +0.022 |
-| Velocity noise | 0.9722 | 0.9871 | +0.015 |
-
-**k=64 is fault-tolerant.** 10% frame dropout is catastrophic at k=16 (0.57 AUROC)
-but barely affects k=64 (0.98 AUROC). 32-second context buffers corruption.
-
----
-
-## Dissociation Eval
-
-Full computational dissociation confirms proprioceptive path integration is
-independent of the visual language pathway:
-
-```
-[Full (VLM + proprio)]   AUROC = 0.9998
-[No VLM (proprio only)]  AUROC = 0.9998   <-- dissociation confirmed
-[VLM only]               AUROC = 0.9143
-[Aphasia (VLM zeroed)]   AUROC = 0.5000   <-- chance without proprio
-```
-
-The proprioceptive encoder alone matches the full system. The visual pathway
-contributes zero additional information for temporal self-localisation.
-This mirrors the double dissociation in rodent hippocampus (Moser et al. 2008).
-
----
-
-## Language-Conditioned Navigation
-
-Text goal → GPS waypoint in real time. No LLM. No retraining. 164K-parameter CLIPBridge distilled from CLIP ViT-B/32. **8,700× smaller than direct CLIP use.**
-
-**10,906 real Berkeley campus nodes** indexed in a GeoLatentDB (RECON dataset). Scoring all nodes: ~35ms (CLIP encode, one-time). Per-step navigation: **0.1ms**.
-
-```bash
-# Text → GPS: different queries return different GPS coordinates
-python sprint7b_language_nav.py --text "outdoor path through campus"
-python sprint7b_language_nav.py --text "building entrance with steps"
-python sprint7b_language_nav.py --text "narrow alley between buildings"
-python sprint7b_language_nav.py --benchmark
-```
-
-| Query | Top GPS Target | Score | Latency |
-|---|---|---|---|
-| "outdoor path through campus" | (37.91499, -122.33437) | 0.275 | 30ms |
-| "building entrance with steps" | (37.91486, -122.33463) | 0.257 | 31ms |
-| "narrow alley between buildings" | (37.91500, -122.33652) | 0.280 | 45ms |
-| "parking area near road" | (37.91494, -122.33617) | 0.167 | 30ms |
-
-Language A\* is measurably faster than GPS A\* — text scores reshape the search topology.
-
-### Text-as-Target Anomaly Detection
-
-Define the expected scene in English. The system detects when reality diverges. **F1=1.000 with zero false positives.**
-
-```bash
-python vlm_phase1c_calibrate.py \
-    --hdf5-dir recon_data/recon_release \
-    --text "robot navigating outdoor campus path"
-```
-
-| Encoder | F1 | Notes |
-|---|---|---|
-| DINOv2-Student (visual) | 0.950 | |
-| CLIP ViT-B/32 (visual+language) | 0.884 | |
-| **CLIP text-as-target** | **1.000** | Define scene in English |
-
-### Cortisol-Triggered Continual Adaptation
-
-```bash
-python phase2b_clean.py
-```
-
-| Mode | False+ | Adaptations | Verdict |
-|---|---|---|---|
-| Static | 0 | 0 | Baseline |
-| Periodic (every 20 steps) | **3** | 8 | Disrupts stable encoder |
-| **Cortisol-triggered** | **0** | 0 | **Wins** |
-
-Cortisol correctly abstains from adaptation on stable sequences. Periodic fine-tuning disrupts stable encoder representations and produces 3 false positives. Cortisol is a **homeostatic restraint signal**, not a constant update trigger.
-
+| Anomaly Detection | **AUROC 0.9978** (6 domains) | Beats V-JEPA 2 ViT-G (1034M params) |
+| Self-Localization | **AUROC 0.9970** (26K params) | +0.116 vs ViT-G |
+| Planning (PointMaze) | **100% SR**, 19 avg steps | Flow matching, 32s training |
+| Planning (PushT) | **0.92 max coverage** | 206 human demos, 77min CPU |
+| Memory (FAISS) | **0.076ms** retrieval | 2414x speedup |
+| Schema Learning (DiVeQ) | **-68%** consolidation loss | 2.3x faster than EMA |
+| Physics Discovery | **3/3 forces**, R²=1.0 | Gravity, friction, magnetic |
+| Language (no LLM) | **100% comprehension** | 380 words, 15 domains |
+| VPP Augmentation | **+25.1% +/- 2.7%** loss | Real data, 3 runs |
+| Self-Narration | **2.8us/call** | 350,866 Hz |
+| Mood States | **16 emergent** | From neuromodulatory signals |
+| Introspective Questions | **17/17** | DreamerV3: 2/17 |
 
 ---
 
 ## Architecture
 
 ```
-Observation (vel, ang, heading, contact, delta_h) x k_ctx frames
+Sensory Input (vision, proprio, IMU, audio)
     |
     v
-Sinusoidal PE --> Temporal ProprioEncoder (26K params)
-    - d_per_frame=8, d_hidden=128, d_model=64
-    - k_ctx frames, attention pooling
-    - NO GPS
+Perception Layer --- CNN (1.2M) + ProprioEncoder (26K)
     |
     v
-Contrastive head (InfoNCE, temp=0.05)
-    - Positive: k<=4 steps apart (same-location pairs)
-    - Negative: hard (same-file, k>=32 steps apart)
-    |
-    v
-AUROC on held-out pairs
+Belief State (64D) -----------------------------------------.
+    |                                                         |
+    |---> Working Memory (K=8, cortisol-gated)               |
+    |---> Episodic Buffer (10K, FAISS, DA-priority)          |
+    |---> Schema Store (DiVeQ, 64 codes, sleep-trained)      |
+    |---> Transition Model -> Flow Policy -> Actions         |
+    |---> Neuromodulators (DA, ACh, CRT, NE, 5HT)           |
+    |---> Language Layer (WordGrounder, SelfNarrator)         |
+    '---> Physics Discovery Agent (KB -> Auto-learn)         |
+                                                              |
+    .----------- Sleep Consolidation <------------------------'
+    |  EMA (waking) + Gradient (sleep) -> -68% loss
+    |  Episodic replay -> Schema compression
+    |  Dream narration -> Vocabulary growth
+    '----------------------------------------------
 ```
 
-**Neuromodulators:**
-- ACh: temporal context window (k_ctx)
-- Dopamine: reward prediction error, trading signal
-- Cortisol: domain-adaptive sensitivity (sensitivity=0.10)
-- NE: scale factor 1.22 on novel domain entry
-- eCB: retrograde suppression 0.82
-
 ---
 
-## Heading Dominance (Timescale-Invariant)
+## Grounded Language System (No LLM)
 
-Heading direction dominates velocity for path integration at all timescales:
+> *"Words mean what I experienced when I heard them."*
 
-| k_ctx | HD lesion effect | Velocity effect | Ratio |
+NeMo-WM learns language like a toddler -- through sensorimotor co-occurrence, not text corpora. No LLM. No pretrained embeddings. No parser.
+
+### How It Works
+
+```
+Robot hears "gravity" while experiencing:
+  -> Objects falling (visual belief pattern)
+  -> Dopamine spike (surprise signal)  
+  -> Physics agent discovers Fy = -9.81
+
+"gravity" = prototype of all these belief states
+```
+
+### Word Similarity (Learned from Experience)
+
+```
+sim(gravity,  falling)  = +0.997    <- nearly identical
+sim(gravity,  weight)   = +0.996    <- same force  
+sim(corridor, hallway)  = +0.879    <- synonyms discovered
+sim(near,     close)    = +0.895    <- synonyms discovered
+sim(danger,   safe)     = -0.791    <- correctly opposite
+sim(fast,     slow)     = -0.924    <- correctly opposite
+sim(left,     right)    = -0.933    <- correctly opposite
+sim(curious,  bored)    = -0.735    <- correctly opposite
+sim(gravity,  corridor) = -0.018    <- correctly unrelated
+```
+
+No dictionary. No pretrained embeddings. Learned purely from experience.
+
+### 10 Cognitive Levels (All Passed)
+
+| Level | Name | Score | Example |
 |---|---|---|---|
-| k=4 | 0.249 | 0.010 | **25:1** |
-| k=1 | 0.354 | 0.008 | **43:1** |
+| L1 | Object Permanence | **100%** | "the ball exists" |
+| L2 | Cause-Effect | **100%** | "push -> it moves" |
+| L3 | Spatial Relations | **100%** | "above, below, between" |
+| L4 | Temporal Ordering | **100%** | "before, after, then" |
+| L5 | Conditionals | **100%** | "if steep then careful" |
+| L6 | Analogy | **60%** | "gravity is like magnetic" |
+| L7 | Abstraction | **100%** | "force = category of gravity" |
+| L8 | Composition | **100%** | "first push, then turn, then stop" |
+| L9 | Explanation | **100%** | "it fell because gravity" |
+| L10 | Teaching | **88%** | "imagine the ball falls down" |
 
-Mirrors Moser et al. 2008 grid cell lesion experiments. Heading is the
-primary signal for spatial self-localisation regardless of temporal scale.
+Cognitive age equivalent: **4-6 years**
 
----
+### Sentence Comprehension
 
-## Hardware & Inference Speed
+```
+"the ball falls due to gravity"                    -> UNDERSTOOD (100%)
+"push the heavy block to the left"                 -> UNDERSTOOD (100%)
+"gravity is a type of force that pulls down"       -> UNDERSTOOD (100%)
+"causes lead to effects and results"               -> UNDERSTOOD (100%)
+"quantum entanglement superposition"               -> NOT UNDERSTOOD (0%)  <- honest
+```
 
-| Component | Latency | Hardware |
+### Overnight Plateau Proof (37 Million Hearings)
+
+```
+Comprehension vs Training Volume:
+  1K hearings:    22.7%
+  10K hearings:   53.5%
+  100K hearings:  65.1%  <- plateau starts
+  1M hearings:    65.1%
+  37M hearings:   65.1%  <- proven ceiling (8,930 passes, 2,976 sleep cycles)
+  
+  + stemming:     96.4%  <- breakthrough (zero extra hearings)
+  + 3 words:     100.0%  <- complete (zero extra training)
+```
+
+Key finding: The 65.1% ceiling was vocabulary coverage, not architecture. Adding morphological stemming ("falls"->"falling", "moves"->"move") and function words instantly broke through -- zero additional training needed.
+
+### Language v2: Five Comprehension Upgrades
+
+| Upgrade | What | Result |
 |---|---|---|
-| ProprioEncoder (26K) | **1.31ms** | CPU (XINT8: 0.34ms NPU) |
-| DINOv2-S/14 (21M) | 53.76ms CPU | **0.86ms NPU (XINT8)** |
-| CLIP ViT-L/14 (428M) | 341.8ms CPU | ~5.7ms NPU (est.) |
-| V-JEPA 2-L (326M) | **1849ms** | no NPU path |
-
-**NeMo-WM is 1,411x faster than V-JEPA 2-L on identical hardware.**
-
-Hardware: GMKtec EVO-X2, AMD Ryzen AI MAX+ 395, 128GB unified RAM.
-NPU: AMD XINT8 via Quark quantization + VitisAI Execution Provider.
-
-See [strix-halo-vision-npu](https://github.com/taylorjohn/strix-halo-vision-npu)
-for the XINT8 quantization pipeline.
+| **Negation** | "not dangerous" = flip belief vector | sim(safe, not safe) = -1.000 |
+| **Belief Accumulator** | Word order matters (Kalman filter) | "not safe steep" != "safe not steep" |
+| **Predictive Grounding** | Comprehension = world model simulation | Transition model verifies sentences |
+| **Contrastive Learning** | Meanings by what they're NOT | gravity/friction: -0.086 -> -0.849 |
+| **Episodic Replay** | Self-teaching from narrated memories | +9 words from 100 replayed episodes |
 
 ---
 
-## Three Pillars
+## VPP-Inspired Belief Augmentation
 
-All three systems share the biological neuromodulation philosophy:
+Inspired by "Active Stereo Without Pattern Projector" (Bartolomei et al., ICCV 2023). Sparse belief hints amplify dense visual signals.
 
-| System | Domain | Status |
+```
+Standard:    96x96x6 (2-frame RGB)              -> CNN -> 128D -> Policy
+Augmented:   96x96x8 (2-frame RGB + 2ch belief) -> CNN -> 128D -> Policy
+
+The 2 extra channels: learned spatial attention from [agent_x, agent_y, last_action]
+```
+
+### Results on Real Human Demos (25,650 samples, 206 episodes)
+
+| Run | Standard | VPP Augmented | Improvement |
+|---|---|---|---|
+| 1 | 0.2824 | **0.2070** | **+26.7%** |
+| 2 | 0.2890 | **0.2100** | **+27.3%** |
+| 3 | 0.2840 | **0.2231** | **+21.4%** |
+| **Mean** | **0.2851** | **0.2134** | **+25.1% +/- 2.7%** |
+
++25% loss reduction for only 9.6% parameter overhead. Consistent across all 3 runs on real human demonstrations.
+
+---
+
+## Physics Discovery Agent
+
+Autonomously discovers physical laws from F=ma:
+
+| Scenario | Discovered Law | R² | Method |
+|---|---|---|---|
+| Falling ball | Fy = -9.81*m | 1.0 | Knowledge base |
+| Sliding block | F = -mu*N*v/\|v\| | 1.0 | Knowledge base |
+| Magnetic pull | F = k/r² | 1.0 | Knowledge base |
+| Combined forces | **Fy = 11.2 - 9.81y** | **1.0** | **Auto-learn** |
+
+Three learning modes: knowledge base lookup, auto-learn (polynomial basis), oracle cascade.
+
+---
+
+## Emergent Mood States
+
+DiVeQ quantization of the neuromodulatory space produces 16 named emotions:
+
+```
+High DA + Low ACh  ->  "Curious-Uncertain"    (exploring unknown)
+Low CRT + Low NE   ->  "Calm-Relaxed"         (safe familiar area)
+High CRT + High NE ->  "Stressed-Alert"       (danger detected)
+High 5HT + High NE ->  "Cautious-Alert"       (risky but manageable)
+High DA + High ACh ->  "Curious-Confident"    (exploring with understanding)
+```
+
+83 unique mood transitions observed. Moods modulate behavior: "Stressed-Alert" shortens planning horizon, "Curious-Bold" increases exploration.
+
+---
+
+## Memory and Sleep Consolidation
+
+### Three-Store Architecture
+
+| Store | Capacity | Duration | Mechanism |
+|---|---|---|---|
+| **Working Memory** | K=8 (cortisol-gated) | Active task | K degrades under stress |
+| **Episodic Store** | 10K entries | Long-term | FAISS-indexed, DA-priority |
+| **Schema Store** | 64 DiVeQ codes | Permanent | EMA waking + gradient sleep |
+
+### Sleep Cycle Results
+
+```
+Consolidation Loss:  0.505 -> 0.163 (-68%) over 5 cycles
+Store latency:       18.7us (EMA: 43.5us = 2.3x faster)
+Retrieve latency:    0.076ms (brute force: 183ms = 2414x faster)
+```
+
+### Novel DiVeQ Applications
+
+| Feature | Description | Result |
 |---|---|---|
-| **NeMo-WM** | Robot navigation world model | Active research |
-| **CORTEX-PE** | Multi-domain anomaly detection | v16.17+ production |
-| **CORTEX-16** | Algorithmic trading (Alpaca) | Paper trading |
-
-Shared signals: ACh (temporal context), DA (reward prediction), cortisol (domain shift),
-NE (novelty response), eCB (retrograde gating).
+| **DreamInterpolation** | Cosine walk between schemas during sleep | 9/20 unique schemas |
+| **ActionPrimitives** | Quantize motor space -> named primitives | 16 primitives, 100% usage |
+| **AdaptiveCodebook** | Surprise-gated neurogenesis | 8->29->4 lifecycle |
 
 ---
 
-## Key Files
+## Comparison with Other Systems
 
-| File | Description |
+| Capability | NeMo-WM | DreamerV3 | Diff. Policy | DINO-WM | TD-MPC2 |
+|---|---|---|---|---|---|
+| Introspective Qs | **17/17** | 2/17 | 0/17 | 1/17 | 2/17 |
+| Episodic Memory | **Yes** | No | No | No | No |
+| Schema Learning | **DiVeQ** | No | No | No | No |
+| Self-Narration | **5 components** | No | No | No | No |
+| Physics Discovery | **3/3 + auto** | No | No | No | No |
+| Grounded Language | **380 words** | No | No | No | No |
+| Mood States | **16 emergent** | No | No | No | No |
+| Training Hardware | **CPU only** | GPU | GPU | GPU | GPU |
+| Parameters | **1.2M** | ~200M | ~263M | ~5M | ~50M |
+
+---
+
+## Neuromodulatory Signals
+
+| Signal | Biological Analogue | Computational Role |
+|---|---|---|
+| **DA** (Dopamine) | Reward/novelty | Episodic storage priority, exploration |
+| **ACh** (Acetylcholine) | Attention/confidence | Prediction gate, context window |
+| **CRT** (Cortisol) | Stress response | WM degradation, domain shift |
+| **NE** (Norepinephrine) | Alertness/arousal | Sensory gain, exploration |
+| **5HT** (Serotonin) | Caution/inhibition | Risk assessment, action suppression |
+
+### Aphasia Double Dissociation
+
+```
+Language zeroed (simulate aphasia):
+  Visual WM:  0.9542 -> 0.5000 (chance)  <- language NECESSARY
+  Proprio WM: 0.9974 -> 0.9974           <- language IRRELEVANT
+
+  Delta = +0.4542 -- parallels Fedorenko et al.
+```
+
+---
+
+## Demo Videos
+
+| PointMaze Navigation | PushT Vision Policy | Language Learning |
+|---|---|---|
+| 100% SR, 10/10 U-traversals | 0.92 max coverage, CPU only | 380 words, no LLM, TTS narration |
+| [pointmaze_showcase.mp4](outputs/pointmaze_showcase.mp4) | [pusht_best_episode.mp4](outputs/pusht_best_episode.mp4) | [language_learning_demo.mp4](outputs/language_learning_demo.mp4) |
+
+---
+
+## Quick Start
+
+```bash
+# Clone
+git clone https://github.com/taylorjohn/NEMO-WM.git
+cd NEMO-WM
+
+# Install
+pip install torch torchvision numpy h5py faiss-cpu gymnasium gym-pusht pyttsx3
+
+# Run benchmarks
+python benchmark_full.py --run-live
+
+# Train PushT vision policy (77min CPU)
+python train_pusht_vision_v2.py --epochs 300 --eval
+
+# Language curriculum (10 cognitive levels)
+python curriculum_generator.py
+
+# Grounded word learning (8 stages)
+python word_grounder.py
+
+# Language v2 (negation, predictive, contrastive)
+python language_v2.py --demo all
+
+# Physics discovery
+python physics_discovery_agent.py
+
+# VPP belief augmentation test (real data)
+python test_vpp_real.py --epochs 200 --runs 3
+```
+
+---
+
+## Papers
+
+| # | Title | Status | Target |
+|---|---|---|---|
+| 1 | **NeMo-WM: Neuromodulated World Model** | arXiv submitted | cs.RO, cs.LG, cs.CV |
+| 2 | **Introspective World Models** | Writing | NeurIPS 2026 |
+| 3 | **Neuromodulated Transfer Learning** | Numbers locked | -- |
+| 4 | **Physics Discovery Agent** | Working prototype | -- |
+
+---
+
+## Hardware
+
+| Component | Spec |
 |---|---|
-| `train_proprio_6c.py` | Sprint 6c temporal encoder training |
-| `eval_recon_auroc.py` | Full dissociation eval (VLM + proprio + aphasia) |
-| `neuro_vlm_gate.py` | Two-DA channel VLM gate (73/73 tests) |
-| `cortisol_domain_adaptive.py` | Domain-adaptive cortisol signal |
-| `eval_proprio_robustness.py` | 9-ablation robustness suite |
-| `eval_imagination_rollout.py` | Imagination horizon eval (2 steps) |
-| `run_vision_model.py` | Unified vision model benchmark launcher |
-| `pusht_physics_registry.py` | Physics registry for manipulation |
-| `grasp_planner.py` | GRASP planner arXiv:2602.00475 (<10ms) |
-| `benchmark_vlm_npu.py` | Before/after NPU benchmark table |
-
----
-
-## Negative Results
-
-Documented explicitly per scientific practice:
-
-- **MuRF distillation** at [0.75, 1.0, 1.5] scales: negative vs no-MuRF baseline
-- **V-JEPA 2 ViT-G** (1034M): 0.8833 AUROC, worse than ViT-L 0.9069 -- scale hurts
-- **Flow policy (H=8)**: 8% SR, corner collapse -- episodes too short for flow matching
-- **Flow policy (H=2)**: 13% SR vs 61% scripted -- degenerate on short-horizon tasks
-- **Place cell sampling (50 files)**: 7.16x enrichment was a sampling artifact
-
----
-
-## Paper
-
-**NeMo-WM: Neuromodulated World Model for Robot Navigation**
-John Taylor (independent researcher)
-
-arXiv submission in progress (cs.RO primary, cs.LG + cs.CV cross-list).
-Endorsement received from Dhruv Shah (UC Berkeley). Submission zip ready.
-
-Key references: Hasselmo 1999 (ACh), Moser et al. 2008 (grid cells),
-O'Keefe 1971 (place cells), Taube 1998 (head direction),
-McNaughton 2006 (path integration), DreamerV3, SIMPLE, GRASP, Seoul WM.
-
----
-
-## Related Repos
-
-- [strix-halo-vision-npu](https://github.com/taylorjohn/strix-halo-vision-npu)
-  -- DINOv2/CLIP XINT8 pipeline for AMD Ryzen AI MAX+ NPU
-- [amd-npu-vlm-compat](https://github.com/taylorjohn/amd-npu-vlm-compat)
-  -- LLaVA, SigLIP, V-JEPA 2 fixes for AMD NPU
+| CPU | AMD Ryzen AI MAX+ 395 |
+| RAM | 128GB unified |
+| NPU | AMD XDNA2 |
+| GPU | **None** |
+| Cost | ~$2,000 |
+| Training | ~45W |
+| Inference | ~8W |
 
 ---
 
@@ -287,7 +391,7 @@ McNaughton 2006 (path integration), DreamerV3, SIMPLE, GRASP, Seoul WM.
 
 ```bibtex
 @article{taylor2026nemowm,
-  title={NeMo-WM: Neuromodulated World Model for Robot Navigation},
+  title={NeMo-WM: A Neuromodulated World Model for Embodied Agents},
   author={Taylor, John},
   journal={arXiv preprint},
   year={2026}
