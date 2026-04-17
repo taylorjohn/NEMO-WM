@@ -1236,6 +1236,7 @@ footer {
 <nav>
   <div class="nav-logo">NeMo<span>-WM</span></div>
   <ul class="nav-links">
+    <li><a href="#capabilities">19 Questions</a></li>
     <li><a href="#extend">Extend</a></li>
     <li><a href="#results">Results</a></li>
     <li><a href="#mechanism">Mechanism</a></li>
@@ -1251,12 +1252,13 @@ footer {
 </button>
 </nav>
 <div class="nav-drawer" id="navDrawer">
+  <a href="#capabilities" onclick="closeMenu()">19 Questions</a>
   <a href="#extend" onclick="closeMenu()">Extend</a>
   <a href="#results" onclick="closeMenu()">Results</a>
-  <a href="#language-system" onclick="closeMenu()">Language</a>
-  <a href="#planning-section" onclick="closeMenu()">Planning</a>
   <a href="#mechanism" onclick="closeMenu()">Mechanism</a>
+  <a href="#probe" onclick="closeMenu()">Probe</a>
   <a href="#audit" onclick="closeMenu()">Auditability</a>
+  <a href="#applications" onclick="closeMenu()">Applications</a>
   <a href="#sustainability" onclick="closeMenu()">Power</a>
   <a href="#about" onclick="closeMenu()">About</a>
   <a href="dashboard.html" target="_blank">⚡ Live Dashboard</a>
@@ -1267,12 +1269,11 @@ footer {
 <div class="hero">
   <div class="hero-bg"></div>
   <div class="hero-grid"></div>
-  <div class="hero-tag"><span class="live-dot"></span> Preprint — April 2026 · v21.0 · arXiv submitted · Sprint D6++ complete</div>
-  <h1>The World Model That <em>Teaches</em> Itself</h1>
+  <div class="hero-tag"><span class="live-dot"></span> Preprint — April 2026 · v21.0 · arXiv submitted · NeurIPS 2026</div>
+  <h1>The World Model That <em>Knows</em> Itself</h1>
   <p class="hero-sub">
-    JEPA fails at 4Hz — adjacent frames are too similar to learn from.
-    NeMo-WM replaces the gradient entirely with eight biological reward signals.
-    AUROC 0.9978 · 100% language comprehension · 380 grounded words (no LLM) · 17/17 introspective questions · VPP +25% on real data · ~$2,000 edge hardware · 8W inference.
+    19 self-referential questions. Grounded language (380 words, no LLM). Inverted-U neuromodulation.
+    Counterfactual reasoning. Bidirectional replay. Physics discovery. 1.2M params · CPU only · 8W inference.
   </p>
   <div class="hero-actions">
     <a href="https://arxiv.org/search/?searchtype=author&query=Taylor+John&start=0" class="btn-primary" target="_blank">↓ Paper (arXiv — submitting)</a>
@@ -1282,16 +1283,16 @@ footer {
   </div>
   <div class="stat-strip">
     <div class="stat">
-      <div class="stat-val">26<span>K</span></div>
-      <div class="stat-label">Parameters</div>
+      <div class="stat-val">19</div>
+      <div class="stat-label">Introspective Qs</div>
     </div>
     <div class="stat">
-      <div class="stat-val">0.34<span>ms</span></div>
-      <div class="stat-label">Per Frame (NPU)</div>
+      <div class="stat-val">380</div>
+      <div class="stat-label">Grounded Words</div>
     </div>
     <div class="stat">
-      <div class="stat-val">0.9999</div>
-      <div class="stat-label">AUROC k=64</div>
+      <div class="stat-val">0.997</div>
+      <div class="stat-label">AUROC (26K params)</div>
     </div>
     <div class="stat">
       <div class="stat-val">100<span>%</span></div>
@@ -1302,8 +1303,8 @@ footer {
       <div class="stat-label">Inference Power</div>
     </div>
     <div class="stat">
-      <div class="stat-val">380</div>
-      <div class="stat-label">Grounded Words</div>
+      <div class="stat-val">CPU</div>
+      <div class="stat-label">No GPU Required</div>
     </div>
   </div>
 </div>
@@ -1311,46 +1312,145 @@ footer {
 <!-- TICKER -->
 <div class="ticker-wrap">
   <div class="ticker">
-    <span>AUROC k=64 <b>0.9999</b></span>
-    <span>AUROC k=32 <b>0.9997</b></span>
-    <span>AUROC k=16 <b>0.9972</b></span>
-    <span>MVTec <b>15/15 PASS</b></span>
-    <span>Params <b>26K</b></span>
-    <span>Latency <b>0.34ms</b></span>
-    <span>Cardiac AUROC <b>0.7730</b></span>
-    <span>SMAP AUROC <b>0.7730</b></span>
-    <span>V-JEPA 2-L <b>1849ms</b> vs NeMo-WM <b>1.31ms</b></span>
-    <span>lin_vel p-value <b>5×10⁻⁵⁰</b></span>
-    <span>yaw p-value <b>10⁻¹⁸</b></span>
-    <span>Speedup vs V-JEPA 2-L <b>1411×</b></span>
-    <span>Comprehension <b>100%</b></span>
-    <span>Grounded Words <b>380</b></span>
-    <span>VPP Augmentation <b>+25.1%</b></span>
-    <span>Introspective Qs <b>17/17</b></span>
-    <span>FAISS Speedup <b>2414×</b></span>
-    <span>DiVeQ Loss <b>−68%</b></span>
-    <span>Self-Narration <b>2.8μs</b></span>
-    <span>PointMaze SR <b>100%</b></span>
-    <span>PushT Coverage <b>0.92</b></span>
-    <span>Physics Discovery <b>3/3</b></span>
-    <span>Mood States <b>16</b></span>
+    <span>Introspective Qs <b>19/19</b></span>
+    <span>Language <b>380 words · 100%</b></span>
+    <span>Word lookup <b>0.21μs · 4.7M Hz</b></span>
+    <span>VPP <b>+25.1% ± 2.7%</b></span>
+    <span>DiVeQ <b>−68% loss</b></span>
+    <span>Codebook init <b>36.4× discrimination</b></span>
+    <span>Inverted-U <b>DA optimal=0.4</b></span>
+    <span>Bidirectional replay <b>24-step chains</b></span>
+    <span>Physics <b>3/3 R²=1.0</b></span>
+    <span>Mood states <b>16 emergent</b></span>
+    <span>AUROC <b>0.997 (26K params)</b></span>
+    <span>PointMaze <b>100% SR</b></span>
     <!-- duplicate for infinite loop -->
-    <span>AUROC k=64 <b>0.9999</b></span>
-    <span>AUROC k=32 <b>0.9997</b></span>
-    <span>AUROC k=16 <b>0.9972</b></span>
-    <span>MVTec <b>15/15 PASS</b></span>
-    <span>Params <b>26K</b></span>
-    <span>Latency <b>0.34ms</b></span>
-    <span>Cardiac AUROC <b>0.7730</b></span>
-    <span>SMAP AUROC <b>0.7730</b></span>
-    <span>V-JEPA 2-L <b>1849ms</b> vs NeMo-WM <b>1.31ms</b></span>
-    <span>lin_vel p-value <b>5×10⁻⁵⁰</b></span>
-    <span>yaw p-value <b>10⁻¹⁸</b></span>
-    <span>Speedup vs V-JEPA 2-L <b>1411×</b></span>
+    <span>Introspective Qs <b>19/19</b></span>
+    <span>Language <b>380 words · 100%</b></span>
+    <span>Word lookup <b>0.21μs · 4.7M Hz</b></span>
+    <span>VPP <b>+25.1% ± 2.7%</b></span>
+    <span>DiVeQ <b>−68% loss</b></span>
+    <span>Codebook init <b>36.4× discrimination</b></span>
+    <span>Inverted-U <b>DA optimal=0.4</b></span>
+    <span>Bidirectional replay <b>24-step chains</b></span>
+    <span>Physics <b>3/3 R²=1.0</b></span>
+    <span>Mood states <b>16 emergent</b></span>
+    <span>AUROC <b>0.997 (26K params)</b></span>
+    <span>PointMaze <b>100% SR</b></span>
   </div>
 </div>
 
 <!-- MECHANISM -->
+<!-- SPRINT D6++ CAPABILITIES -->
+<section id="capabilities" style="padding:5rem 3rem;background:var(--bg);border-top:1px solid var(--border)">
+  <div style="max-width:1100px;margin:0 auto">
+    <h2 style="font-size:2rem;text-align:center;margin-bottom:0.5rem;color:var(--text)">
+      The Introspective World Model
+    </h2>
+    <p style="text-align:center;color:var(--text2);font-size:1rem;margin-bottom:3rem;max-width:700px;margin-left:auto;margin-right:auto">
+      19 self-referential questions. 5 neuromodulators with inverted-U dose-response. Grounded language without LLM. Counterfactual reasoning. Bidirectional replay. All on CPU.
+    </p>
+
+    <!-- 19 Questions grid -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin-bottom:3rem">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.25rem">
+        <div style="color:var(--accent);font-size:0.75rem;font-family:var(--mono);margin-bottom:0.5rem">PERCEPTION · Q1–Q4</div>
+        <div style="color:var(--text);font-size:0.85rem">Where am I? What does it look like? Is something wrong? Where is [text]?</div>
+        <div style="color:var(--accent2);font-size:0.75rem;margin-top:0.5rem">0.997 AUROC · 9/9 STRONG</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.25rem">
+        <div style="color:var(--accent);font-size:0.75rem;font-family:var(--mono);margin-bottom:0.5rem">IMAGINATION · Q5–Q8</div>
+        <div style="color:var(--text);font-size:0.85rem">If I do X? Next 8 seconds? How far to plan? Trust my prediction?</div>
+        <div style="color:var(--accent2);font-size:0.75rem;margin-top:0.5rem">Superlinear ACh · α switching</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.25rem">
+        <div style="color:var(--accent);font-size:0.75rem;font-family:var(--mono);margin-bottom:0.5rem">DECISION · Q9–Q11</div>
+        <div style="color:var(--text);font-size:0.85rem">Best action? Been here before? New kind of place?</div>
+        <div style="color:var(--accent2);font-size:0.75rem;margin-top:0.5rem">V_neuro · 0.076ms retrieval</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.25rem">
+        <div style="color:var(--accent);font-size:0.75rem;font-family:var(--mono);margin-bottom:0.5rem">LANGUAGE · Q12–Q14</div>
+        <div style="color:var(--text);font-size:0.85rem">What does this word mean? Can I understand this? What mood am I in?</div>
+        <div style="color:var(--accent2);font-size:0.75rem;margin-top:0.5rem">380 words · 100% · 16 moods</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.25rem">
+        <div style="color:var(--accent);font-size:0.75rem;font-family:var(--mono);margin-bottom:0.5rem">META-COGNITION · Q15–Q19</div>
+        <div style="color:var(--text);font-size:0.85rem">Does language help? WM available? Fatigued? What if I had done X? High-level plan?</div>
+        <div style="color:var(--accent2);font-size:0.75rem;margin-top:0.5rem">Δ=+0.454 · K=8→2 · 17:1 compress</div>
+      </div>
+    </div>
+
+    <!-- Key breakthroughs -->
+    <h3 style="font-size:1.2rem;text-align:center;margin-bottom:2rem;color:var(--text)">Sprint D6++ Breakthroughs (April 2026)</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem;margin-bottom:2rem">
+
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.5rem">
+        <div style="font-size:1.5rem;margin-bottom:0.5rem">🧠</div>
+        <h4 style="color:var(--accent);font-size:0.95rem;margin-bottom:0.5rem">Inverted-U Neuromodulation</h4>
+        <p style="color:var(--text2);font-size:0.8rem;line-height:1.5">First AI world model with inverted-U dose-response for all 5 neuromodulators. DA=0.0 → apathy. DA=0.4 → optimal. DA=1.0 → distractibility. Matches primate PFC data (Arnsten 2021).</p>
+        <div style="color:var(--accent2);font-size:0.72rem;font-family:var(--mono);margin-top:0.75rem">WM: K=8 → K=5 → K=2 under stress</div>
+      </div>
+
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.5rem">
+        <div style="font-size:1.5rem;margin-bottom:0.5rem">🗣️</div>
+        <h4 style="color:var(--accent);font-size:0.95rem;margin-bottom:0.5rem">Grounded Language (No LLM)</h4>
+        <p style="color:var(--text2);font-size:0.8rem;line-height:1.5">380 words across 15 domains. 100% comprehension. Plateau proof: 37M hearings → 65.1% ceiling broken by stemming, not more data. Word lookup at 4.7 million Hz.</p>
+        <div style="color:var(--accent2);font-size:0.72rem;font-family:var(--mono);margin-top:0.75rem">sim(gravity, falling) = +0.997</div>
+      </div>
+
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.5rem">
+        <div style="font-size:1.5rem;margin-bottom:0.5rem">🔄</div>
+        <h4 style="color:var(--accent);font-size:0.95rem;margin-bottom:0.5rem">Bidirectional Replay</h4>
+        <p style="color:var(--text2);font-size:0.8rem;line-height:1.5">Forward replay for consolidation. Backward replay for causal credit assignment. 24-step causal chains identified during sleep. Foster & Wilson 2006.</p>
+        <div style="color:var(--accent2);font-size:0.72rem;font-family:var(--mono);margin-top:0.75rem">5 fwd + 5 bwd per sleep cycle</div>
+      </div>
+
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.5rem">
+        <div style="font-size:1.5rem;margin-bottom:0.5rem">🤔</div>
+        <h4 style="color:var(--accent);font-size:0.95rem;margin-bottom:0.5rem">Counterfactual Reasoning (Q18)</h4>
+        <p style="color:var(--text2);font-size:0.8rem;line-height:1.5">"What if I had gone left?" Branches from episodic memory at high-DA decision points, rolls out alternatives, computes regret. 8/8 tests passed.</p>
+        <div style="color:var(--accent2);font-size:0.72rem;font-family:var(--mono);margin-top:0.75rem">Best alternative identified + regret signal</div>
+      </div>
+
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.5rem">
+        <div style="font-size:1.5rem;margin-bottom:0.5rem">🏗️</div>
+        <h4 style="color:var(--accent);font-size:0.95rem;margin-bottom:0.5rem">Hierarchical Schema Planning (Q19)</h4>
+        <p style="color:var(--text2);font-size:0.8rem;line-height:1.5">Plan at schema level (which "type of place"), execute at action level. 17:1 compression ratio. Fast replanning when schemas are blocked.</p>
+        <div style="color:var(--accent2);font-size:0.72rem;font-family:var(--mono);margin-top:0.75rem">1,450 transitions · 8 regions · BFS+beam</div>
+      </div>
+
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.5rem">
+        <div style="font-size:1.5rem;margin-bottom:0.5rem">📊</div>
+        <h4 style="color:var(--accent);font-size:0.95rem;margin-bottom:0.5rem">VPP Belief Augmentation</h4>
+        <p style="color:var(--text2);font-size:0.8rem;line-height:1.5">Sparse proprioceptive hints improve visual policy by +25.1% ± 2.7% on real human demos. Only 9.6% parameter overhead. Consistent across 3 runs.</p>
+        <div style="color:var(--accent2);font-size:0.72rem;font-family:var(--mono);margin-top:0.75rem">25,650 samples · 206 episodes</div>
+      </div>
+
+    </div>
+
+    <!-- Comparison table -->
+    <div style="overflow-x:auto;margin-top:2rem">
+      <table style="width:100%;border-collapse:collapse;font-size:0.8rem;font-family:var(--mono)">
+        <tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:0.75rem;color:var(--text2)">Capability</th>
+          <th style="text-align:center;padding:0.75rem;color:var(--accent)">NeMo-WM</th>
+          <th style="text-align:center;padding:0.75rem;color:var(--text2)">DreamerV3</th>
+          <th style="text-align:center;padding:0.75rem;color:var(--text2)">Diff. Policy</th>
+          <th style="text-align:center;padding:0.75rem;color:var(--text2)">DINO-WM</th>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:0.5rem">Introspective Qs</td><td style="text-align:center;color:var(--accent)"><b>19/19</b></td><td style="text-align:center;color:var(--text2)">2/19</td><td style="text-align:center;color:var(--text2)">0/19</td><td style="text-align:center;color:var(--text2)">1/19</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:0.5rem">Inverted-U Neuromod</td><td style="text-align:center;color:var(--accent)"><b>5 signals</b></td><td style="text-align:center;color:var(--text2)">—</td><td style="text-align:center;color:var(--text2)">—</td><td style="text-align:center;color:var(--text2)">—</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:0.5rem">Grounded Language</td><td style="text-align:center;color:var(--accent)"><b>380 words</b></td><td style="text-align:center;color:var(--text2)">—</td><td style="text-align:center;color:var(--text2)">—</td><td style="text-align:center;color:var(--text2)">—</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:0.5rem">Counterfactual</td><td style="text-align:center;color:var(--accent)"><b>Q18</b></td><td style="text-align:center;color:var(--text2)">—</td><td style="text-align:center;color:var(--text2)">—</td><td style="text-align:center;color:var(--text2)">—</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:0.5rem">Hierarchical Planning</td><td style="text-align:center;color:var(--accent)"><b>17:1</b></td><td style="text-align:center;color:var(--text2)">—</td><td style="text-align:center;color:var(--text2)">—</td><td style="text-align:center;color:var(--text2)">—</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:0.5rem">Hardware</td><td style="text-align:center;color:var(--accent)"><b>CPU</b></td><td style="text-align:center;color:var(--text2)">GPU</td><td style="text-align:center;color:var(--text2)">GPU</td><td style="text-align:center;color:var(--text2)">GPU</td></tr>
+        <tr><td style="padding:0.5rem">Parameters</td><td style="text-align:center;color:var(--accent)"><b>1.2M</b></td><td style="text-align:center;color:var(--text2)">~200M</td><td style="text-align:center;color:var(--text2)">~263M</td><td style="text-align:center;color:var(--text2)">~5M</td></tr>
+      </table>
+    </div>
+
+  </div>
+</section>
+
 <section id="extend" style="padding:7rem 3rem;background:var(--bg2);position:relative;overflow:hidden;border-top:1px solid var(--border)">
 
   <!-- Background grid decoration -->
@@ -2556,323 +2656,6 @@ nav.set_goal("open area") # text→GPS 25ms</span>
   </div>
 </section>
 
-
-
-
-<!-- ═══════════════════════════════════════════════════════════════ -->
-<!-- SPRINT D6++ NEW SECTIONS (April 13-16, 2026)                  -->
-<!-- ═══════════════════════════════════════════════════════════════ -->
-
-<!-- GROUNDED LANGUAGE SYSTEM -->
-<section id="language-system" style="padding:7rem 3rem;background:var(--bg);position:relative;">
-  <div style="max-width:1100px;margin:0 auto;">
-
-    <div style="font-family:var(--mono);font-size:0.65rem;color:var(--accent3);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:0.5rem">Sprint D6++ · Language</div>
-    <h2 style="font-family:var(--display);font-size:clamp(2rem,5vw,3.5rem);font-weight:800;line-height:1.1;margin-bottom:1rem">
-      Words mean what I<br><em style="color:var(--accent)">experienced</em>.
-    </h2>
-    <p style="font-size:1.05rem;color:var(--text2);max-width:650px;line-height:1.7;margin-bottom:3rem">
-      NeMo-WM learns language like a toddler — through sensorimotor co-occurrence, not text corpora.
-      No LLM. No pretrained embeddings. No parser. No separation from perception.
-      380 words across 15 domains. 100% comprehension. Cognitive age 4-6 years.
-    </p>
-
-    <!-- How it works -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem;margin-bottom:3rem">
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem">
-        <div style="font-size:1.5rem;margin-bottom:0.5rem">🧒</div>
-        <h3 style="font-size:1rem;margin-bottom:0.5rem">Toddler Learning</h3>
-        <p style="font-size:0.85rem;color:var(--text2);line-height:1.6">
-          Robot hears "gravity" while objects fall (visual belief) + DA spikes (surprise) + physics discovers Fy = −9.81.
-          Word = prototype of all belief states co-occurring with the word.
-        </p>
-      </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem">
-        <div style="font-size:1.5rem;margin-bottom:0.5rem">🧠</div>
-        <h3 style="font-size:1rem;margin-bottom:0.5rem">Morphological Stemming</h3>
-        <p style="font-size:0.85rem;color:var(--text2);line-height:1.6">
-          Overnight training plateaued at 65.1% for 37M hearings. Root cause: "falling" was known but not "falls".
-          Adding suffix-stripping broke through to 100% — zero extra training.
-        </p>
-      </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem">
-        <div style="font-size:1.5rem;margin-bottom:0.5rem">🔄</div>
-        <h3 style="font-size:1rem;margin-bottom:0.5rem">5 Comprehension Upgrades</h3>
-        <p style="font-size:0.85rem;color:var(--text2);line-height:1.6">
-          Negation (sim(safe, not safe) = −1.0), belief accumulator (word order matters),
-          predictive grounding, contrastive learning, episodic replay learning.
-        </p>
-      </div>
-    </div>
-
-    <!-- Word similarity -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:2rem;margin-bottom:2rem">
-      <div style="font-family:var(--mono);font-size:0.7rem;color:var(--accent2);letter-spacing:0.1em;margin-bottom:1rem;text-transform:uppercase">Word Similarity — Learned from Experience</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.5rem">
-        <div style="display:flex;justify-content:space-between;padding:0.5rem 0.75rem;background:var(--bg);border-radius:6px;font-family:var(--mono);font-size:0.8rem">
-          <span style="color:var(--text2)">gravity ↔ falling</span><span style="color:var(--green)">+0.997</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:0.5rem 0.75rem;background:var(--bg);border-radius:6px;font-family:var(--mono);font-size:0.8rem">
-          <span style="color:var(--text2)">corridor ↔ hallway</span><span style="color:var(--green)">+0.879</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:0.5rem 0.75rem;background:var(--bg);border-radius:6px;font-family:var(--mono);font-size:0.8rem">
-          <span style="color:var(--text2)">danger ↔ safe</span><span style="color:var(--red)">−0.791</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:0.5rem 0.75rem;background:var(--bg);border-radius:6px;font-family:var(--mono);font-size:0.8rem">
-          <span style="color:var(--text2)">fast ↔ slow</span><span style="color:var(--red)">−0.924</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:0.5rem 0.75rem;background:var(--bg);border-radius:6px;font-family:var(--mono);font-size:0.8rem">
-          <span style="color:var(--text2)">left ↔ right</span><span style="color:var(--red)">−0.933</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:0.5rem 0.75rem;background:var(--bg);border-radius:6px;font-family:var(--mono);font-size:0.8rem">
-          <span style="color:var(--text2)">gravity ↔ corridor</span><span style="color:var(--text3)">−0.018</span>
-        </div>
-      </div>
-      <p style="font-size:0.75rem;color:var(--text3);margin-top:0.75rem">No dictionary. No pretrained embeddings. Meanings learned purely from sensorimotor experience.</p>
-    </div>
-
-    <!-- Plateau proof -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:2rem;margin-bottom:2rem">
-      <div style="font-family:var(--mono);font-size:0.7rem;color:var(--gold);letter-spacing:0.1em;margin-bottom:1rem;text-transform:uppercase">Overnight Plateau Proof — 37 Million Hearings</div>
-      <div style="display:flex;flex-direction:column;gap:0.5rem">
-        <div style="display:flex;align-items:center;gap:0.75rem">
-          <span style="font-family:var(--mono);font-size:0.75rem;color:var(--text3);min-width:80px;text-align:right">1K</span>
-          <div style="height:24px;width:22.7%;background:var(--accent2);border-radius:4px;display:flex;align-items:center;padding:0 8px;font-family:var(--mono);font-size:0.7rem;color:white">22.7%</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:0.75rem">
-          <span style="font-family:var(--mono);font-size:0.75rem;color:var(--text3);min-width:80px;text-align:right">10K</span>
-          <div style="height:24px;width:53.5%;background:var(--accent2);border-radius:4px;display:flex;align-items:center;padding:0 8px;font-family:var(--mono);font-size:0.7rem;color:white">53.5%</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:0.75rem">
-          <span style="font-family:var(--mono);font-size:0.75rem;color:var(--text3);min-width:80px;text-align:right">100K–37M</span>
-          <div style="height:24px;width:65.1%;background:var(--gold);border-radius:4px;display:flex;align-items:center;padding:0 8px;font-family:var(--mono);font-size:0.7rem;color:white">65.1% — plateau (8,930 passes)</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:0.75rem">
-          <span style="font-family:var(--mono);font-size:0.75rem;color:var(--text3);min-width:80px;text-align:right">+ stemming</span>
-          <div style="height:24px;width:100%;background:var(--green);border-radius:4px;display:flex;align-items:center;padding:0 8px;font-family:var(--mono);font-size:0.7rem;color:white">100% — breakthrough (0 extra hearings)</div>
-        </div>
-      </div>
-      <p style="font-size:0.8rem;color:var(--text2);margin-top:1rem;line-height:1.6">
-        The ceiling was vocabulary coverage, not architecture. The system knew "falling" but not "falls".
-        Adding morphological stemming + function words broke through instantly — proving the world model's semantic representations are robust once coverage is addressed.
-      </p>
-    </div>
-
-    <!-- Cognitive curriculum -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:2rem;">
-      <div style="font-family:var(--mono);font-size:0.7rem;color:var(--accent3);letter-spacing:0.1em;margin-bottom:1rem;text-transform:uppercase">10 Cognitive Levels — All Passed</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.5rem">
-        <div style="padding:0.5rem;background:var(--bg);border-radius:6px;font-size:0.8rem;display:flex;justify-content:space-between">
-          <span>L1 Object Permanence</span><span style="color:var(--green)">100%</span>
-        </div>
-        <div style="padding:0.5rem;background:var(--bg);border-radius:6px;font-size:0.8rem;display:flex;justify-content:space-between">
-          <span>L2 Cause-Effect</span><span style="color:var(--green)">100%</span>
-        </div>
-        <div style="padding:0.5rem;background:var(--bg);border-radius:6px;font-size:0.8rem;display:flex;justify-content:space-between">
-          <span>L3 Spatial Relations</span><span style="color:var(--green)">100%</span>
-        </div>
-        <div style="padding:0.5rem;background:var(--bg);border-radius:6px;font-size:0.8rem;display:flex;justify-content:space-between">
-          <span>L4 Temporal Ordering</span><span style="color:var(--green)">100%</span>
-        </div>
-        <div style="padding:0.5rem;background:var(--bg);border-radius:6px;font-size:0.8rem;display:flex;justify-content:space-between">
-          <span>L5 Conditionals</span><span style="color:var(--green)">100%</span>
-        </div>
-        <div style="padding:0.5rem;background:var(--bg);border-radius:6px;font-size:0.8rem;display:flex;justify-content:space-between">
-          <span>L6 Analogy</span><span style="color:var(--gold)">60%</span>
-        </div>
-        <div style="padding:0.5rem;background:var(--bg);border-radius:6px;font-size:0.8rem;display:flex;justify-content:space-between">
-          <span>L7 Abstraction</span><span style="color:var(--green)">100%</span>
-        </div>
-        <div style="padding:0.5rem;background:var(--bg);border-radius:6px;font-size:0.8rem;display:flex;justify-content:space-between">
-          <span>L8 Composition</span><span style="color:var(--green)">100%</span>
-        </div>
-        <div style="padding:0.5rem;background:var(--bg);border-radius:6px;font-size:0.8rem;display:flex;justify-content:space-between">
-          <span>L9 Explanation</span><span style="color:var(--green)">100%</span>
-        </div>
-        <div style="padding:0.5rem;background:var(--bg);border-radius:6px;font-size:0.8rem;display:flex;justify-content:space-between">
-          <span>L10 Teaching</span><span style="color:var(--green)">88%</span>
-        </div>
-      </div>
-      <p style="font-size:0.85rem;color:var(--text2);margin-top:1rem">Cognitive age equivalent: <b style="color:var(--accent)">4–6 years</b>. 380 words, 15 domains, 0 missing words.</p>
-    </div>
-
-  </div>
-</section>
-
-<!-- PLANNING & VISION POLICY -->
-<section id="planning-section" style="padding:7rem 3rem;background:var(--bg2);position:relative;">
-  <div style="max-width:1100px;margin:0 auto;">
-    <div style="font-family:var(--mono);font-size:0.65rem;color:var(--green);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:0.5rem">Sprint D6++ · Planning</div>
-    <h2 style="font-family:var(--display);font-size:clamp(2rem,4vw,3rem);font-weight:800;line-height:1.1;margin-bottom:1rem">
-      Flow matching<br>on <em style="color:var(--green)">real human demos</em>.
-    </h2>
-    <p style="font-size:1rem;color:var(--text2);max-width:600px;line-height:1.7;margin-bottom:2.5rem">
-      Conditional flow matching: noise → action in 10 Euler steps.
-      Trained on 206 real human demonstrations from LeRobot.
-      CPU-only. No GPU. No cloud.
-    </p>
-
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.5rem;margin-bottom:2.5rem">
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;text-align:center">
-        <div style="font-family:var(--mono);font-size:2rem;color:var(--green);font-weight:700">100%</div>
-        <div style="font-size:0.85rem;color:var(--text2);margin-top:0.3rem">PointMaze Success Rate</div>
-        <div style="font-size:0.75rem;color:var(--text3);margin-top:0.3rem">19 avg steps · 32s training</div>
-      </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;text-align:center">
-        <div style="font-family:var(--mono);font-size:2rem;color:var(--green);font-weight:700">0.92</div>
-        <div style="font-size:0.85rem;color:var(--text2);margin-top:0.3rem">PushT Max Coverage</div>
-        <div style="font-size:0.75rem;color:var(--text3);margin-top:0.3rem">Vision CNN · 2-frame · 77min CPU</div>
-      </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;text-align:center">
-        <div style="font-family:var(--mono);font-size:2rem;color:var(--green);font-weight:700">+25.1%</div>
-        <div style="font-size:0.85rem;color:var(--text2);margin-top:0.3rem">VPP Belief Augmentation</div>
-        <div style="font-size:0.75rem;color:var(--text3);margin-top:0.3rem">± 2.7% · 3 runs · 25,650 real demos</div>
-      </div>
-    </div>
-
-    <!-- VPP detail -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:2rem">
-      <div style="font-family:var(--mono);font-size:0.7rem;color:var(--accent2);letter-spacing:0.1em;margin-bottom:1rem;text-transform:uppercase">VPP — Sparse Belief Hints Amplify Dense Visual Signals</div>
-      <div style="font-family:var(--mono);font-size:0.8rem;color:var(--text2);line-height:1.8;margin-bottom:1.5rem;background:var(--bg);padding:1rem;border-radius:8px">
-        Standard:&nbsp;&nbsp; 96×96×6 (2-frame RGB) → CNN → 128D → Policy<br>
-        Augmented: 96×96×8 (RGB + 2ch belief)&nbsp; → CNN → 128D → Policy
-      </div>
-      <table style="width:100%;border-collapse:collapse;font-size:0.85rem">
-        <thead>
-          <tr style="border-bottom:1px solid var(--border)">
-            <th style="text-align:left;padding:0.5rem;color:var(--text3);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em">Run</th>
-            <th style="text-align:right;padding:0.5rem;color:var(--text3);font-size:0.7rem;text-transform:uppercase">Standard</th>
-            <th style="text-align:right;padding:0.5rem;color:var(--text3);font-size:0.7rem;text-transform:uppercase">VPP</th>
-            <th style="text-align:right;padding:0.5rem;color:var(--text3);font-size:0.7rem;text-transform:uppercase">Improvement</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr style="border-bottom:1px solid rgba(30,42,64,0.5)"><td style="padding:0.5rem">1</td><td style="text-align:right;padding:0.5rem">0.2824</td><td style="text-align:right;padding:0.5rem;color:var(--green);font-family:var(--mono)">0.2070</td><td style="text-align:right;padding:0.5rem;color:var(--green);font-family:var(--mono)">+26.7%</td></tr>
-          <tr style="border-bottom:1px solid rgba(30,42,64,0.5)"><td style="padding:0.5rem">2</td><td style="text-align:right;padding:0.5rem">0.2890</td><td style="text-align:right;padding:0.5rem;color:var(--green);font-family:var(--mono)">0.2100</td><td style="text-align:right;padding:0.5rem;color:var(--green);font-family:var(--mono)">+27.3%</td></tr>
-          <tr style="border-bottom:1px solid rgba(30,42,64,0.5)"><td style="padding:0.5rem">3</td><td style="text-align:right;padding:0.5rem">0.2840</td><td style="text-align:right;padding:0.5rem;color:var(--green);font-family:var(--mono)">0.2231</td><td style="text-align:right;padding:0.5rem;color:var(--green);font-family:var(--mono)">+21.4%</td></tr>
-          <tr style="font-weight:700"><td style="padding:0.5rem">Mean</td><td style="text-align:right;padding:0.5rem">0.2851</td><td style="text-align:right;padding:0.5rem;color:var(--green);font-family:var(--mono)">0.2134</td><td style="text-align:right;padding:0.5rem;color:var(--green);font-family:var(--mono)">+25.1% ± 2.7%</td></tr>
-        </tbody>
-      </table>
-      <p style="font-size:0.75rem;color:var(--text3);margin-top:0.75rem">Inspired by Bartolomei et al. (ICCV 2023). 9.6% parameter overhead only.</p>
-    </div>
-  </div>
-</section>
-
-<!-- MEMORY & SLEEP CONSOLIDATION -->
-<section id="memory-section" style="padding:7rem 3rem;background:var(--bg);">
-  <div style="max-width:1100px;margin:0 auto;">
-    <div style="font-family:var(--mono);font-size:0.65rem;color:var(--accent2);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:0.5rem">Sprint D6++ · Memory</div>
-    <h2 style="font-family:var(--display);font-size:clamp(2rem,4vw,3rem);font-weight:800;line-height:1.1;margin-bottom:1rem">
-      Three stores.<br><em style="color:var(--accent2)">Sleep</em> consolidation.
-    </h2>
-
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.5rem;margin-bottom:2.5rem">
-      <div style="background:var(--surface);border-left:3px solid var(--accent);border-radius:0 12px 12px 0;padding:1.5rem">
-        <h3 style="font-size:0.95rem;margin-bottom:0.3rem">Working Memory</h3>
-        <p style="font-size:0.8rem;color:var(--text2)">K=8 slots · Cortisol-gated capacity · K degrades under stress</p>
-      </div>
-      <div style="background:var(--surface);border-left:3px solid var(--accent2);border-radius:0 12px 12px 0;padding:1.5rem">
-        <h3 style="font-size:0.95rem;margin-bottom:0.3rem">Episodic Store</h3>
-        <p style="font-size:0.8rem;color:var(--text2)">10K entries · FAISS-indexed · DA-priority · 0.076ms retrieval (2414× speedup)</p>
-      </div>
-      <div style="background:var(--surface);border-left:3px solid var(--accent3);border-radius:0 12px 12px 0;padding:1.5rem">
-        <h3 style="font-size:0.95rem;margin-bottom:0.3rem">Schema Store (DiVeQ)</h3>
-        <p style="font-size:0.8rem;color:var(--text2)">64 codes · EMA waking + gradient sleep · −68% consolidation loss · 2.3× faster</p>
-      </div>
-    </div>
-
-    <!-- DiVeQ novel apps -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;">
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem">
-        <h3 style="font-size:0.95rem;color:var(--accent3);margin-bottom:0.3rem">🎭 16 Mood States</h3>
-        <p style="font-size:0.8rem;color:var(--text2)">Curious-Uncertain, Calm-Relaxed, Stressed-Alert — emergent from neuromod space. Modulate behavior.</p>
-      </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem">
-        <h3 style="font-size:0.95rem;color:var(--accent3);margin-bottom:0.3rem">💤 Dream Interpolation</h3>
-        <p style="font-size:0.8rem;color:var(--text2)">Cosine walk between schemas during sleep. 9/20 unique schemas visited. Generates training data.</p>
-      </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem">
-        <h3 style="font-size:0.95rem;color:var(--accent3);margin-bottom:0.3rem">🤖 Action Primitives</h3>
-        <p style="font-size:0.8rem;color:var(--text2)">Quantized motor space into 16 named primitives. 100% usage coverage.</p>
-      </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem">
-        <h3 style="font-size:0.95rem;color:var(--accent3);margin-bottom:0.3rem">🧬 Adaptive Codebook</h3>
-        <p style="font-size:0.8rem;color:var(--text2)">Surprise-gated neurogenesis. Codes grow (8→29) then prune (→4). Full lifecycle.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- PHYSICS DISCOVERY -->
-<section id="physics-section" style="padding:7rem 3rem;background:var(--bg2);">
-  <div style="max-width:1100px;margin:0 auto;">
-    <div style="font-family:var(--mono);font-size:0.65rem;color:var(--gold);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:0.5rem">Sprint D6++ · Discovery</div>
-    <h2 style="font-family:var(--display);font-size:clamp(2rem,4vw,3rem);font-weight:800;line-height:1.1;margin-bottom:1rem">
-      It discovers<br><em style="color:var(--gold)">physics</em>.
-    </h2>
-    <p style="font-size:1rem;color:var(--text2);max-width:600px;line-height:1.7;margin-bottom:2.5rem">
-      Starting from only F=ma, the agent autonomously discovers gravity, friction, and magnetic forces.
-      Auto-learn mode fits polynomial basis functions to residuals. R²=1.0.
-    </p>
-
-    <table style="width:100%;max-width:700px;border-collapse:collapse;font-size:0.9rem;background:var(--surface);border-radius:12px;overflow:hidden">
-      <thead>
-        <tr style="border-bottom:1px solid var(--border)">
-          <th style="text-align:left;padding:1rem;color:var(--text3);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em">Scenario</th>
-          <th style="text-align:left;padding:1rem;color:var(--text3);font-size:0.7rem;text-transform:uppercase">Discovered Law</th>
-          <th style="text-align:center;padding:1rem;color:var(--text3);font-size:0.7rem;text-transform:uppercase">R²</th>
-          <th style="text-align:left;padding:1rem;color:var(--text3);font-size:0.7rem;text-transform:uppercase">Method</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr style="border-bottom:1px solid rgba(30,42,64,0.5)"><td style="padding:0.75rem 1rem">Falling ball</td><td style="padding:0.75rem;font-family:var(--mono);color:var(--text)">Fy = −9.81·m</td><td style="text-align:center;padding:0.75rem;color:var(--green);font-family:var(--mono)">1.0</td><td style="padding:0.75rem">KB lookup</td></tr>
-        <tr style="border-bottom:1px solid rgba(30,42,64,0.5)"><td style="padding:0.75rem 1rem">Sliding block</td><td style="padding:0.75rem;font-family:var(--mono);color:var(--text)">F = −μ·N·v/|v|</td><td style="text-align:center;padding:0.75rem;color:var(--green);font-family:var(--mono)">1.0</td><td style="padding:0.75rem">KB lookup</td></tr>
-        <tr style="border-bottom:1px solid rgba(30,42,64,0.5)"><td style="padding:0.75rem 1rem">Magnetic pull</td><td style="padding:0.75rem;font-family:var(--mono);color:var(--text)">F = k/r²</td><td style="text-align:center;padding:0.75rem;color:var(--green);font-family:var(--mono)">1.0</td><td style="padding:0.75rem">KB lookup</td></tr>
-        <tr><td style="padding:0.75rem 1rem;font-weight:700">Combined forces</td><td style="padding:0.75rem;font-family:var(--mono);color:var(--gold);font-weight:700">Fy = 11.2 − 9.81y</td><td style="text-align:center;padding:0.75rem;color:var(--green);font-family:var(--mono);font-weight:700">1.0</td><td style="padding:0.75rem;font-weight:700">Auto-learn</td></tr>
-      </tbody>
-    </table>
-  </div>
-</section>
-
-<!-- INTROSPECTION & APHASIA -->
-<section id="introspection-section" style="padding:7rem 3rem;background:var(--bg);">
-  <div style="max-width:1100px;margin:0 auto;">
-    <div style="font-family:var(--mono);font-size:0.65rem;color:var(--accent);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:0.5rem">Sprint D6++ · Introspection</div>
-    <h2 style="font-family:var(--display);font-size:clamp(2rem,4vw,3rem);font-weight:800;line-height:1.1;margin-bottom:1rem">
-      It explains<br><em style="color:var(--accent)">itself</em>.
-    </h2>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-bottom:2.5rem">
-      <div>
-        <div style="font-family:var(--mono);font-size:3rem;color:var(--accent);font-weight:700">17/17</div>
-        <div style="font-size:0.9rem;color:var(--text2);margin-top:0.3rem">Introspective Questions Answered</div>
-        <p style="font-size:0.8rem;color:var(--text3);margin-top:0.5rem;line-height:1.6">
-          DreamerV3: 2/17 · DINO-WM: 1/17 · Diffusion Policy: 0/17.
-          NeMo-WM answers all 17 including ExploreExploit and FatigueMonitor.
-        </p>
-      </div>
-      <div>
-        <div style="font-family:var(--mono);font-size:3rem;color:var(--accent);font-weight:700">2.8μs</div>
-        <div style="font-size:0.9rem;color:var(--text2);margin-top:0.3rem">Self-Narration Latency</div>
-        <p style="font-size:0.8rem;color:var(--text3);margin-top:0.5rem;line-height:1.6">
-          350,866 Hz. Template-based narration from neuromodulatory signals.
-          No LLM. 5 components: SelfNarrator, PhysicsExplainer, ConsolidationReporter, AnomalyExplainer, DiscoveryJournal.
-        </p>
-      </div>
-    </div>
-
-    <!-- Aphasia -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:2rem;">
-      <div style="font-family:var(--mono);font-size:0.7rem;color:var(--red);letter-spacing:0.1em;margin-bottom:1rem;text-transform:uppercase">Aphasia Double Dissociation</div>
-      <div style="font-family:var(--mono);font-size:0.85rem;line-height:2;color:var(--text2);background:var(--bg);padding:1.25rem;border-radius:8px;">
-        Language zeroed (simulate aphasia):<br>
-        &nbsp;&nbsp;Visual WM:&nbsp; 0.9542 → 0.5000 (chance)&nbsp;&nbsp;← language <span style="color:var(--red)">NECESSARY</span><br>
-        &nbsp;&nbsp;Proprio WM: 0.9974 → 0.9974&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← language <span style="color:var(--green)">IRRELEVANT</span><br><br>
-        &nbsp;&nbsp;Δ = +0.4542 — parallels Fedorenko et al.
-      </div>
-    </div>
-  </div>
-</section>
 
 <section class="comparison" id="comparison">
   <div class="section-tag">vs. prior work</div>
