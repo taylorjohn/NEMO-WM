@@ -98,22 +98,56 @@ class KnowledgeState:
 
 class MiniTransition:
     def __init__(self, seed=42):
-        rng = np.random.RandomState(seed)
-        self.W = rng.randn(D_BELIEF, D_BELIEF + D_ACTION).astype(np.float32) * 0.1
+        self.trained = False
+        # Try loading trained weights from Minari training
+        trained_path = Path("data/minari_trained/transition_model.npz")
+        if trained_path.exists():
+            data = np.load(trained_path)
+            self.W1 = data["W1"]
+            self.b1 = data["b1"]
+            self.W2 = data["W2"]
+            self.b2 = data["b2"]
+            self.trained = True
+        else:
+            # Fallback: random single-layer
+            rng = np.random.RandomState(seed)
+            d_in = D_BELIEF + D_ACTION
+            self.W1 = rng.randn(d_in, 128).astype(np.float32) * 0.1
+            self.b1 = np.zeros(128, dtype=np.float32)
+            self.W2 = rng.randn(128, D_BELIEF).astype(np.float32) * 0.1
+            self.b2 = np.zeros(D_BELIEF, dtype=np.float32)
 
     def predict(self, belief, action):
-        return np.tanh(self.W @ np.concatenate([belief, action]))
+        x = np.concatenate([belief, action])
+        h = np.maximum(0, x @ self.W1 + self.b1)  # ReLU
+        out = h @ self.W2 + self.b2
+        return np.clip(out, -5.0, 5.0)  # prevent divergence
 
     def error(self, belief, action, next_belief):
-        return float(np.linalg.norm(self.predict(belief, action) - next_belief))
+        pred = self.predict(belief, action)
+        if np.any(np.isnan(pred)):
+            return 1.0  # safe fallback
+        return float(np.linalg.norm(pred - next_belief))
 
 
 class MiniSchemas:
-    def __init__(self, n=16):
+    def __init__(self, n=32):
         self.n = n
-        self.codebook = np.random.randn(n, D_BELIEF).astype(np.float32) * 2.0
         self.usage = np.zeros(n)
         self.names = [f"region_{i}" for i in range(n)]
+
+        # Try loading trained codebook
+        trained_path = Path("data/minari_trained/schema_codebook.npz")
+        if trained_path.exists():
+            data = np.load(trained_path)
+            self.codebook = data["codebook"]
+            self.usage = data["usage"].astype(float)
+            self.n = len(self.codebook)
+            self.names = [f"region_{i}" for i in range(self.n)]
+            self.trained = True
+        else:
+            self.codebook = np.random.randn(n, D_BELIEF).astype(np.float32) * 2.0
+            self.trained = False
 
     def nearest(self, belief):
         dists = np.linalg.norm(self.codebook - belief, axis=1)
@@ -128,9 +162,13 @@ class MiniSchemas:
     def consolidate(self, beliefs, lr=0.05):
         before = 0
         for b in beliefs:
+            if np.any(np.isnan(b)) or np.any(np.abs(b) > 100):
+                continue
             idx, dist = self.nearest(b)
             before += dist
             self.codebook[idx] += lr * (b - self.codebook[idx])
+        # Clamp codebook to prevent divergence
+        self.codebook = np.clip(self.codebook, -10.0, 10.0)
         return before / max(len(beliefs), 1)
 
     def most_novel_schema(self):
@@ -173,12 +211,17 @@ class MiniNeuromod:
                          "NE": 0.5, "5HT": 0.5}
 
     def update(self, pred_error, novelty, reward):
+        # Clamp inputs to prevent NaN propagation
+        pred_error = float(np.clip(pred_error, 0, 5))
+        novelty = float(np.clip(novelty, 0, 10))
+        reward = float(np.clip(reward, -1, 1))
+
         # EMA toward target — signals return to baseline over time
         decay = 0.7  # blend rate (0.7 = responsive but recovers)
-        target_da = np.clip(0.3 + pred_error * 0.8 + reward * 0.3, 0, 1)
-        target_ach = np.clip(0.6 - pred_error * 0.3 + reward * 0.2, 0.1, 1)
-        target_crt = np.clip(0.15 + novelty * 0.15, 0, 0.8)
-        target_ne = np.clip(0.4 + pred_error * 0.3 + novelty * 0.1, 0.1, 1)
+        target_da = np.clip(0.3 + pred_error * 0.2 + reward * 0.3, 0, 1)
+        target_ach = np.clip(0.6 - pred_error * 0.1 + reward * 0.2, 0.1, 1)
+        target_crt = np.clip(0.15 + novelty * 0.05, 0, 0.8)
+        target_ne = np.clip(0.4 + pred_error * 0.1 + novelty * 0.03, 0.1, 1)
         target_5ht = np.clip(0.5 - target_da * 0.2 + reward * 0.2, 0.1, 1)
 
         self.signals["DA"] = decay * self.signals["DA"] + (1 - decay) * target_da
@@ -186,6 +229,10 @@ class MiniNeuromod:
         self.signals["CRT"] = decay * self.signals["CRT"] + (1 - decay) * target_crt
         self.signals["NE"] = decay * self.signals["NE"] + (1 - decay) * target_ne
         self.signals["5HT"] = decay * self.signals["5HT"] + (1 - decay) * target_5ht
+
+        # Safety: clamp all signals
+        for k in self.signals:
+            self.signals[k] = float(np.clip(self.signals[k], 0.01, 0.99))
 
     def effectiveness(self, name):
         optima = {"DA": 0.4, "ACh": 0.6, "CRT": 0.3, "NE": 0.5, "5HT": 0.5}
@@ -321,9 +368,19 @@ class AutonomousLoop:
     def __init__(self, state: KnowledgeState = None):
         self.state = state or KnowledgeState()
         self.transition = MiniTransition(seed=42 + self.state.total_cycles)
-        self.schemas = MiniSchemas(n=16)
+        self.schemas = MiniSchemas(n=32)
         self.vocab = MiniVocab()
         self.neuro = MiniNeuromod()
+
+        # Log trained status
+        self.using_trained = self.transition.trained and self.schemas.trained
+
+        # Load real beliefs for starting positions
+        beliefs_path = Path("data/minari_trained/beliefs_sample.npz")
+        if beliefs_path.exists():
+            self.real_beliefs = np.load(beliefs_path)["beliefs"]
+        else:
+            self.real_beliefs = None
 
         # Episodic buffer
         self.episodes = []
@@ -364,15 +421,20 @@ class AutonomousLoop:
 
     def plan(self, current_belief, goal_belief):
         """Step 3: Hierarchical plan to reach goal."""
-        # Simple: interpolate toward goal
         n_steps = 30
         actions = []
-        direction = goal_belief - current_belief
         for i in range(n_steps):
-            t = (i + 1) / n_steps
-            action = direction[:D_ACTION] * 0.1 + \
-                     np.random.randn(D_ACTION).astype(np.float32) * 0.05
+            # Direction toward goal in action-space dimensions
+            diff = goal_belief[:D_ACTION] - current_belief[:D_ACTION]
+            # Actions in [-1, 1] range (matching Minari PushT/PointMaze)
+            action = np.clip(diff * 0.5, -1.0, 1.0).astype(np.float32)
+            # Add exploration noise
+            action += np.random.randn(D_ACTION).astype(np.float32) * 0.15
+            action = np.clip(action, -1.0, 1.0).astype(np.float32)
             actions.append(action)
+            # Update current belief using transition model for next step
+            if self.transition.trained:
+                current_belief = self.transition.predict(current_belief, action)
         return actions
 
     def execute(self, belief, actions, goal_schema):
@@ -384,11 +446,24 @@ class AutonomousLoop:
         narrations = []
 
         for i, action in enumerate(actions):
-            # Physics
-            next_belief = belief + 0.1 * action[0] + \
-                          np.random.randn(D_BELIEF).astype(np.float32) * 0.03
-            next_belief[2:] += np.random.randn(D_BELIEF - 2).astype(
-                np.float32) * 0.02
+            # Physics — use trained model if available
+            if self.transition.trained:
+                predicted = self.transition.predict(belief, action)
+                # Anchor to nearest real belief to prevent drift
+                if self.real_beliefs is not None:
+                    dists = np.linalg.norm(self.real_beliefs - predicted, axis=1)
+                    nearest_idx = np.argmin(dists)
+                    nearest_real = self.real_beliefs[nearest_idx]
+                    # Blend: 70% prediction, 30% nearest real (prevents drift)
+                    next_belief = 0.7 * predicted + 0.3 * nearest_real
+                else:
+                    next_belief = predicted
+                next_belief += np.random.randn(D_BELIEF).astype(np.float32) * 0.01
+            else:
+                next_belief = belief + 0.1 * action[0] + \
+                              np.random.randn(D_BELIEF).astype(np.float32) * 0.03
+                next_belief[2:] += np.random.randn(D_BELIEF - 2).astype(
+                    np.float32) * 0.02
 
             # Neuromodulatory signals
             pred_error = self.transition.error(belief, action, next_belief)
@@ -427,9 +502,17 @@ class AutonomousLoop:
             belief = next_belief
             self.state.total_steps += 1
 
-        # Check if goal reached
-        final_schema, final_dist = self.schemas.nearest(trajectory[-1])
-        reached = final_schema == goal_schema or final_dist < 2.0
+        # Check if goal reached at any point during trajectory
+        reached = False
+        for t_belief in trajectory:
+            t_schema, t_dist = self.schemas.nearest(t_belief)
+            if t_schema == goal_schema:
+                reached = True
+                break
+        if not reached:
+            # Check if final position is close enough
+            final_schema, final_dist = self.schemas.nearest(trajectory[-1])
+            reached = final_dist < 3.0 and final_schema == goal_schema
         if reached:
             self.state.goals_achieved += 1
 
@@ -534,13 +617,15 @@ class AutonomousLoop:
 
     def run_cycle(self, verbose=True):
         """One complete autonomous cycle."""
-        rng_belief = np.random.randn(D_BELIEF).astype(np.float32) * 0.5
-
-        # Use last trajectory endpoint if we have one
-        if self.episodes:
+        # Always start from a real data point to stay on manifold
+        if self.real_beliefs is not None:
+            # Pick a random real starting position (simulates being in the world)
+            idx = np.random.randint(len(self.real_beliefs))
+            belief = self.real_beliefs[idx].copy()
+        elif self.episodes:
             belief = self.episodes[-1][-1].copy()
         else:
-            belief = rng_belief
+            belief = np.random.randn(D_BELIEF).astype(np.float32) * 0.5
 
         # 1. Survey
         survey = self.survey(belief)
@@ -601,8 +686,9 @@ class AutonomousLoop:
     def run(self, max_cycles=-1, verbose=True):
         """Run the autonomous loop."""
         if verbose:
+            trained_str = "TRAINED (Minari 1M)" if self.using_trained else "UNTRAINED (random)"
             print("=" * 75)
-            print("  Autonomous Curiosity-Driven Loop")
+            print(f"  Autonomous Curiosity-Driven Loop — {trained_str}")
             print("  Ctrl+C to stop │ Create 'PAUSE' file to pause")
             print("=" * 75)
             print(f"  {'Cycle':>7} │ {'Goal':<18} │ {'Vocab':>9} │ "

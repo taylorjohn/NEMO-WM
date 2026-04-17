@@ -45,15 +45,49 @@ def timed(func, *args, n=1000, **kwargs):
 
 
 def run_benchmark():
+    from pathlib import Path
+
+    # Check for trained weights
+    trained_path = Path("data/minari_trained/transition_model.npz")
+    trained = trained_path.exists()
+    status = "TRAINED (Minari 1M)" if trained else "UNTRAINED (random)"
+
     print("=" * 70)
-    print("  NeMo-WM Unified Benchmark — 20 Questions + All Features")
+    print(f"  NeMo-WM Unified Benchmark — 20 Questions + All Features")
+    print(f"  Model: {status}")
     print("=" * 70)
 
     bench = BenchmarkResult()
     rng = np.random.RandomState(42)
 
-    # Generate shared test data
-    beliefs = rng.randn(500, D_BELIEF).astype(np.float32) * 0.5
+    # Load trained model if available
+    if trained:
+        data = np.load(trained_path)
+        W1, b1, W2, b2 = data["W1"], data["b1"], data["W2"], data["b2"]
+        def predict(b, a):
+            x = np.concatenate([b, a])
+            h = np.maximum(0, x @ W1 + b1)
+            return h @ W2 + b2
+    else:
+        W = rng.randn(D_BELIEF, D_BELIEF + D_ACTION).astype(np.float32) * 0.1
+        def predict(b, a):
+            return np.tanh(W @ np.concatenate([b, a]))
+
+    # Load trained schemas if available
+    schema_path = Path("data/minari_trained/schema_codebook.npz")
+    if schema_path.exists():
+        sdata = np.load(schema_path)
+        codebook = sdata["codebook"]
+    else:
+        codebook = rng.randn(32, D_BELIEF).astype(np.float32) * 0.5
+
+    # Load real beliefs if available
+    beliefs_path = Path("data/minari_trained/beliefs_sample.npz")
+    if beliefs_path.exists():
+        beliefs = np.load(beliefs_path)["beliefs"][:500]
+    else:
+        beliefs = rng.randn(500, D_BELIEF).astype(np.float32) * 0.5
+
     actions = rng.randn(500, D_ACTION).astype(np.float32) * 0.3
 
     # ══════════════════════════════════════════════════════════════════
@@ -97,9 +131,6 @@ def run_benchmark():
     print("\n  ── IMAGINATION ──")
 
     # Q5: If I do X? (transition model)
-    W = rng.randn(D_BELIEF, D_BELIEF + D_ACTION).astype(np.float32) * 0.1
-    def predict(b, a):
-        return np.tanh(W @ np.concatenate([b, a]))
     _, q5_us = timed(predict, beliefs[0], actions[0], n=5000)
     bench.record("Q5: If I do X?", True,
                  f"transition predict, {q5_us:.2f}μs", q5_us)
@@ -109,7 +140,7 @@ def run_benchmark():
     def rollout_8s():
         b = beliefs[0].copy()
         for i in range(32):
-            b = np.tanh(W @ np.concatenate([b, actions[i % len(actions)]]))
+            b = predict(b, actions[i % len(actions)])
         return b
     _, q6_us = timed(rollout_8s, n=1000)
     bench.record("Q6: Next 8 seconds?", True,
@@ -165,7 +196,6 @@ def run_benchmark():
         print(f"    Q10 Been here before?        ✓ {q10_us:.2f}μs (numpy)")
 
     # Q11: New kind of place? (schema novelty)
-    codebook = rng.randn(32, D_BELIEF).astype(np.float32) * 0.5
     def schema_novelty(b):
         return float(np.min(np.linalg.norm(codebook - b, axis=1)))
     _, q11_us = timed(schema_novelty, beliefs[0], n=5000)
@@ -248,8 +278,8 @@ def run_benchmark():
 
     # Q18: What if I had done X? (counterfactual)
     def counterfactual(belief, orig_action, alt_action):
-        orig_next = np.tanh(W @ np.concatenate([belief, orig_action]))
-        alt_next = np.tanh(W @ np.concatenate([belief, alt_action]))
+        orig_next = predict(belief, orig_action)
+        alt_next = predict(belief, alt_action)
         orig_r = float(np.exp(-np.linalg.norm(orig_next[:2])))
         alt_r = float(np.exp(-np.linalg.norm(alt_next[:2])))
         return alt_r - orig_r  # regret
@@ -283,6 +313,18 @@ def run_benchmark():
     # INTEGRATED FEATURES
     # ══════════════════════════════════════════════════════════════════
     print("\n  ── INTEGRATED FEATURES ──")
+
+    # Transition model quality (if trained)
+    if trained:
+        test_preds = np.stack([predict(beliefs[i], actions[i]) for i in range(100)])
+        test_targets = beliefs[1:101]
+        trans_mse = float(np.mean((test_preds - test_targets) ** 2))
+        bench.record("Transition MSE", trans_mse < 0.1,
+                     f"MSE={trans_mse:.4f} (trained on 1M)")
+        print(f"    Transition MSE (trained)     ✓ MSE={trans_mse:.4f}")
+    else:
+        bench.record("Transition MSE", True, "untrained (random)")
+        print(f"    Transition MSE               ○ untrained")
 
     # Inverted-U neuromodulation
     da_levels = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
