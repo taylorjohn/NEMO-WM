@@ -381,6 +381,118 @@ class DiVeQSchemaStore(nn.Module):
         """Return the current schema codebook."""
         return self.vq.codebook.data
 
+    @torch.no_grad()
+    def initialize_from_data(self, observations: torch.Tensor,
+                              method: str = "kmeans", n_iter: int = 20):
+        """
+        Initialize codebook from real observations instead of random.
+
+        This is critical for novelty detection — random codebooks start
+        far from real data, so novelty is high everywhere and never
+        decays meaningfully. Data-initialized codebooks start near the
+        data manifold, so novelty correctly identifies truly novel inputs.
+
+        Args:
+            observations: (N, D) tensor of belief states from early episodes
+            method: 'kmeans' (iterative), 'sample' (random subset),
+                    or 'kmeans++' (smart seeding)
+            n_iter: iterations for k-means
+
+        Returns:
+            dict with initialization stats
+        """
+        N, D = observations.shape
+        K = self.n_schemas
+
+        if N < K:
+            # Not enough data — pad with noisy copies
+            repeats = (K // N) + 1
+            observations = observations.repeat(repeats, 1)[:K]
+            N = K
+
+        if method == "sample":
+            # Random subset of observations
+            perm = torch.randperm(N)[:K]
+            centroids = observations[perm].clone()
+
+        elif method == "kmeans++":
+            # K-means++ seeding (smart initialization)
+            centroids = torch.zeros(K, D)
+            # First centroid: random
+            centroids[0] = observations[torch.randint(N, (1,))]
+            for k in range(1, K):
+                # Distance to nearest existing centroid
+                dists = torch.cdist(observations, centroids[:k])
+                min_dists = dists.min(dim=1).values  # (N,)
+                # Sample proportional to distance squared
+                probs = min_dists ** 2
+                probs = probs / probs.sum()
+                idx = torch.multinomial(probs, 1)
+                centroids[k] = observations[idx]
+
+        elif method == "kmeans":
+            # Full k-means: seed with kmeans++, then iterate
+            # Seed
+            centroids = torch.zeros(K, D)
+            centroids[0] = observations[torch.randint(N, (1,))]
+            for k in range(1, K):
+                dists = torch.cdist(observations, centroids[:k])
+                min_dists = dists.min(dim=1).values
+                probs = min_dists ** 2
+                probs = probs / (probs.sum() + 1e-8)
+                idx = torch.multinomial(probs, 1)
+                centroids[k] = observations[idx]
+
+            # Iterate
+            for it in range(n_iter):
+                # Assign each observation to nearest centroid
+                dists = torch.cdist(observations, centroids)  # (N, K)
+                assignments = dists.argmin(dim=1)  # (N,)
+
+                # Update centroids
+                new_centroids = torch.zeros_like(centroids)
+                counts = torch.zeros(K)
+                for k in range(K):
+                    mask = assignments == k
+                    if mask.any():
+                        new_centroids[k] = observations[mask].mean(dim=0)
+                        counts[k] = mask.sum()
+                    else:
+                        # Dead centroid — reinitialize to random observation
+                        new_centroids[k] = observations[torch.randint(N, (1,))]
+                        counts[k] = 0
+
+                # Check convergence
+                shift = (new_centroids - centroids).norm(dim=1).mean()
+                centroids = new_centroids
+                if shift < 1e-6:
+                    break
+        else:
+            raise ValueError(f"Unknown method: {method}")
+
+        # Apply to codebook
+        self.vq.codebook.data.copy_(centroids)
+
+        # Reset usage counts
+        self.vq.usage_count.zero_()
+        self.vq.total_count.zero_()
+        self._novelty_history.clear()
+
+        # Measure initial coverage
+        dists = torch.cdist(observations, centroids)
+        assignments = dists.argmin(dim=1)
+        active = len(assignments.unique())
+        mean_dist = dists.min(dim=1).values.mean().item()
+
+        return {
+            'method': method,
+            'n_observations': N,
+            'n_codes': K,
+            'active_codes': active,
+            'mean_dist_to_nearest': mean_dist,
+            'codebook_norm': centroids.norm(dim=1).mean().item(),
+        }
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 4. Differentiable Memory Consolidation
@@ -511,7 +623,7 @@ def selftest():
         passed += 1
 
     total += 1
-    if info['commit_loss'].item() >= 0:  # commitment loss computed
+    if info['commit_loss'].requires_grad:
         print(f"  OK: commitment loss is differentiable")
         passed += 1
 
@@ -568,8 +680,8 @@ def selftest():
 
     # Gradient flows to codebook
     total += 1
-    schema.train()  # ensure train mode for gradients
-    b2 = torch.randn(10, 64, requires_grad=True)
+    schema.zero_grad()
+    b2 = torch.randn(10, 64)
     z_q2, loss2, _ = schema(b2)
     loss2.backward()
     has_grad = schema.vq.codebook.grad is not None
