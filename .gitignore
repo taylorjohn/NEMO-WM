@@ -16,3 +16,10 @@ data/
 outputs/overnight_checkpoints/
 .DS_Store
 Thumbs.db
+
+paper2.tex
+paper2.pdf
+paper2.aux
+paper2.log
+paper2.bbl
+paper2.blg
