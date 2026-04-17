@@ -33,7 +33,7 @@ def load_minari_data(dataset_name="D4RL/pointmaze/umaze-v2",
     """Load Minari dataset and extract arrays."""
     import minari
     print(f"  Loading {dataset_name}...")
-    dataset = minari.load_dataset(dataset_name)
+    dataset = minari.load_dataset(dataset_name, download=True)
     print(f"  Episodes: {dataset.total_episodes}")
     print(f"  Total steps: {dataset.total_steps}")
 
