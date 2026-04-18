@@ -58,16 +58,26 @@ SLOW_TESTS = {
 
 def parse_results(output):
     """Extract pass/total from test output."""
-    # Look for "Results: X/Y tests passed" or "X/Y"
     patterns = [
         r'Results?:\s*(\d+)/(\d+)',
         r'(\d+)/(\d+)\s*tests?\s*passed',
+        r'(\d+)/(\d+)\s*AGI\s*capabilit',
         r'TOTAL[:\s]+(\d+)/(\d+)',
+        r'NeMo-WM:\s*(\d+)/(\d+)',
+        r'(\d+)/(\d+)\s*\(all pass\)',
     ]
+    best_total = 0
+    best_passed = 0
+
     for pattern in patterns:
-        match = re.search(pattern, output)
-        if match:
-            return int(match.group(1)), int(match.group(2))
+        for match in re.finditer(pattern, output):
+            p, t = int(match.group(1)), int(match.group(2))
+            if t > best_total:
+                best_total = t
+                best_passed = p
+
+    if best_total > 0:
+        return best_passed, best_total
 
     # Count PASS/FAIL lines
     passes = len(re.findall(r'\bPASS\b', output))
@@ -84,11 +94,12 @@ def run_test(name, command, verbose=False):
     try:
         result = subprocess.run(
             [sys.executable] + command.split(),
-            capture_output=True, text=True, timeout=120,
+            capture_output=True, timeout=120,
             cwd=str(Path.cwd()),
             env={**__import__('os').environ, 'PYTHONIOENCODING': 'utf-8'})
 
-        output = result.stdout + result.stderr
+        output = result.stdout.decode('utf-8', errors='replace') + \
+                 result.stderr.decode('utf-8', errors='replace')
         elapsed = time.time() - t0
         passed, total = parse_results(output)
 
