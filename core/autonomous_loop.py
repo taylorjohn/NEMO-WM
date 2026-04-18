@@ -557,6 +557,9 @@ class AutonomousLoop:
         self.running = True
         self.paused = False
 
+        # Instruction queue
+        self.pending_instruction = None
+
     def survey(self, belief):
         """Step 1: Ask all 20 questions about current state."""
         schema_id, novelty = self.schemas.nearest(belief)
@@ -577,11 +580,78 @@ class AutonomousLoop:
         }
 
     def generate_goal(self):
-        """Step 2: Pick exploration target from curiosity."""
+        """Step 2: Pick exploration target from curiosity OR instruction."""
+        # Check for pending instructions
+        if self.pending_instruction:
+            instruction = self.pending_instruction
+            self.pending_instruction = None
+            return self._goal_from_instruction(instruction)
+
+        # Default: curiosity-driven
         target_schema = self.schemas.most_novel_schema()
         target_belief = self.schemas.codebook[target_schema].copy()
         self.state.goals_attempted += 1
         return target_schema, target_belief
+
+    def _goal_from_instruction(self, instruction):
+        """Convert a natural language instruction to a goal belief."""
+        # Parse instruction
+        words = instruction.lower().split()
+        stops = {'the', 'to', 'a', 'an', 'go', 'please', 'can', 'you'}
+        content_words = [w for w in words if w not in stops]
+
+        # Check for region reference ("region_5", "region 5")
+        for i, w in enumerate(words):
+            if w == "region" and i + 1 < len(words):
+                try:
+                    schema_id = int(words[i + 1])
+                    if 0 <= schema_id < len(self.schemas.codebook):
+                        self.state.goals_attempted += 1
+                        return schema_id, self.schemas.codebook[schema_id].copy()
+                except ValueError:
+                    pass
+            if w.startswith("region_"):
+                try:
+                    schema_id = int(w.split("_")[1])
+                    if 0 <= schema_id < len(self.schemas.codebook):
+                        self.state.goals_attempted += 1
+                        return schema_id, self.schemas.codebook[schema_id].copy()
+                except (ValueError, IndexError):
+                    pass
+
+        # Ground content words to belief space
+        goal_belief = np.zeros(D_BELIEF, dtype=np.float32)
+        n_grounded = 0
+
+        for word in content_words:
+            proto = self.vocab.lookup(word)
+            if proto is not None:
+                goal_belief += proto
+                n_grounded += 1
+
+        # Handle negation
+        negate = any(w in words for w in ["not", "avoid", "away", "dont"])
+
+        if n_grounded > 0:
+            goal_belief /= n_grounded
+            if negate:
+                goal_belief = -goal_belief
+
+            # Find nearest schema to grounded goal
+            dists = np.linalg.norm(
+                self.schemas.codebook - goal_belief, axis=1)
+            target_schema = int(np.argmin(dists))
+        else:
+            # Fallback to curiosity if instruction not understood
+            target_schema = self.schemas.most_novel_schema()
+            goal_belief = self.schemas.codebook[target_schema].copy()
+
+        self.state.goals_attempted += 1
+        return target_schema, goal_belief
+
+    def instruct(self, instruction):
+        """Queue an instruction for the next cycle."""
+        self.pending_instruction = instruction
 
     def plan(self, current_belief, goal_belief):
         """Step 3: Hierarchical plan to reach goal."""
@@ -1064,6 +1134,8 @@ if __name__ == "__main__":
                      help="Clear all accumulated knowledge")
     ap.add_argument("--test", action="store_true",
                      help="Run validation tests")
+    ap.add_argument("--instruct", type=str, default=None,
+                     help="Give instruction: 'go explore region 5'")
     args = ap.parse_args()
 
     if args.test:
@@ -1074,14 +1146,31 @@ if __name__ == "__main__":
         export_state()
     elif args.reset:
         reset_state()
+    elif args.instruct:
+        state = KnowledgeState.load()
+        loop = AutonomousLoop(state)
+        print(f"  Instruction: \"{args.instruct}\"")
+        loop.instruct(args.instruct)
+        loop.run(max_cycles=1)
     elif args.run:
         state = KnowledgeState.load()
         loop = AutonomousLoop(state)
+
+        # Check for instruction file
+        instruct_file = Path("INSTRUCT")
+        if instruct_file.exists():
+            instruction = instruct_file.read_text().strip()
+            instruct_file.unlink()
+            if instruction:
+                loop.instruct(instruction)
+                print(f"  Instruction loaded: \"{instruction}\"")
+
         loop.run(max_cycles=args.cycles)
     else:
         ap.print_help()
         print("\nExamples:")
         print("  python autonomous_loop.py --run --cycles 20")
         print("  python autonomous_loop.py --run  # infinite, Ctrl+C")
+        print("  python autonomous_loop.py --instruct 'go explore region 5'")
         print("  python autonomous_loop.py --status")
         print("  python autonomous_loop.py --test")
