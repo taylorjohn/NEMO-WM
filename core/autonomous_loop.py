@@ -508,13 +508,93 @@ NARRATIONS = {
 }
 
 
-def narrate(context, **kwargs):
-    templates = NARRATIONS.get(context, NARRATIONS["explore_start"])
-    template = np.random.choice(templates)
-    try:
-        return template.format(**kwargs)
-    except KeyError:
-        return template
+def narrate(context, belief=None, vocab=None, **kwargs):
+    """
+    Compose narration using construction grammar + vocabulary.
+    Falls back to templates if no belief/vocab provided.
+    
+    Construction patterns:
+      [ACTION] [DIRECTION]         → "explore leftward"
+      [ACTION] [DIRECTION] [PLACE] → "navigate northward corridor"  
+      [MOTION] toward [PLACE]      → "push toward goal"
+      [STATE] at [PLACE]           → "steady at region_5"
+    """
+    # If no belief provided, use templates
+    if belief is None or vocab is None:
+        templates = NARRATIONS.get(context, NARRATIONS["explore_start"])
+        template = np.random.choice(templates)
+        try:
+            return template.format(**kwargs)
+        except KeyError:
+            return template
+
+    # ── Grammar-based narration ──
+    
+    # Find best describing words for current belief
+    description = vocab.describe(belief, max_words=3)
+    desc_words = description.split() if description else []
+
+    # Categorize available words
+    action_words = []
+    direction_words = []
+    place_words = []
+    state_words = []
+
+    for word in list(vocab.prototypes.keys())[:200]:  # check first 200
+        if word in ("go", "explore", "navigate", "turn", "stop", "push",
+                      "move", "search", "avoid"):
+            action_words.append(word)
+        elif word in ("left", "right", "upper", "lower", "northward",
+                        "southward", "eastward", "westward"):
+            direction_words.append(word)
+        elif word.startswith("region_") or word in ("corridor", "corner",
+                                                       "goal", "obstacle",
+                                                       "start", "frontier"):
+            place_words.append(word)
+        elif word in ("fast", "slow", "steady", "change", "novel",
+                        "familiar", "safe", "dangerous", "quiet", "loud"):
+            state_words.append(word)
+
+    # Pick words based on context
+    rng = np.random.RandomState()
+
+    if context == "explore_start":
+        action = rng.choice(action_words) if action_words else "explore"
+        direction = rng.choice(direction_words) if direction_words else ""
+        place = kwargs.get("schema", "")
+        parts = [action, direction, place]
+
+    elif context == "high_da":
+        state = "novel" if "novel" in state_words else "change"
+        # Use description words for what's surprising
+        parts = ["surprise", state] + desc_words[:2]
+
+    elif context == "high_crt":
+        parts = ["caution"] + desc_words[:2] + ["detected"]
+
+    elif context == "low_novelty":
+        state = "familiar" if "familiar" in state_words else "steady"
+        parts = [state, "territory"] + desc_words[:1]
+
+    elif context == "discovery":
+        parts = ["discovered"] + desc_words[:3]
+
+    elif context == "goal_reached":
+        place = kwargs.get("schema", "")
+        parts = ["reached", place] + desc_words[:1]
+
+    elif context == "sleep":
+        parts = ["consolidating"] + desc_words[:2]
+
+    elif context == "counterfactual":
+        parts = ["imagining", "alternative"] + desc_words[:1]
+
+    else:
+        parts = desc_words[:3] if desc_words else ["observing"]
+
+    # Clean and join
+    sentence = " ".join(p for p in parts if p and len(str(p)) > 0)
+    return sentence if sentence else "exploring"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -634,13 +714,18 @@ class AutonomousLoop:
 
         if n_grounded > 0:
             goal_belief /= n_grounded
-            if negate:
-                goal_belief = -goal_belief
 
-            # Find nearest schema to grounded goal
-            dists = np.linalg.norm(
-                self.schemas.codebook - goal_belief, axis=1)
-            target_schema = int(np.argmin(dists))
+            if negate:
+                # AVOID: pick the schema FARTHEST from the thing to avoid
+                dists = np.linalg.norm(
+                    self.schemas.codebook - goal_belief, axis=1)
+                target_schema = int(np.argmax(dists))  # farthest!
+                goal_belief = self.schemas.codebook[target_schema].copy()
+            else:
+                # GO TO: pick nearest schema
+                dists = np.linalg.norm(
+                    self.schemas.codebook - goal_belief, axis=1)
+                target_schema = int(np.argmin(dists))
         else:
             # Fallback to curiosity if instruction not understood
             target_schema = self.schemas.most_novel_schema()
@@ -716,20 +801,27 @@ class AutonomousLoop:
             da = self.neuro.signals["DA"]
             crt = self.neuro.signals["CRT"]
 
-            # Narrate key moments
+            # Narrate key moments (grammar-based when possible)
             if i == 0:
                 narrations.append((i, narrate("explore_start",
+                    belief=next_belief, vocab=self.vocab,
                     schema=self.schemas.names[goal_schema])))
             elif da > 0.6:
-                narrations.append((i, narrate("high_da")))
+                narrations.append((i, narrate("high_da",
+                    belief=next_belief, vocab=self.vocab)))
             elif crt > 0.4:
-                narrations.append((i, narrate("high_crt")))
+                narrations.append((i, narrate("high_crt",
+                    belief=next_belief, vocab=self.vocab)))
             elif novelty < 0.3 and i % 5 == 0:
-                narrations.append((i, narrate("low_novelty")))
+                narrations.append((i, narrate("low_novelty",
+                    belief=next_belief, vocab=self.vocab)))
             elif i == len(actions) // 2:
-                narrations.append((i, narrate("discovery")))
+                narrations.append((i, narrate("discovery",
+                    belief=next_belief, vocab=self.vocab)))
             elif i == len(actions) - 1:
-                narrations.append((i, narrate("goal_reached")))
+                narrations.append((i, narrate("goal_reached",
+                    belief=next_belief, vocab=self.vocab,
+                    schema=self.schemas.names[goal_schema])))
 
             trajectory.append(next_belief.copy())
             rewards.append(reward)
