@@ -45,6 +45,7 @@ TEST_SUITE = [
     ("NPA Crossover",            "npa_crossover_demo.py --test"),
     ("EWC Continual",            "ewc_continual.py --test"),
     ("Gym Connector",            "gym_connector.py --test"),
+    ("Multi-Maze Loop",          "multi_maze_loop.py --test"),
 ]
 
 # Slow tests (skip with --quick)
@@ -65,19 +66,22 @@ def parse_results(output):
         r'TOTAL[:\s]+(\d+)/(\d+)',
         r'NeMo-WM:\s*(\d+)/(\d+)',
         r'(\d+)/(\d+)\s*\(all pass\)',
+        r'(\d+)/(\d+)\s*demonstrated',
     ]
-    best_total = 0
-    best_passed = 0
 
+    # Collect ALL matches with their position in output
+    all_matches = []
     for pattern in patterns:
         for match in re.finditer(pattern, output):
             p, t = int(match.group(1)), int(match.group(2))
-            if t > best_total:
-                best_total = t
-                best_passed = p
+            pos = match.start()
+            all_matches.append((p, t, pos))
 
-    if best_total > 0:
-        return best_passed, best_total
+    if all_matches:
+        # Take the match with highest total; if tied, take LAST one (summary)
+        all_matches.sort(key=lambda x: (x[1], x[2]))
+        best = all_matches[-1]
+        return best[0], best[1]
 
     # Count PASS/FAIL lines
     passes = len(re.findall(r'\bPASS\b', output))

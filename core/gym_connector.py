@@ -753,6 +753,8 @@ if __name__ == "__main__":
                      help="Collect live gym data to calibrate projection")
     ap.add_argument("--retrain", action="store_true",
                      help="Collect live data + retrain transition model")
+    ap.add_argument("--train-epochs", type=int, default=200,
+                     help="Number of training epochs for retrain")
     ap.add_argument("--episodes", type=int, default=20)
     ap.add_argument("--env", default="PointMaze_UMaze-v3")
     args = ap.parse_args()
@@ -771,7 +773,7 @@ if __name__ == "__main__":
         except ImportError:
             pass
         collect_and_retrain(args.env, n_episodes=args.episodes,
-                              n_train_epochs=50)
+                              n_train_epochs=args.train_epochs)
     elif args.benchmark:
         try:
             import gymnasium_robotics
