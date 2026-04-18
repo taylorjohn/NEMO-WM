@@ -469,11 +469,14 @@ def run_tests():
 
     print("\n  T4: Composition creates compounds")
     narrator2 = CompositionalNarrator(initial_vocab=seed)
-    # Present a belief between two known words
-    between = (seed["left"] + seed["fast"]) * 0.5
-    for i in range(20):
-        narrator2.narrate(between + rng.randn(D_BELIEF).astype(np.float32) * 0.1,
-                            {"schema": 0, "step": i})
+    # Present diverse beliefs that need more than single words
+    for i in range(50):
+        # Mix known words in varying proportions + add noise
+        w = rng.dirichlet([1, 1, 1])
+        mixed = (w[0] * seed["left"] + w[1] * seed["fast"] +
+                  w[2] * seed["right"])
+        noisy = mixed + rng.randn(D_BELIEF).astype(np.float32) * 0.3
+        narrator2.narrate(noisy, {"schema": i % 32, "step": i})
     ok = len(narrator2.compositions) > 0 or narrator2.words_invented > 0
     print(f"    Compounds: {len(narrator2.compositions)} "
           f"Invented: {narrator2.words_invented} "

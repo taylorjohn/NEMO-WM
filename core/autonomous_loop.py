@@ -952,10 +952,11 @@ class AutonomousLoop:
             credits[i] = rewards[i] + 0.95 * credits[i + 1]
 
         # Dream narration — replay with new descriptions to grow vocab
+        dream_belief = beliefs[len(beliefs)//2] if len(beliefs) > 2 else beliefs[0]
         dream_narrations = [
-            narrate("sleep"),
-            narrate("discovery"),
-            narrate("counterfactual"),
+            narrate("sleep", belief=dream_belief, vocab=self.vocab),
+            narrate("discovery", belief=dream_belief, vocab=self.vocab),
+            narrate("counterfactual", belief=dream_belief, vocab=self.vocab),
         ]
         if intensity > 0.5:
             dream_narrations.append(narrate("high_da"))

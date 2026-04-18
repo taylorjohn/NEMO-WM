@@ -340,6 +340,94 @@ def demo():
     print(f"  Objects ARE the unpredictable parts of the world")
     print(f"{'='*70}")
 
+    # Generate tracking visualization
+    try:
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+        from matplotlib.patches import Circle
+
+        print(f"\n  Generating tracking visualization...")
+        fig, axes = plt.subplots(2, 4, figsize=(16, 8))
+        fig.patch.set_facecolor('#0d1117')
+        fig.suptitle("Object Tracking from Prediction Error",
+                       color='white', fontsize=14, fontweight='bold')
+
+        # Show 8 key frames
+        key_frames = [50, 70, 90, 110, 130, 150, 170, 190]
+        for ax_idx, frame_idx in enumerate(key_frames):
+            row = ax_idx // 4
+            col = ax_idx % 4
+            ax = axes[row, col]
+            ax.set_facecolor('#161b22')
+
+            # Render frame
+            frame = frames[frame_idx].reshape(16, 16)
+            ax.imshow(frame, cmap='viridis', vmin=0, vmax=1.5,
+                        aspect='equal')
+
+            # Show true object positions
+            for obj_pos in positions[frame_idx]:
+                circle = Circle((obj_pos[0], obj_pos[1]), 0.8,
+                                  fill=False, color='#ef4444',
+                                  linewidth=2, linestyle='--')
+                ax.add_patch(circle)
+
+            # Show tracking info
+            r = track_results[frame_idx - 50] if frame_idx - 50 < len(track_results) else None
+            if r and r["tracking"]:
+                status = f"TRACKING {r['confidence']:.0%}"
+                color = '#10b981'
+            else:
+                status = "searching"
+                color = '#f59e0b'
+
+            ax.set_title(f"Frame {frame_idx}\n{status}",
+                          color=color, fontsize=9)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            for spine in ax.spines.values():
+                spine.set_color('#30363d')
+
+        plt.tight_layout()
+        gif_path = "outputs/object_tracking.png"
+        plt.savefig(gif_path, dpi=120, facecolor='#0d1117')
+        plt.close()
+        print(f"  Saved: {gif_path}")
+
+        # Also generate error timeline
+        fig2, ax2 = plt.subplots(1, 1, figsize=(10, 3))
+        fig2.patch.set_facecolor('#0d1117')
+        ax2.set_facecolor('#161b22')
+
+        errors = [r['error'] for r in track_results]
+        confs = [r['confidence'] for r in track_results]
+        frames_x = [r['frame'] for r in track_results]
+
+        ax2.plot(frames_x, errors, color='#ef4444', alpha=0.7,
+                   linewidth=1, label='Prediction error')
+        ax2.plot(frames_x, confs, color='#10b981', alpha=0.9,
+                   linewidth=2, label='Track confidence')
+        ax2.axhline(y=0.5, color='#f59e0b', linestyle='--',
+                      alpha=0.5, label='Detection threshold')
+        ax2.set_xlabel('Frame', color='white')
+        ax2.set_ylabel('Value', color='white')
+        ax2.set_title('Object Tracking Timeline', color='white')
+        ax2.legend(facecolor='#161b22', edgecolor='#30363d',
+                     labelcolor='white', fontsize=8)
+        ax2.tick_params(colors='#8b949e')
+        for spine in ax2.spines.values():
+            spine.set_color('#30363d')
+
+        timeline_path = "outputs/object_tracking_timeline.png"
+        plt.tight_layout()
+        plt.savefig(timeline_path, dpi=120, facecolor='#0d1117')
+        plt.close()
+        print(f"  Saved: {timeline_path}")
+
+    except ImportError:
+        print("  matplotlib not available, skipping visualization")
+
 
 def run_tests():
     print("=" * 65)
