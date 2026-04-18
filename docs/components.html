@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeMo-WM — Architecture Explorer</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0e17;
+  --bg2: #111827;
+  --bg3: #1a2235;
+  --text: #e2e8f0;
+  --text2: #94a3b8;
+  --text3: #4a5568;
+  --accent1: #10b981;
+  --accent2: #3b82f6;
+  --accent3: #f59e0b;
+  --accent4: #ef4444;
+  --accent5: #8b5cf6;
+  --border: #1e2a40;
+  --font-sans: 'Outfit', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --border-radius-md: 10px;
+  --color-text-primary: var(--text);
+  --color-text-secondary: var(--text2);
+  --color-text-tertiary: var(--text3);
+  --color-border-tertiary: var(--border);
+  --color-border-primary: var(--accent1);
+  --color-border-secondary: #2a3548;
+  --color-background-primary: var(--bg2);
+  --color-background-secondary: var(--bg3);
+  --color-background-info: rgba(59,130,246,0.15);
+  --color-text-info: #93c5fd;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+}
+
+/* Nav */
+nav {
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  background:rgba(10,14,23,0.95);backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  padding:0.75rem 2rem;display:flex;align-items:center;justify-content:space-between;
+}
+nav a { text-decoration:none; }
+.nav-brand {
+  font-weight:800;font-size:1.2rem;
+  background:linear-gradient(135deg,#10b981,#3b82f6);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.nav-links { display:flex; gap:1.5rem; align-items:center; }
+.nav-links a { color:#94a3b8; font-size:0.85rem; transition:color 0.2s; }
+.nav-links a:hover { color:#10b981; }
+.nav-links a.active { color:#10b981; font-weight:600; }
+
+/* Main content */
+.main { max-width:900px; margin:0 auto; padding:5rem 1.5rem 3rem; }
+.page-title { font-size:2.2rem; font-weight:800; margin-bottom:0.5rem; letter-spacing:-0.02em; }
+.page-desc { color:var(--text2); font-size:1rem; margin-bottom:2rem; }
+
+/* Component explorer styles */
+.wrap{padding:12px 0}
+.layer{margin-bottom:10px}
+.layer-label{font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+.cards{display:grid;gap:8px}
+.c1{grid-template-columns:1fr}
+.c2{grid-template-columns:1fr 1fr}
+.c3{grid-template-columns:1fr 1fr 1fr}
+.c4{grid-template-columns:1fr 1fr 1fr 1fr}
+.c5{grid-template-columns:1fr 1fr 1fr 1fr 1fr}
+@media(max-width:600px){.c3,.c4,.c5{grid-template-columns:1fr 1fr}.c2{grid-template-columns:1fr}}
+.card{border:0.5px solid var(--border);border-radius:var(--border-radius-md);padding:10px 12px;cursor:pointer;transition:all .2s;background:var(--bg2)}
+.card:hover{border-color:var(--accent1);transform:translateY(-2px);box-shadow:0 4px 20px rgba(16,185,129,0.1)}
+.card.purple{border-color:#534AB7}.card.teal{border-color:#1D9E75}
+.card.amber{border-color:#BA7517}.card.coral{border-color:#993C1D}
+.card.blue{border-color:#3b82f6}
+.card-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;font-family:var(--font-mono)}
+.card-sub{font-size:11px;color:var(--text2);margin-bottom:6px;line-height:1.4}
+.card-stat{font-size:11px;font-weight:500}
+.stat-purple{color:#8b7dd8}.stat-teal{color:#34d399}
+.stat-amber{color:#fbbf24}.stat-coral{color:#f87171}
+.stat-blue{color:#60a5fa}
+.arrow-row{display:flex;align-items:center;justify-content:center;gap:4px;margin:6px 0;color:var(--text3);font-size:11px;font-family:var(--font-mono)}
+.detail-panel{border:1px solid var(--border);border-radius:var(--border-radius-md);padding:16px 18px;margin-top:12px;background:var(--bg3);animation:fadeIn 0.3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.dp-title{font-size:14px;font-weight:600;margin-bottom:8px;color:var(--accent1);font-family:var(--font-mono)}
+.dp-body{font-size:12px;color:var(--text2);line-height:1.7}
+.dp-stat{font-size:12px;font-weight:500;margin-top:8px;color:var(--accent3);font-family:var(--font-mono)}
+.dp-brain{font-size:11px;color:var(--text3);margin-top:6px;font-style:italic}
+.badge{display:inline-block;font-size:9px;padding:2px 6px;border-radius:3px;font-weight:600;margin-left:4px;vertical-align:middle}
+.badge-new{background:rgba(16,185,129,0.2);color:#10b981}
+.badge-updated{background:rgba(59,130,246,0.2);color:#60a5fa}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-brand">NeMo-WM</a>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="showcase.html">Demos</a>
+    <a href="components.html" class="active">Architecture</a>
+    <a href="https://github.com/taylorjohn/NEMO-WM">GitHub</a>
+  </div>
+</nav>
+
+<div class="main">
+<h1 class="page-title">Architecture Explorer</h1>
+<p class="page-desc">Click any component to learn what it does. Every box is a real, tested module.</p>
+
+<div class="wrap">
+<div style="font-size:11px;color:var(--text3);margin-bottom:10px;font-family:var(--font-mono)">254/257 tests passing · 1.2M parameters · CPU only</div>
+
+<!-- PERCEPTION -->
+<div class="layer">
+  <div class="layer-label">perception — 5/5 biological senses</div>
+  <div class="cards c5">
+    <div class="card" onclick="show('proprio')">
+      <div class="card-name">Proprio</div>
+      <div class="card-sub">position + velocity</div>
+      <div class="card-stat stat-teal">4-D → 64-D</div>
+    </div>
+    <div class="card" onclick="show('vision')">
+      <div class="card-name">Vision</div>
+      <div class="card-sub">DINOv2 features</div>
+      <div class="card-stat stat-teal">384-D → 64-D</div>
+    </div>
+    <div class="card" onclick="show('audio')">
+      <div class="card-name">Audio</div>
+      <div class="card-sub">mel spectrograms</div>
+      <div class="card-stat stat-teal">20-D · 135× sep</div>
+    </div>
+    <div class="card" onclick="show('tactile')">
+      <div class="card-name">Tactile <span class="badge badge-new">NEW</span></div>
+      <div class="card-sub">pressure, texture, temp</div>
+      <div class="card-stat stat-teal">32-D · 13 words</div>
+    </div>
+    <div class="card" onclick="show('chemical')">
+      <div class="card-name">Chemical <span class="badge badge-new">NEW</span></div>
+      <div class="card-sub">concentration gradients</div>
+      <div class="card-stat stat-teal">16-D · gradient</div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-row">↓ attention-gated fusion → b_t ∈ ℝ⁶⁴ (unified belief)</div>
+
+<!-- DYNAMICS -->
+<div class="layer">
+  <div class="layer-label">dynamics — dual-system cognition</div>
+  <div class="cards c3">
+    <div class="card purple" onclick="show('s1')">
+      <div class="card-name">System 1 (Fast)</div>
+      <div class="card-sub">MLP transition, 64% of decisions</div>
+      <div class="card-stat stat-purple">7μs per decision</div>
+    </div>
+    <div class="card purple" onclick="show('s2')">
+      <div class="card-name">System 2 (Slow) <span class="badge badge-updated">v2</span></div>
+      <div class="card-sub">NeuroTransformer, 36% of decisions</div>
+      <div class="card-stat stat-purple">166μs · 5 head types</div>
+    </div>
+    <div class="card purple" onclick="show('switch')">
+      <div class="card-name">Auto-Switch</div>
+      <div class="card-sub">novelty + error + fatigue</div>
+      <div class="card-stat stat-purple">S1↔S2 gating</div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-row">↓ b̂_{t+1} = f(b_t, a_t) — predict next belief</div>
+
+<!-- PLANNING -->
+<div class="layer">
+  <div class="layer-label">planning — 4 modes</div>
+  <div class="cards c4">
+    <div class="card teal" onclick="show('greedy')">
+      <div class="card-name">Greedy</div>
+      <div class="card-sub">S1, direct to goal</div>
+      <div class="card-stat stat-teal">consistency 0.889</div>
+    </div>
+    <div class="card teal" onclick="show('deliberate')">
+      <div class="card-name">Deliberate</div>
+      <div class="card-sub">S2, smooth trajectory</div>
+      <div class="card-stat stat-teal">37% less jerk</div>
+    </div>
+    <div class="card teal" onclick="show('hierarchical')">
+      <div class="card-name">Hierarchical</div>
+      <div class="card-sub">schema waypoints</div>
+      <div class="card-stat stat-teal">best goal dist</div>
+    </div>
+    <div class="card teal" onclick="show('refinement')">
+      <div class="card-name">Refinement</div>
+      <div class="card-sub">iterative search</div>
+      <div class="card-stat stat-teal">manifold 0.809</div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-row">↓ action selected (regret-biased)</div>
+
+<!-- MEMORY -->
+<div class="layer">
+  <div class="layer-label">memory — 4 stores + EWC</div>
+  <div class="cards c4">
+    <div class="card amber" onclick="show('wm')">
+      <div class="card-name">Working</div>
+      <div class="card-sub">K=6 ring buffer</div>
+      <div class="card-stat stat-amber">PFC · stress degrades</div>
+    </div>
+    <div class="card amber" onclick="show('episodic')">
+      <div class="card-name">Episodic</div>
+      <div class="card-sub">DA-priority replay</div>
+      <div class="card-stat stat-amber">hippocampus</div>
+    </div>
+    <div class="card amber" onclick="show('schema')">
+      <div class="card-name">Schema</div>
+      <div class="card-sub">32 codebook regions</div>
+      <div class="card-stat stat-amber">neocortex</div>
+    </div>
+    <div class="card amber" onclick="show('ewc')">
+      <div class="card-name">EWC <span class="badge badge-new">NEW</span></div>
+      <div class="card-sub">continual learning</div>
+      <div class="card-stat stat-amber">75% drift reduction</div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-row">↓ consolidate during sleep (fwd + bwd replay)</div>
+
+<!-- LANGUAGE -->
+<div class="layer">
+  <div class="layer-label">language — grounded, growing, no LLM</div>
+  <div class="cards c3">
+    <div class="card blue" onclick="show('vocab')">
+      <div class="card-name">Vocabulary</div>
+      <div class="card-sub">648 words, persistent</div>
+      <div class="card-stat stat-blue">naming + differentiation</div>
+    </div>
+    <div class="card blue" onclick="show('grammar')">
+      <div class="card-name">Grammar <span class="badge badge-new">NEW</span></div>
+      <div class="card-sub">construction-based composition</div>
+      <div class="card-stat stat-blue">unlimited growth</div>
+    </div>
+    <div class="card blue" onclick="show('instruct')">
+      <div class="card-name">Instructions <span class="badge badge-new">NEW</span></div>
+      <div class="card-sub">"go upper right" → action</div>
+      <div class="card-stat stat-blue">region_18 ✓</div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-row">↓ action → environment → new observation → loop</div>
+
+<!-- NEUROMODULATORS -->
+<div class="layer">
+  <div class="layer-label">neuromodulators — 5 biological signals</div>
+  <div class="cards c5">
+    <div class="card coral" onclick="show('da')">
+      <div class="card-name">DA</div>
+      <div class="card-sub">surprise</div>
+      <div class="card-stat stat-coral">prediction error</div>
+    </div>
+    <div class="card coral" onclick="show('ach')">
+      <div class="card-name">ACh</div>
+      <div class="card-sub">certainty</div>
+      <div class="card-stat stat-coral">explore/exploit</div>
+    </div>
+    <div class="card coral" onclick="show('crt')">
+      <div class="card-name">CRT</div>
+      <div class="card-sub">conflict</div>
+      <div class="card-stat stat-coral">domain novelty</div>
+    </div>
+    <div class="card coral" onclick="show('ne')">
+      <div class="card-name">NE</div>
+      <div class="card-sub">gain</div>
+      <div class="card-stat stat-coral">signal-to-noise</div>
+    </div>
+    <div class="card coral" onclick="show('sht')">
+      <div class="card-name">5HT</div>
+      <div class="card-sub">temporal</div>
+      <div class="card-stat stat-coral">recency bias</div>
+    </div>
+  </div>
+</div>
+
+<div class="detail-panel" id="detail" style="display:none">
+  <div class="dp-title" id="d-title"></div>
+  <div class="dp-body" id="d-body"></div>
+  <div class="dp-stat" id="d-stat"></div>
+  <div class="dp-brain" id="d-brain"></div>
+</div>
+</div>
+</div>
+
+<script>
+const INFO = {
+  proprio: { title:"ProprioEncoder — body sense", body:"Projects 4-D observations (position x,y + velocity vx,vy) into 64-D belief space using structured projection: direct features + quadratic interactions + random nonlinear. Fixed projection works perfectly for low-dimensional proprioceptive input — confirmed by NPA crossover study.", stat:"4-D → 64-D · MSE 0.004 (Minari) · 0.011 (live gym)", brain:"Muscle spindles + Golgi tendon organs — simple, direct encoding. No learned representation needed." },
+  vision: { title:"VisionEncoder — visual features", body:"For high-dimensional visual input, uses DINOv2 pretrained features (384-D) projected to 64-D belief space. NPA crossover study shows learned encoders would beat fixed projection at this dimensionality, matching how the retina invests heavily in learned encoding.", stat:"384-D features → 64-D belief · NPA crossover confirmed", brain:"Retina (5 neural layers) → V1 → V2 → V4 — heavy learned encoding for high-dimensional visual input." },
+  audio: { title:"AudioEncoder — sound perception", body:"Encodes 20-D mel spectrograms into 64-D belief space. 135× anomaly separation (grinding vs normal). 13 grounded audio words. Attention-gated fusion gives anomalous sounds 2.3× more weight. NPA learned encoder wins by 13.7% on audio — first modality where learned beats fixed.", stat:"20-D mel → 64-D · 135× separation · NPA wins 13.7%", brain:"Cochlea → auditory nerve → A1 — intermediate learned encoding for spectral patterns." },
+  tactile: { title:"TactileEncoder — touch perception", body:"32-D sensor array: 16 pressure + 4 temperature + 4 vibration + 4 slip + 4 contact. Projects to 64-D belief. Grounds 13 touch words (hard, soft, rough, smooth, hot, cold, edge, contact, slip, grip, release, firm, textured). Novelty detection: hot=2.03 ANOMALY, normal=0.83.", stat:"32-D → 64-D · 13 words · 10/10 tests", brain:"Merkel cells + Meissner corpuscles + Pacinian corpuscles → S1 somatosensory cortex." },
+  chemical: { title:"ChemicalEncoder — olfactory sensing", body:"16 chemical receptor types with substance-specific activation profiles. Encodes concentration, distance (inverse square), and temporal gradients. Gradient tracker follows scent trails to source. Completes 5/5 biological senses.", stat:"16-D → 64-D · gradient following · 10/10 tests", brain:"~400 olfactory receptor types → olfactory bulb → piriform cortex." },
+  s1: { title:"System 1 — fast, habitual", body:"Simple MLP transition: belief + action → next belief. Handles 64% of all decisions. Used for routine, familiar situations where prediction error is low. 7 microseconds per decision. Like catching a ball — no deliberation needed.", stat:"7μs · 64% of 5M+ decisions · MLP architecture", brain:"Kahneman's System 1 — fast, automatic, effortless. Basal ganglia habit circuits." },
+  s2: { title:"System 2 — slow, deliberate", body:"NeuroTransformer with 5 head types (DA, ACh, CRT, NE, 5HT). Used for novel, complex situations where System 1's prediction error is high. 166μs per decision (24× slower but smarter). Trained on real data: wins 3/4 vs standard transformer. 3.9% lower test MSE.", stat:"166μs · 36% of decisions · 5 neuromodulated heads · 3/4 wins trained", brain:"Kahneman's System 2 — slow, deliberate, effortful. Prefrontal cortex executive function." },
+  switch: { title:"S1↔S2 Auto-Switching", body:"Automatically routes to S2 when: novelty is high, prediction error exceeds threshold, or unfamiliar schema detected. Forces S1 when: fatigue is high (adenosine), even if novelty is high. The 64/36 ratio emerges naturally and is constant across 5M+ predictions.", stat:"64/36 ratio constant · novelty threshold · fatigue override", brain:"Anterior cingulate cortex — conflict monitoring, triggering executive control when needed." },
+  greedy: { title:"Greedy Planning — S1 reactive", body:"Direct vector toward goal. Fastest, most consistent. Best for well-known paths where the route is clear.", stat:"Consistency 0.889 · speed 378ms", brain:"Habitual motor planning — execute learned motor programs without deliberation." },
+  deliberate: { title:"Deliberate Planning — S2 smooth", body:"NeuroTransformer-based trajectory optimization. Produces smooth, low-jerk paths. Best for precise navigation.", stat:"37% less jerk · path efficiency 0.383", brain:"Cerebellar forward models — smooth, coordinated movement planning." },
+  hierarchical: { title:"Hierarchical Planning — schema waypoints", body:"Plans at the schema level first (which regions to traverse), then fills in low-level actions. Best for long-range navigation.", stat:"Best goal distance 3.134 · goal improvement +2.736", brain:"Prefrontal cortex → premotor → motor hierarchy. Abstract goals decomposed into actions." },
+  refinement: { title:"Refinement Planning — iterative search", body:"Multiple rounds of simulate → evaluate → improve. Best for staying on the learned manifold.", stat:"Manifold adherence 0.809 · ARC-AGI-2 pattern", brain:"Mental rehearsal — athletes mentally practicing before performing." },
+  wm: { title:"Working Memory — short-term buffer", body:"Ring buffer of K=6 recent (belief, action) pairs. Capacity degrades under stress: K_eff = round(K × (1 - 0.5×CRT)). Dynamic WM: NeuroTransformer shrinks context from 32→8 tokens under stress (53% reduction).", stat:"K=6 · stress-degradable · 53% reduction under load", brain:"Prefrontal cortex working memory — Baddeley 2000. ~7±2 item capacity." },
+  episodic: { title:"Episodic Memory — experience replay", body:"Stores (belief, action, next_belief, DA) tuples with surprise-priority. High-DA episodes survive longest. Retrieval by cosine similarity + recency. Emotional episodes consolidated 2.8× stronger during sleep.", stat:"DA-priority · 2.8× emotional boost · hippocampus analog", brain:"Hippocampal episodic memory — sharp-wave ripple replay (Kumaran et al. 2016)." },
+  schema: { title:"Schema Memory — conceptual knowledge", body:"32 codebook vectors learned from Minari navigation data. Each schema represents a region of belief space. Schema matching, novelty detection, and planning waypoints all use this codebook. Zeroing schemas destroys generalization but preserves episodic retrieval (semantic dementia ablation).", stat:"32 schemas · novelty detection · semantic dementia confirmed", brain:"Neocortical schema theory (McClelland et al. 1995). Conceptual knowledge structures." },
+  ewc: { title:"EWC — Elastic Weight Consolidation", body:"Protects prior knowledge when learning new tasks. Fisher information matrix identifies important weights; penalty prevents them from changing. Cross-maze result: positive transfer discovered — learning new mazes HELPS old ones. EWC constrains drift by 75.2%.", stat:"75.2% drift reduction · positive transfer · 3 mazes sequential", brain:"Synaptic consolidation — important synapses are stabilized during sleep (Kirkpatrick et al. 2017)." },
+  vocab: { title:"Vocabulary — grounded word meanings", body:"648 words learned from experience. Each word has a prototype (mean belief vector) and usage statistics. Words are invented when existing vocabulary can't describe a new experience. Persistent across sessions — saved to disk, loaded on startup, keeps growing.", stat:"648 words · persistent · naming + differentiation + composition", brain:"Grounded cognition — word meanings tied to sensorimotor experience (Barsalou 1999)." },
+  grammar: { title:"Construction Grammar — compositional language", body:"Three mechanisms: naming (novel → new word), differentiation (split overloaded words), composition (combine known words). Replaces fixed templates with vocabulary-based narration. Unlimited growth potential — 3→601 words in 500 cycles (200×).", stat:"3 mechanisms · 200× growth · breaks 200-word ceiling", brain:"Construction grammar (Goldberg 2006) — language as learned constructions, not innate rules." },
+  instruct: { title:"Instruction Following — language → action", body:"Parses natural language instructions, grounds content words to belief prototypes, finds nearest schema, sets as goal. Handles negation ('avoid region 0' → go to farthest). 'go upper right' → region_18 ✓ reached.", stat:"'go upper right' → region_18 ✓ · negation · region references", brain:"Language-guided action — Broca's area → premotor cortex pathway." },
+  da: { title:"DA — Dopamine, surprise detection", body:"Prediction error signal. High DA = something unexpected happened. Gates episodic storage (surprising events remembered), attention (DA heads attend 2.1× more to surprising tokens), and value computation. Learned DA gain: -0.010 (navigation is smooth, slight de-emphasis optimal).", stat:"2.1× surprise attention · gates memory + planning · learned gain -0.010", brain:"Midbrain dopamine neurons (Schultz 1998). RPE — reward prediction error." },
+  ach: { title:"ACh — Acetylcholine, explore/exploit", body:"Controls attention breadth. High ACh = broad exploration. Low ACh = narrow exploitation. Temperature parameter in NeuroTransformer attention. Learned ACh temp: 1.000 (equal explore/exploit optimal for navigation).", stat:"Temperature scaling · learned temp 1.000 · explore↔exploit", brain:"Basal forebrain cholinergic system (Hasselmo 1999). Modulates cortical learning rate." },
+  crt: { title:"CRT — Cortisol, conflict detection", body:"Monitors contradictions and conflicts in the belief sequence. High CRT = suppresses conflicting information, narrows working memory, triggers System 2. Conflict detection in NeuroTransformer via value-similarity analysis.", stat:"Conflict suppression · WM narrowing · S2 trigger", brain:"HPA axis cortisol (McEwen 2007). Stress response — cautious, reactive behavior." },
+  ne: { title:"NE — Norepinephrine, gain control", body:"Signal-to-noise amplification on raw sensory input. Like adjusting the contrast on a camera. High NE = amplify signal, suppress noise. First layer of NeuroTransformer stack.", stat:"Gain control · sensory amplification · V1/A1 analog", brain:"Locus coeruleus NE (Aston-Jones & Cohen 2005). Arousal, attention, gain modulation." },
+  sht: { title:"5HT — Serotonin, temporal structure", body:"Enforces recency bias — recent beliefs weighted more than distant ones. Learned 5HT decay: 0.300 (moderate recency, recent = 1.2× more important). Makes NeuroTransformer order-sensitive where standard attention is order-blind.", stat:"25% more order-sensitive · learned decay 0.300 · temporal locality", brain:"Raphe nuclei serotonin. Impulse control, temporal discounting, patience." }
+};
+
+function show(key) {
+  const d = INFO[key];
+  if (!d) return;
+  document.getElementById('d-title').textContent = d.title;
+  document.getElementById('d-body').textContent = d.body;
+  document.getElementById('d-stat').textContent = d.stat;
+  document.getElementById('d-brain').textContent = '🧠 ' + d.brain;
+  document.getElementById('detail').style.display = 'block';
+  document.getElementById('detail').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+</script>
+</body>
+</html>
