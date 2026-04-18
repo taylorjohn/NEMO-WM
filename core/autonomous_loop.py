@@ -633,6 +633,9 @@ class AutonomousLoop:
         # Prospective memory
         self.intentions = []
 
+        # Regret memory: schema_id → (regretted_action, regret_value)
+        self.regret_memory = {}
+
         # Running flag
         self.running = True
         self.paused = False
@@ -739,21 +742,42 @@ class AutonomousLoop:
         self.pending_instruction = instruction
 
     def plan(self, current_belief, goal_belief):
-        """Step 3: Hierarchical plan to reach goal."""
+        """
+        Step 3: Plan to reach goal, biased by regret from past experience.
+        
+        Regret memory stores (schema, action, regret) triples.
+        When planning near a schema with high regret, bias the action
+        AWAY from the regretted direction. This is how humans learn:
+        "Last time I went left here and it was bad → go right this time."
+        """
         n_steps = 30
         actions = []
+
         for i in range(n_steps):
-            # Direction toward goal in action-space dimensions
+            # Base action: direction toward goal
             diff = goal_belief[:D_ACTION] - current_belief[:D_ACTION]
-            # Actions in [-1, 1] range (matching Minari PushT/PointMaze)
             action = np.clip(diff * 0.5, -1.0, 1.0).astype(np.float32)
-            # Add exploration noise
-            action += np.random.randn(D_ACTION).astype(np.float32) * 0.15
+
+            # Regret bias: check if we have regret at current schema
+            current_schema, _ = self.schemas.nearest(current_belief)
+            if current_schema in self.regret_memory:
+                regretted_action, regret_value = self.regret_memory[current_schema]
+                if regret_value > 0.01:
+                    # Bias AWAY from the regretted action
+                    bias = -regretted_action * min(regret_value * 2.0, 0.5)
+                    action += bias.astype(np.float32)
+
+            # Exploration noise (reduced if we have regret info)
+            noise_scale = 0.15 if current_schema not in self.regret_memory else 0.08
+            action += np.random.randn(D_ACTION).astype(np.float32) * noise_scale
             action = np.clip(action, -1.0, 1.0).astype(np.float32)
+
             actions.append(action)
-            # Update current belief using transition model for next step
+
+            # Update current belief for next step
             if self.transition.trained:
                 current_belief = self.transition.predict(current_belief, action)
+
         return actions
 
     def execute(self, belief, actions, goal_schema):
@@ -864,11 +888,10 @@ class AutonomousLoop:
         return self.vocab.size - words_before
 
     def counterfactual(self, trajectory, actions, rewards):
-        """Step 6: What if I had done differently?"""
+        """Step 6: What if I had done differently? Store regret for future."""
         if len(trajectory) < 5:
             return 0, 0
 
-        # Find highest-DA step
         best_regret = 0
         best_step = 0
 
@@ -877,7 +900,7 @@ class AutonomousLoop:
             orig_action = actions[step] if step < len(actions) else np.zeros(D_ACTION)
 
             # Try alternative
-            alt_action = -orig_action  # opposite
+            alt_action = -orig_action
             orig_next = self.transition.predict(belief, orig_action)
             alt_next = self.transition.predict(belief, alt_action)
 
@@ -888,6 +911,21 @@ class AutonomousLoop:
             if abs(regret) > abs(best_regret):
                 best_regret = regret
                 best_step = step
+
+            # Store regret at schema level
+            if abs(regret) > 0.01:
+                schema_id, _ = self.schemas.nearest(belief)
+                # EMA update of regret memory
+                if schema_id in self.regret_memory:
+                    old_action, old_regret = self.regret_memory[schema_id]
+                    self.regret_memory[schema_id] = (
+                        0.7 * old_action + 0.3 * orig_action,
+                        0.7 * old_regret + 0.3 * regret
+                    )
+                else:
+                    self.regret_memory[schema_id] = (
+                        orig_action.copy(), regret
+                    )
 
         self.state.total_counterfactuals += 1
         return best_regret, best_step

@@ -43,7 +43,12 @@ Path("data").mkdir(exist_ok=True)
 
 def project_to_belief(obs, d_belief=D_BELIEF):
     """Project observation to belief space.
-    Matches train_from_minari.py projection exactly."""
+    Matches train_from_minari.py projection exactly.
+    
+    Key insight: Minari D4RL uses different coordinate scales than
+    gymnasium-robotics. We load saved projection stats from training
+    to ensure consistent normalization.
+    """
     d_obs = obs.shape[-1] if obs.ndim > 1 else len(obs)
     rng = np.random.RandomState(42)
 
@@ -56,26 +61,21 @@ def project_to_belief(obs, d_belief=D_BELIEF):
     N = obs.shape[0]
     belief = np.zeros((N, d_belief), dtype=np.float32)
 
-    # Use per-sample normalization matching training code exactly
-    # train_from_minari.py: obs / (np.abs(obs).max(axis=0, keepdims=True) + 1e-8)
-    # For batch: max across all samples. For single: max of that sample.
-    # To match training, we use the TRAINING data max (stored in beliefs)
-    # Approximate: Minari UMaze obs max per dim ≈ [2.5, 2.5, 5.2, 5.2]
-    # But actually the training code uses the BATCH max, so for 1M samples
-    # each dimension's max is ~5.23
-    #
-    # The correct approach: use the same max as training
-    OBS_MAX = np.array([5.23, 5.23, 5.23, 5.23], dtype=np.float32)
-    
-    # Handle different obs dimensions
-    if d_obs <= len(OBS_MAX):
-        obs_norm = obs / (OBS_MAX[:d_obs].reshape(1, -1) + 1e-8)
+    # Load projection stats from training if available
+    stats_path = Path("data/minari_trained/projection_stats.npz")
+    if stats_path.exists():
+        stats = np.load(stats_path)
+        obs_max = stats["obs_max"].reshape(1, -1)
+        if obs_max.shape[1] >= d_obs:
+            obs_max = obs_max[:, :d_obs]
+        else:
+            obs_max = np.abs(obs).max(axis=0, keepdims=True) + 1e-8
     else:
+        # Fallback: use per-sample max (matches training when batch=1M)
         obs_max = np.abs(obs).max(axis=0, keepdims=True) + 1e-8
-        obs_norm = obs / obs_max
 
     n_direct = min(d_obs, d_belief)
-    belief[:, :n_direct] = obs_norm[:, :n_direct]
+    belief[:, :n_direct] = obs[:, :n_direct] / (obs_max[:, :n_direct] + 1e-8)
 
     idx = n_direct
     for i in range(d_obs):
@@ -90,6 +90,64 @@ def project_to_belief(obs, d_belief=D_BELIEF):
     if idx < d_belief:
         W_rand = rng.randn(d_obs, d_belief - idx).astype(np.float32) * 0.3
         belief[:, idx:] = np.tanh(obs @ W_rand)
+
+    if squeeze:
+        return belief[0]
+    return belief
+
+
+def calibrate_projection(env_name="PointMaze_UMaze-v3", n_episodes=10):
+    """
+    Collect live gym data and save projection stats so beliefs match.
+    Run once to calibrate, then gym_connector uses saved stats.
+    """
+    import gymnasium as gym
+    try:
+        import gymnasium_robotics
+    except ImportError:
+        pass
+
+    print(f"  Calibrating projection for {env_name}...")
+    env = gym.make(env_name, max_episode_steps=500)
+
+    all_obs = []
+    for ep in range(n_episodes):
+        obs, _ = env.reset()
+        if isinstance(obs, dict):
+            obs_arr = obs.get("observation", np.zeros(4))
+        else:
+            obs_arr = obs
+        all_obs.append(obs_arr)
+
+        for step in range(200):
+            action = env.action_space.sample()
+            obs, _, terminated, truncated, _ = env.step(action)
+            if isinstance(obs, dict):
+                obs_arr = obs.get("observation", np.zeros(4))
+            else:
+                obs_arr = obs
+            all_obs.append(obs_arr)
+            if terminated or truncated:
+                break
+
+    env.close()
+
+    all_obs = np.array(all_obs, dtype=np.float32)
+    obs_max = np.abs(all_obs).max(axis=0)
+
+    # Save stats
+    Path("data/minari_trained").mkdir(parents=True, exist_ok=True)
+    np.savez("data/minari_trained/projection_stats.npz",
+             obs_max=obs_max,
+             obs_mean=all_obs.mean(axis=0),
+             obs_std=all_obs.std(axis=0),
+             n_samples=len(all_obs))
+
+    print(f"  Collected {len(all_obs)} observations from {n_episodes} episodes")
+    print(f"  Obs max: {obs_max}")
+    print(f"  Saved to data/minari_trained/projection_stats.npz")
+
+    return obs_max
 
     if squeeze:
         return belief[0]
@@ -192,26 +250,14 @@ class GymConnector:
         self.steps_total = 0
 
     def extract_obs(self, obs):
-        """Extract observation array from gym output and scale to match Minari."""
+        """Extract observation array from gym output."""
         if isinstance(obs, dict):
             raw = obs.get("observation",
                     obs.get("achieved_goal",
                     np.zeros(4, dtype=np.float32)))
         else:
             raw = obs
-
-        raw = np.array(raw, dtype=np.float32)
-
-        # Scale live gym coordinates to match Minari D4RL range
-        # Minari UMaze positions: roughly [-2.5, 2.5], velocities: [-5.2, 5.2]
-        # Live gym positions: roughly [-1, 1], velocities: [-5, 5]
-        # Scale factor for positions: ~2.5x
-        if len(raw) >= 4:
-            raw[0] *= 2.5  # x position
-            raw[1] *= 2.5  # y position
-            # velocities are already similar scale
-
-        return raw
+        return np.array(raw, dtype=np.float32)
 
     def run_episode(self, max_steps=300, goal_schema=None,
                       verbose=False):
@@ -542,12 +588,20 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--test", action="store_true")
     ap.add_argument("--benchmark", action="store_true")
+    ap.add_argument("--calibrate", action="store_true",
+                     help="Collect live gym data to calibrate projection")
     ap.add_argument("--episodes", type=int, default=20)
     ap.add_argument("--env", default="PointMaze_UMaze-v3")
     args = ap.parse_args()
 
     if args.test:
         run_tests()
+    elif args.calibrate:
+        try:
+            import gymnasium_robotics
+        except ImportError:
+            pass
+        calibrate_projection(args.env, n_episodes=10)
     elif args.benchmark:
         try:
             import gymnasium_robotics
