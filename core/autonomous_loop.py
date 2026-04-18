@@ -636,6 +636,12 @@ class AutonomousLoop:
         # Regret memory: schema_id → (regretted_action, regret_value)
         self.regret_memory = {}
 
+        # Object tracker: detect and follow moving objects via prediction error
+        self.tracker_target = None
+        self.tracker_confidence = 0.0
+        self.tracker_history = []
+        self.tracking_mode = False  # True when following an object
+
         # Running flag
         self.running = True
         self.paused = False
@@ -815,6 +821,25 @@ class AutonomousLoop:
             pred_error = self.transition.error(belief, action, next_belief)
             novelty = self.schemas.novelty(next_belief)
             schema_id, _ = self.schemas.nearest(next_belief)
+
+            # Object tracking: high prediction error = potential object
+            if pred_error > 1.0:
+                # Something unpredictable — could be a moving object
+                if self.tracker_target is None:
+                    self.tracker_target = next_belief.copy()
+                    self.tracker_confidence = min(1.0, pred_error / 3.0)
+                    self.tracking_mode = True
+                else:
+                    # Update target position (EMA)
+                    self.tracker_target = (
+                        0.7 * self.tracker_target + 0.3 * next_belief
+                    ).astype(np.float32)
+                    self.tracker_confidence = min(1.0, pred_error / 3.0)
+            elif self.tracker_target is not None:
+                self.tracker_confidence *= 0.9
+                if self.tracker_confidence < 0.1:
+                    self.tracker_target = None
+                    self.tracking_mode = False
 
             # Reward: proximity to goal schema
             goal_dist = np.linalg.norm(
@@ -1267,6 +1292,8 @@ if __name__ == "__main__":
                      help="Run validation tests")
     ap.add_argument("--instruct", type=str, default=None,
                      help="Give instruction: 'go explore region 5'")
+    ap.add_argument("--live", action="store_true",
+                     help="Run with real PointMaze gym environment")
     args = ap.parse_args()
 
     if args.test:
@@ -1283,6 +1310,27 @@ if __name__ == "__main__":
         print(f"  Instruction: \"{args.instruct}\"")
         loop.instruct(args.instruct)
         loop.run(max_cycles=1)
+    elif args.live:
+        # Live gym mode — real physics!
+        try:
+            import gymnasium as gym
+            try:
+                import gymnasium_robotics
+            except ImportError:
+                pass
+
+            from gym_connector import GymConnector
+            print("  Starting live gym mode (real PointMaze physics)...")
+            conn = GymConnector("PointMaze_UMaze-v3")
+            n_eps = args.cycles if args.cycles > 0 else 10
+            conn.run_benchmark(n_episodes=n_eps, verbose=True)
+            conn.close()
+        except Exception as e:
+            print(f"  Live gym failed: {e}")
+            print(f"  Falling back to self-simulated loop")
+            state = KnowledgeState.load()
+            loop = AutonomousLoop(state)
+            loop.run(max_cycles=args.cycles)
     elif args.run:
         state = KnowledgeState.load()
         loop = AutonomousLoop(state)
