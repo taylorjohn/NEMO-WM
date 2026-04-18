@@ -57,35 +57,44 @@ SLOW_TESTS = {
 }
 
 
-def parse_results(output):
+def parse_results(output, test_name=""):
     """Extract pass/total from test output."""
-    patterns = [
+    # Summary patterns — these appear at the END of test output
+    summary_patterns = [
         r'Results?:\s*(\d+)/(\d+)',
         r'(\d+)/(\d+)\s*tests?\s*passed',
         r'(\d+)/(\d+)\s*AGI\s*capabilit',
-        r'TOTAL[:\s]+(\d+)/(\d+)',
+        r'(\d+)/(\d+)\s*demonstrated',
+        r'SCORECARD:\s*(\d+)/(\d+)',
         r'NeMo-WM:\s*(\d+)/(\d+)',
         r'(\d+)/(\d+)\s*\(all pass\)',
-        r'(\d+)/(\d+)\s*demonstrated',
     ]
 
-    # Collect ALL matches with their position in output
-    all_matches = []
-    for pattern in patterns:
+    # Find the LAST summary match (summaries come at end of output)
+    best = None
+    for pattern in summary_patterns:
         for match in re.finditer(pattern, output):
             p, t = int(match.group(1)), int(match.group(2))
             pos = match.start()
-            all_matches.append((p, t, pos))
+            if best is None or pos > best[2]:
+                best = (p, t, pos)
 
-    if all_matches:
-        # Take the match with highest total; if tied, take LAST one (summary)
-        all_matches.sort(key=lambda x: (x[1], x[2]))
-        best = all_matches[-1]
+    if best is not None:
         return best[0], best[1]
 
-    # Count PASS/FAIL lines
-    passes = len(re.findall(r'\bPASS\b', output))
-    fails = len(re.findall(r'\bFAIL\b', output))
+    # Fallback: count PASS/FAIL lines (exclude comparison data)
+    lines = output.split('\n')
+    passes = 0
+    fails = 0
+    for line in lines:
+        if any(skip in line for skip in ['DreamerV3', 'DINO-WM',
+                'Diff.', 'TD-MPC', 'beats random']):
+            continue
+        if re.search(r'\bPASS\b', line):
+            passes += 1
+        if re.search(r'\bFAIL\b', line):
+            fails += 1
+
     if passes + fails > 0:
         return passes, passes + fails
 
@@ -96,16 +105,20 @@ def run_test(name, command, verbose=False):
     """Run a single test file and capture results."""
     t0 = time.time()
     try:
+        import os as _os
+        env = {**_os.environ,
+               'PYTHONIOENCODING': 'utf-8',
+               'PYTHONUTF8': '1'}
         result = subprocess.run(
-            [sys.executable] + command.split(),
+            [sys.executable, '-X', 'utf8'] + command.split(),
             capture_output=True, timeout=120,
             cwd=str(Path.cwd()),
-            env={**__import__('os').environ, 'PYTHONIOENCODING': 'utf-8'})
+            env=env)
 
         output = result.stdout.decode('utf-8', errors='replace') + \
                  result.stderr.decode('utf-8', errors='replace')
         elapsed = time.time() - t0
-        passed, total = parse_results(output)
+        passed, total = parse_results(output, test_name=name)
 
         # Check for crashes
         if result.returncode != 0 and total == 0:
@@ -236,6 +249,36 @@ if __name__ == "__main__":
     ap.add_argument("--save", action="store_true",
                      help="Save report to file")
     ap.add_argument("--verbose", action="store_true")
+    ap.add_argument("--debug", type=str, default=None,
+                     help="Debug a specific test: --debug 'AGI Capability'")
     args = ap.parse_args()
 
-    run_suite(quick=args.quick, verbose=args.verbose, save=args.save)
+    if args.debug:
+        # Run one test and show raw output
+        for name, cmd in TEST_SUITE:
+            if args.debug.lower() in name.lower():
+                print(f"  Debugging: {name} ({cmd})")
+                import os
+                env = {**os.environ,
+                       'PYTHONIOENCODING': 'utf-8',
+                       'PYTHONUTF8': '1'}
+                r = subprocess.run(
+                    [sys.executable, '-X', 'utf8'] + cmd.split(),
+                    capture_output=True, timeout=120, env=env)
+                output = r.stdout.decode('utf-8', errors='replace')
+                print(f"\n  Raw output (last 500 chars):")
+                print(output[-500:])
+                print(f"\n  Parser result: {parse_results(output, name)}")
+                # Show all regex matches
+                for pattern in [r'Results?:\s*(\d+)/(\d+)',
+                                  r'SCORECARD:\s*(\d+)/(\d+)',
+                                  r'NeMo-WM:\s*(\d+)/(\d+)',
+                                  r'(\d+)/(\d+)\s*\(all pass\)',
+                                  r'(\d+)/(\d+)\s*AGI']:
+                    matches = list(re.finditer(pattern, output))
+                    if matches:
+                        for m in matches:
+                            print(f"    Pattern '{pattern}': {m.group()} at {m.start()}")
+                break
+    else:
+        run_suite(quick=args.quick, verbose=args.verbose, save=args.save)
