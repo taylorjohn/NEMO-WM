@@ -97,9 +97,15 @@ class KnowledgeState:
 # ──────────────────────────────────────────────────────────────────────────────
 
 class MiniTransition:
+    """
+    Dual-system transition model (Kahneman).
+    System 1 (MLP): fast, habitual, 7μs — routine predictions
+    System 2 (NeuroTransformer-lite): slow, deliberate — novel situations
+    Auto-switches based on novelty and prediction error.
+    """
     def __init__(self, seed=42):
         self.trained = False
-        # Try loading trained weights from Minari training
+        # System 1: fast MLP
         trained_path = Path("data/minari_trained/transition_model.npz")
         if trained_path.exists():
             data = np.load(trained_path)
@@ -109,7 +115,6 @@ class MiniTransition:
             self.b2 = data["b2"]
             self.trained = True
         else:
-            # Fallback: random single-layer
             rng = np.random.RandomState(seed)
             d_in = D_BELIEF + D_ACTION
             self.W1 = rng.randn(d_in, 128).astype(np.float32) * 0.1
@@ -117,17 +122,98 @@ class MiniTransition:
             self.W2 = rng.randn(128, D_BELIEF).astype(np.float32) * 0.1
             self.b2 = np.zeros(D_BELIEF, dtype=np.float32)
 
-    def predict(self, belief, action):
+        # System 2: context-aware attention over recent beliefs
+        rng2 = np.random.RandomState(99)
+        self.s2_W_q = rng2.randn(D_BELIEF, D_BELIEF).astype(np.float32) * 0.1
+        self.s2_W_k = rng2.randn(D_BELIEF, D_BELIEF).astype(np.float32) * 0.1
+        self.s2_W_v = rng2.randn(D_BELIEF, D_BELIEF).astype(np.float32) * 0.1
+        self.s2_W_out = rng2.randn(D_BELIEF + D_ACTION, D_BELIEF).astype(np.float32) * 0.1
+
+        # History for System 2
+        self.belief_history = []
+        self.max_history = 8
+        self.last_error = 0.0
+        self.s1_count = 0
+        self.s2_count = 0
+
+    def _predict_s1(self, belief, action):
+        """System 1: fast MLP prediction."""
         x = np.concatenate([belief, action])
-        h = np.maximum(0, x @ self.W1 + self.b1)  # ReLU
-        out = h @ self.W2 + self.b2
-        return np.clip(out, -5.0, 5.0)  # prevent divergence
+        h = np.maximum(0, x @ self.W1 + self.b1)
+        return np.clip(h @ self.W2 + self.b2, -5.0, 5.0)
+
+    def _predict_s2(self, belief, action):
+        """System 2: attend to recent belief history + action."""
+        history = list(self.belief_history[-self.max_history:])
+        if len(history) < 2:
+            return self._predict_s1(belief, action)
+
+        beliefs = np.stack(history)
+        n = len(beliefs)
+
+        # Simple self-attention
+        Q = beliefs @ self.s2_W_q
+        K = beliefs @ self.s2_W_k
+        V = beliefs @ self.s2_W_v
+
+        scores = Q @ K.T / np.sqrt(D_BELIEF)
+
+        # Recency bias (5HT-style temporal locality)
+        recency = np.exp(-np.arange(n)[::-1].astype(np.float32) * 0.3)
+        scores = scores * recency[None, :]
+
+        # Softmax
+        e = np.exp(scores - scores.max(axis=-1, keepdims=True))
+        attn = e / (e.sum(axis=-1, keepdims=True) + 1e-10)
+
+        context = (attn @ V)[-1]  # last position
+
+        # Combine context + action → prediction
+        x = np.concatenate([context, action])
+        pred = x @ self.s2_W_out
+        return np.clip(pred, -5.0, 5.0)
+
+    def predict(self, belief, action, novelty=None):
+        """Auto-switch between S1 and S2."""
+        self.belief_history.append(belief.copy())
+        if len(self.belief_history) > self.max_history:
+            self.belief_history = self.belief_history[-self.max_history:]
+
+        # Switching criteria
+        use_s2 = False
+        if novelty is not None and novelty > 3.0:
+            use_s2 = True
+        elif self.last_error > 2.0:
+            use_s2 = True
+        elif len(self.belief_history) >= 3:
+            recent = self.belief_history[-3:]
+            change = max(np.linalg.norm(recent[i] - recent[i-1])
+                          for i in range(1, len(recent)))
+            if change > 3.0:
+                use_s2 = True
+
+        if use_s2 and len(self.belief_history) >= 3:
+            pred = self._predict_s2(belief, action)
+            self.s2_count += 1
+        else:
+            pred = self._predict_s1(belief, action)
+            self.s1_count += 1
+
+        return pred
 
     def error(self, belief, action, next_belief):
         pred = self.predict(belief, action)
         if np.any(np.isnan(pred)):
-            return 1.0  # safe fallback
-        return float(np.linalg.norm(pred - next_belief))
+            self.last_error = 1.0
+            return 1.0
+        err = float(np.linalg.norm(pred - next_belief))
+        self.last_error = err
+        return err
+
+    @property
+    def s2_ratio(self):
+        total = self.s1_count + self.s2_count
+        return self.s2_count / max(total, 1)
 
 
 class MiniSchemas:
@@ -185,12 +271,45 @@ class MiniSchemas:
 class MiniVocab:
     def __init__(self):
         self.words = defaultdict(list)
+        self.prototypes = {}  # word → 64-D prototype belief
         self.total_hearings = 0
+
+        # Auto-load saved vocabulary from vocab_trainer
+        self._load_persistent_vocab()
+
+    def _load_persistent_vocab(self):
+        """Load vocabulary from vocab_trainer's saved file."""
+        vocab_path = Path("data/vocabulary.npz")
+        if vocab_path.exists():
+            try:
+                data = np.load(vocab_path, allow_pickle=True)
+                words = data["words"]
+                protos = data["prototypes"]
+                hearings = data["hearings"]
+
+                for i, word in enumerate(words):
+                    word = str(word)
+                    self.prototypes[word] = protos[i].astype(np.float32)
+                    # Seed word list with prototype
+                    if word not in self.words:
+                        self.words[word] = [protos[i].astype(np.float32)]
+                    self.total_hearings += int(hearings[i])
+            except Exception:
+                pass  # graceful fallback
 
     def hear(self, word, belief):
         if len(word) >= 3:
             self.words[word].append(belief.copy())
             self.total_hearings += 1
+
+            # Update prototype with EMA
+            if word in self.prototypes:
+                lr = 0.05
+                self.prototypes[word] = (
+                    (1 - lr) * self.prototypes[word] + lr * belief
+                ).astype(np.float32)
+            else:
+                self.prototypes[word] = belief.copy()
 
     def hear_sentence(self, sentence, belief):
         stops = {'the', 'is', 'at', 'in', 'on', 'to', 'an', 'of', 'and',
@@ -199,6 +318,51 @@ class MiniVocab:
             w = ''.join(c for c in w if c.isalnum())
             if w not in stops and len(w) >= 3:
                 self.hear(w, belief)
+
+    def lookup(self, word):
+        """Get prototype belief for a word."""
+        if word in self.prototypes:
+            return self.prototypes[word]
+        if word in self.words and self.words[word]:
+            return np.mean(self.words[word][-50:], axis=0).astype(np.float32)
+        return None
+
+    def similarity(self, w1, w2):
+        """Cosine similarity between two word prototypes."""
+        p1, p2 = self.lookup(w1), self.lookup(w2)
+        if p1 is None or p2 is None:
+            return 0.0
+        n1, n2 = np.linalg.norm(p1), np.linalg.norm(p2)
+        if n1 < 1e-8 or n2 < 1e-8:
+            return 0.0
+        return float(np.dot(p1, p2) / (n1 * n2))
+
+    def describe(self, belief, max_words=3):
+        """Find the best words to describe a belief state."""
+        if not self.prototypes:
+            return "unknown"
+        scored = []
+        for word, proto in self.prototypes.items():
+            n_p = np.linalg.norm(proto)
+            n_b = np.linalg.norm(belief)
+            if n_p > 1e-8 and n_b > 1e-8:
+                sim = float(np.dot(proto, belief) / (n_p * n_b))
+                scored.append((word, sim))
+        scored.sort(key=lambda x: -x[1])
+        return " ".join(w for w, s in scored[:max_words])
+
+    def save(self):
+        """Save current vocabulary to disk."""
+        if not self.prototypes:
+            return
+        words = list(self.prototypes.keys())
+        protos = np.stack([self.prototypes[w] for w in words])
+        hearings = np.array([len(self.words.get(w, [])) for w in words])
+        np.savez(Path("data/vocabulary.npz"),
+                 words=np.array(words),
+                 prototypes=protos,
+                 hearings=hearings,
+                 variances=np.zeros(len(words)))
 
     @property
     def size(self):
@@ -446,15 +610,18 @@ class AutonomousLoop:
         narrations = []
 
         for i, action in enumerate(actions):
-            # Physics — use trained model if available
+            # Get current novelty for S1/S2 switching
+            current_novelty = self.schemas.novelty(belief)
+
+            # Physics — dual system transition
             if self.transition.trained:
-                predicted = self.transition.predict(belief, action)
+                predicted = self.transition.predict(
+                    belief, action, novelty=current_novelty)
                 # Anchor to nearest real belief to prevent drift
                 if self.real_beliefs is not None:
                     dists = np.linalg.norm(self.real_beliefs - predicted, axis=1)
                     nearest_idx = np.argmin(dists)
                     nearest_real = self.real_beliefs[nearest_idx]
-                    # Blend: 70% prediction, 30% nearest real (prevents drift)
                     next_belief = 0.7 * predicted + 0.3 * nearest_real
                 else:
                     next_belief = predicted
@@ -729,6 +896,12 @@ class AutonomousLoop:
         # Save state
         self.state.save()
 
+        # Save vocabulary to disk for persistence
+        try:
+            self.vocab.save()
+        except Exception:
+            pass
+
     def print_summary(self):
         s = self.state
         print(f"\n{'='*75}")
@@ -743,6 +916,14 @@ class AutonomousLoop:
         print(f"  Active schemas:  {s.schemas_active}/16")
         print(f"  Sleep cycles:    {s.total_sleep_cycles}")
         print(f"  Counterfactuals: {s.total_counterfactuals}")
+
+        # Dual system stats
+        s1 = self.transition.s1_count
+        s2 = self.transition.s2_count
+        total_preds = s1 + s2
+        if total_preds > 0:
+            print(f"  System 1 (fast):  {s1} ({100*s1/total_preds:.0f}%)")
+            print(f"  System 2 (slow):  {s2} ({100*s2/total_preds:.0f}%)")
 
         if s.novelty_history:
             print(f"\n  Novelty: {s.novelty_history[0]:.2f} → "
