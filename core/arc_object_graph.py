@@ -4103,6 +4103,90 @@ def try_transpose_grid(task):
     return None, None
 
 
+def try_extract_largest_crop(task):
+    """Output = crop of the largest object."""
+    pairs = task['train']
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    objs,bg=extract_objects(gi)
+    if not objs: return None, None
+    largest=max(objs, key=lambda o: o.size)
+    crop=largest.crop(gi)
+    if crop.shape!=go.shape or not np.array_equal(crop,go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output'])
+        objs2,_=extract_objects(gi2)
+        l2=max(objs2, key=lambda o: o.size)
+        if not np.array_equal(l2.crop(gi2),go2): return None, None
+    def apply(t):
+        gs=[]
+        for tc in t['test']:
+            a=np.array(tc['input']); objs2,_=extract_objects(a)
+            l2=max(objs2, key=lambda o: o.size)
+            gs.append([l2.crop(a).tolist()])
+        return gs
+    result=apply(task)
+    if score_task(task,result): return result, "OG:extract_largest"
+    return None, None
+
+
+def try_extract_smallest_crop(task):
+    """Output = crop of the smallest object."""
+    pairs = task['train']
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    objs,bg=extract_objects(gi)
+    if not objs: return None, None
+    smallest=min(objs, key=lambda o: o.size)
+    crop=smallest.crop(gi)
+    if crop.shape!=go.shape or not np.array_equal(crop,go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output'])
+        objs2,_=extract_objects(gi2)
+        s2=min(objs2, key=lambda o: o.size)
+        if not np.array_equal(s2.crop(gi2),go2): return None, None
+    def apply(t):
+        gs=[]
+        for tc in t['test']:
+            a=np.array(tc['input']); objs2,_=extract_objects(a)
+            s2=min(objs2, key=lambda o: o.size)
+            gs.append([s2.crop(a).tolist()])
+        return gs
+    result=apply(task)
+    if score_task(task,result): return result, "OG:extract_smallest"
+    return None, None
+
+
+def try_remove_empty_rows_cols(task):
+    """Remove rows and columns that are entirely background."""
+    pairs = task['train']
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    bg=int(np.argmax(np.bincount(gi.flatten())))
+    kr=[r for r in range(gi.shape[0]) if any(gi[r,c]!=bg for c in range(gi.shape[1]))]
+    kc=[c for c in range(gi.shape[1]) if any(gi[r,c]!=bg for r in range(gi.shape[0]))]
+    if not kr or not kc: return None, None
+    test=gi[np.ix_(kr,kc)]
+    if test.shape!=go.shape or not np.array_equal(test,go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output'])
+        bg2=int(np.argmax(np.bincount(gi2.flatten())))
+        kr2=[r for r in range(gi2.shape[0]) if any(gi2[r,c]!=bg2 for c in range(gi2.shape[1]))]
+        kc2=[c for c in range(gi2.shape[1]) if any(gi2[r,c]!=bg2 for r in range(gi2.shape[0]))]
+        if not kr2 or not kc2: return None, None
+        if not np.array_equal(gi2[np.ix_(kr2,kc2)],go2): return None, None
+    def apply(t):
+        gs=[]
+        for tc in t['test']:
+            a=np.array(tc['input'])
+            bg2=int(np.argmax(np.bincount(a.flatten())))
+            kr2=[r for r in range(a.shape[0]) if any(a[r,c]!=bg2 for c in range(a.shape[1]))]
+            kc2=[c for c in range(a.shape[1]) if any(a[r,c]!=bg2 for r in range(a.shape[0]))]
+            if kr2 and kc2: gs.append([a[np.ix_(kr2,kc2)].tolist()])
+            else: gs.append([a.tolist()])
+        return gs
+    result=apply(task)
+    if score_task(task,result): return result, "OG:remove_empty_rc"
+    return None, None
+
+
 ALL_OG_SOLVERS = [
     # Original (skip move_to_target — too slow, 0 finds)
     ("keep_by_property", try_keep_by_property),
@@ -4191,6 +4275,9 @@ ALL_OG_SOLVERS = [
     ("upscale", try_upscale_pixels),
     ("recolor_nc", try_recolor_by_neighbor_count),
     ("transpose2", try_transpose_grid),
+    ("extract_largest2", try_extract_largest_crop),
+    ("extract_smallest2", try_extract_smallest_crop),
+    ("remove_empty_rc", try_remove_empty_rows_cols),
 ]
 
 
