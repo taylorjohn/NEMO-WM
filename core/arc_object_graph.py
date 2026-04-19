@@ -3191,6 +3191,412 @@ def try_color_rotation_map(task):
     return None, None
 
 
+def _extract_clusters(gi, bg, max_gap=2):
+    """Extract multi-color object clusters using proximity-based union-find.
+    Groups nearby non-bg pixels (Manhattan distance <= max_gap) into clusters."""
+    h, w = gi.shape
+    nz = [(r, c) for r in range(h) for c in range(w) if gi[r, c] != bg]
+    if not nz:
+        return []
+    
+    # Union-find
+    parent = {p: p for p in nz}
+    def find(p):
+        while parent[p] != p:
+            parent[p] = parent[parent[p]]
+            p = parent[p]
+        return p
+    def union(a, b):
+        parent[find(a)] = find(b)
+    
+    for i, p1 in enumerate(nz):
+        for p2 in nz[i+1:]:
+            if abs(p1[0]-p2[0]) + abs(p1[1]-p2[1]) <= max_gap:
+                union(p1, p2)
+    
+    groups = {}
+    for p in nz:
+        root = find(p)
+        if root not in groups:
+            groups[root] = []
+        groups[root].append(p)
+    
+    clusters = []
+    for cells in groups.values():
+        rs = [r for r, c in cells]
+        cs = [c for r, c in cells]
+        r1, r2, c1, c2 = min(rs), max(rs), min(cs), max(cs)
+        crop = gi[r1:r2+1, c1:c2+1].copy()
+        clusters.append({
+            'cells': cells, 'crop': crop,
+            'bbox': (r1, r2, c1, c2),
+            'center': (np.mean(rs), np.mean(cs)),
+            'size': len(cells),
+            'shape': hash(crop.tobytes()),
+        })
+    return clusters
+
+
+def try_generalized_stamp(task):
+    """Generalized stamp: find repeated cluster patterns, learn what's added around them."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape:
+            return None, None
+    
+    gi = np.array(pairs[0]['input']); go = np.array(pairs[0]['output'])
+    h, w = gi.shape
+    bg = int(np.argmax(np.bincount(gi.flatten())))
+    
+    clusters = _extract_clusters(gi, bg)
+    if len(clusters) < 1:
+        return None, None
+    
+    # For each cluster, learn the "stamp" = what pixels are ADDED around it
+    # The stamp is the difference between output and input near each cluster
+    cluster_stamps = {}
+    for ci, cluster in enumerate(clusters):
+        r1, r2, c1, c2 = cluster['bbox']
+        cr, cc = cluster['center']
+        
+        # Look at a wider region around the cluster ONLY
+        pad = max(3, max(r2-r1, c2-c1))
+        stamp = {}
+        for r in range(max(0, r1-pad), min(h, r2+pad+1)):
+            for c in range(max(0, c1-pad), min(w, c2+pad+1)):
+                if go[r, c] != gi[r, c] and go[r, c] != bg:
+                    dr = r - int(round(cr))
+                    dc = c - int(round(cc))
+                    # Only include if closer to THIS cluster than any other
+                    dist_here = abs(dr) + abs(dc)
+                    closer_to_other = False
+                    for other in clusters:
+                        if other is cluster:
+                            continue
+                        ocr, occ = other['center']
+                        dist_other = abs(r - ocr) + abs(c - occ)
+                        if dist_other < dist_here:
+                            closer_to_other = True
+                            break
+                    if not closer_to_other:
+                        stamp[(dr, dc)] = int(go[r, c])
+        
+        sh = cluster['shape']
+        if stamp:
+            if sh in cluster_stamps:
+                # Intersect stamps for same-shape clusters
+                common = {k: v for k, v in stamp.items()
+                           if k in cluster_stamps[sh] and cluster_stamps[sh][k] == v}
+                cluster_stamps[sh] = common
+            else:
+                cluster_stamps[sh] = stamp
+    
+    # Remove empty stamps
+    cluster_stamps = {sh: st for sh, st in cluster_stamps.items() if st}
+    
+    if not cluster_stamps:
+        return None, None
+    
+    # Verify: apply stamps and check
+    test = gi.copy()
+    for cluster in clusters:
+        sh = cluster['shape']
+        if sh not in cluster_stamps:
+            continue
+        cr, cc = int(round(cluster['center'][0])), int(round(cluster['center'][1]))
+        for (dr, dc), sc in cluster_stamps[sh].items():
+            nr, nc = cr + dr, cc + dc
+            if 0 <= nr < h and 0 <= nc < w and test[nr, nc] == bg:
+                test[nr, nc] = sc
+    
+    if not np.array_equal(test, go):
+        return None, None
+    
+    # Verify on all other pairs
+    for p in pairs[1:]:
+        gi2 = np.array(p['input']); go2 = np.array(p['output'])
+        bg2 = int(np.argmax(np.bincount(gi2.flatten())))
+        clusters2 = _extract_clusters(gi2, bg2)
+        t2 = gi2.copy()
+        for cl in clusters2:
+            sh = cl['shape']
+            if sh not in cluster_stamps:
+                continue
+            cr2, cc2 = int(round(cl['center'][0])), int(round(cl['center'][1]))
+            for (dr, dc), sc in cluster_stamps[sh].items():
+                nr, nc = cr2 + dr, cc2 + dc
+                if 0 <= nr < gi2.shape[0] and 0 <= nc < gi2.shape[1] and t2[nr, nc] == bg2:
+                    t2[nr, nc] = sc
+        if not np.array_equal(t2, go2):
+            return None, None
+    
+    def mk(stamps=cluster_stamps):
+        def apply(t):
+            guesses = []
+            for tc in t['test']:
+                a = np.array(tc['input']); hh, ww = a.shape
+                bg2 = int(np.argmax(np.bincount(a.flatten())))
+                out = a.copy()
+                cls = _extract_clusters(a, bg2)
+                for cl in cls:
+                    sh = cl['shape']
+                    if sh not in stamps:
+                        continue
+                    cr2, cc2 = int(round(cl['center'][0])), int(round(cl['center'][1]))
+                    for (dr, dc), sc in stamps[sh].items():
+                        nr, nc = cr2 + dr, cc2 + dc
+                        if 0 <= nr < hh and 0 <= nc < ww and out[nr, nc] == bg2:
+                            out[nr, nc] = sc
+                guesses.append([out.tolist()])
+            return guesses
+        return apply
+    result = mk()(task)
+    if score_task(task, result):
+        return result, "STAMP:cluster_stamp"
+    return None, None
+
+
+def try_fill_enclosed_new_color(task):
+    """Fill enclosed bg regions (inside object borders) with a learned new color."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    gi = np.array(pairs[0]['input']); go = np.array(pairs[0]['output']); h, w = gi.shape
+    bg = int(np.argmax(np.bincount(gi.flatten())))
+    ext = np.zeros((h,w), dtype=bool); stk = []
+    for r in range(h):
+        for c in [0, w-1]:
+            if gi[r,c]==bg: stk.append((r,c))
+    for c in range(w):
+        for r in [0, h-1]:
+            if gi[r,c]==bg: stk.append((r,c))
+    while stk:
+        r,c = stk.pop()
+        if r<0 or r>=h or c<0 or c>=w or ext[r,c] or gi[r,c]!=bg: continue
+        ext[r,c]=True; stk.extend([(r-1,c),(r+1,c),(r,c-1),(r,c+1)])
+    interior = ~ext & (gi==bg)
+    if not interior.any(): return None, None
+    fill_vals = set(int(go[r,c]) for r,c in zip(*np.where(interior)) if go[r,c]!=bg)
+    if len(fill_vals) != 1: return None, None
+    fc = list(fill_vals)[0]
+    test = gi.copy(); test[interior] = fc
+    if not np.array_equal(test, go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+        bg2=int(np.argmax(np.bincount(gi2.flatten())))
+        ext2=np.zeros((h2,w2),dtype=bool); stk2=[]
+        for r in range(h2):
+            for c in [0,w2-1]:
+                if gi2[r,c]==bg2: stk2.append((r,c))
+        for c in range(w2):
+            for r in [0,h2-1]:
+                if gi2[r,c]==bg2: stk2.append((r,c))
+        while stk2:
+            r,c=stk2.pop()
+            if r<0 or r>=h2 or c<0 or c>=w2 or ext2[r,c] or gi2[r,c]!=bg2: continue
+            ext2[r,c]=True; stk2.extend([(r-1,c),(r+1,c),(r,c-1),(r,c+1)])
+        int2=~ext2&(gi2==bg2); t2=gi2.copy(); t2[int2]=fc
+        if not np.array_equal(t2, go2): return None, None
+    def mk(fcc=fc):
+        def apply(t):
+            gs=[]
+            for tc in t['test']:
+                a=np.array(tc['input']); hh,ww=a.shape
+                bg2=int(np.argmax(np.bincount(a.flatten())))
+                ext2=np.zeros((hh,ww),dtype=bool); stk2=[]
+                for r in range(hh):
+                    for c in [0,ww-1]:
+                        if a[r,c]==bg2: stk2.append((r,c))
+                for c in range(ww):
+                    for r in [0,hh-1]:
+                        if a[r,c]==bg2: stk2.append((r,c))
+                while stk2:
+                    r,c=stk2.pop()
+                    if r<0 or r>=hh or c<0 or c>=ww or ext2[r,c] or a[r,c]!=bg2: continue
+                    ext2[r,c]=True; stk2.extend([(r-1,c),(r+1,c),(r,c-1),(r,c+1)])
+                out=a.copy(); out[~ext2&(a==bg2)]=fcc
+                gs.append([out.tolist()])
+            return gs
+        return apply
+    result=mk()(task)
+    if score_task(task, result): return result, f"OG:fill_enc_c{fc}"
+    return None, None
+
+
+def try_fill_enclosed_per_region(task):
+    """Fill each enclosed region with the fill color from output."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    gi = np.array(pairs[0]['input']); go = np.array(pairs[0]['output']); h, w = gi.shape
+    bg = int(np.argmax(np.bincount(gi.flatten())))
+    ext = np.zeros((h,w),dtype=bool); stk=[]
+    for r in range(h):
+        for c in [0,w-1]:
+            if gi[r,c]==bg: stk.append((r,c))
+    for c in range(w):
+        for r in [0,h-1]:
+            if gi[r,c]==bg: stk.append((r,c))
+    while stk:
+        r,c=stk.pop()
+        if r<0 or r>=h or c<0 or c>=w or ext[r,c] or gi[r,c]!=bg: continue
+        ext[r,c]=True; stk.extend([(r-1,c),(r+1,c),(r,c-1),(r,c+1)])
+    interior=~ext&(gi==bg)
+    if not interior.any(): return None, None
+    from scipy.ndimage import label as ndlabel
+    labeled,nr=ndlabel(interior)
+    if nr<1: return None, None
+    test=gi.copy()
+    for rid in range(1,nr+1):
+        rmask=labeled==rid; rbg=rmask&(gi==bg)
+        fv=set(int(go[r,c]) for r,c in zip(*np.where(rbg)) if go[r,c]!=bg)
+        if len(fv)==1: test[rbg]=list(fv)[0]
+        else: return None, None
+    if not np.array_equal(test,go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+        bg2=int(np.argmax(np.bincount(gi2.flatten())))
+        ext2=np.zeros((h2,w2),dtype=bool); stk2=[]
+        for r in range(h2):
+            for c in [0,w2-1]:
+                if gi2[r,c]==bg2: stk2.append((r,c))
+        for c in range(w2):
+            for r in [0,h2-1]:
+                if gi2[r,c]==bg2: stk2.append((r,c))
+        while stk2:
+            r,c=stk2.pop()
+            if r<0 or r>=h2 or c<0 or c>=w2 or ext2[r,c] or gi2[r,c]!=bg2: continue
+            ext2[r,c]=True; stk2.extend([(r-1,c),(r+1,c),(r,c-1),(r,c+1)])
+        int2=~ext2&(gi2==bg2); lab2,nr2=ndlabel(int2); t2=gi2.copy()
+        for rid in range(1,nr2+1):
+            rm=lab2==rid; rbg2=rm&(gi2==bg2)
+            fv=set(int(go2[r,c]) for r,c in zip(*np.where(rbg2)) if go2[r,c]!=bg2)
+            if len(fv)==1: t2[rbg2]=list(fv)[0]
+            else: return None, None
+        if not np.array_equal(t2,go2): return None, None
+    return [go.tolist()], "OG:fill_enc_per_region"
+
+
+def try_connect_diagonal(task):
+    """Connect all pairs of same-color objects with Bresenham diagonal lines."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    gi = np.array(pairs[0]['input']); go = np.array(pairs[0]['output']); h, w = gi.shape
+    bg = int(np.argmax(np.bincount(gi.flatten())))
+    objs, _ = extract_objects(gi)
+    if len(objs) < 2: return None, None
+    from collections import defaultdict
+    cg = defaultdict(list)
+    for o in objs: cg[o.color].append(o)
+    test = gi.copy()
+    for color, group in cg.items():
+        if len(group) < 2: continue
+        for i in range(len(group)):
+            for j in range(i+1, len(group)):
+                o1,o2 = group[i],group[j]
+                r1,c1 = int(round(o1.center[0])),int(round(o1.center[1]))
+                r2,c2 = int(round(o2.center[0])),int(round(o2.center[1]))
+                dr=abs(r2-r1); dc=abs(c2-c1)
+                sr=1 if r1<r2 else -1; sc=1 if c1<c2 else -1
+                err=dr-dc; r,c=r1,c1
+                while True:
+                    if 0<=r<h and 0<=c<w and test[r,c]==bg: test[r,c]=color
+                    if r==r2 and c==c2: break
+                    e2=2*err
+                    if e2>-dc: err-=dc; r+=sr
+                    if e2<dr: err+=dr; c+=sc
+    if not np.array_equal(test, go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+        bg2=int(np.argmax(np.bincount(gi2.flatten())))
+        objs2,_=extract_objects(gi2); cg2=defaultdict(list)
+        for o in objs2: cg2[o.color].append(o)
+        t2=gi2.copy()
+        for color,group in cg2.items():
+            if len(group)<2: continue
+            for i in range(len(group)):
+                for j in range(i+1,len(group)):
+                    o1,o2=group[i],group[j]
+                    r1,c1=int(round(o1.center[0])),int(round(o1.center[1]))
+                    r2,c2=int(round(o2.center[0])),int(round(o2.center[1]))
+                    dr=abs(r2-r1); dc=abs(c2-c1)
+                    sr=1 if r1<r2 else -1; sc=1 if c1<c2 else -1
+                    err=dr-dc; r,c=r1,c1
+                    while True:
+                        if 0<=r<h2 and 0<=c<w2 and t2[r,c]==bg2: t2[r,c]=color
+                        if r==r2 and c==c2: break
+                        e2=2*err
+                        if e2>-dc: err-=dc; r+=sr
+                        if e2<dr: err+=dr; c+=sc
+        if not np.array_equal(t2,go2): return None, None
+    def apply(t):
+        gs=[]
+        for tc in t['test']:
+            a=np.array(tc['input']); hh,ww=a.shape
+            bg2=int(np.argmax(np.bincount(a.flatten())))
+            objs2,_=extract_objects(a); cg2=defaultdict(list)
+            for o in objs2: cg2[o.color].append(o)
+            out=a.copy()
+            for color,group in cg2.items():
+                if len(group)<2: continue
+                for i in range(len(group)):
+                    for j in range(i+1,len(group)):
+                        o1,o2=group[i],group[j]
+                        r1,c1=int(round(o1.center[0])),int(round(o1.center[1]))
+                        r2,c2=int(round(o2.center[0])),int(round(o2.center[1]))
+                        dr=abs(r2-r1); dc=abs(c2-c1)
+                        sr=1 if r1<r2 else -1; sc=1 if c1<c2 else -1
+                        err=dr-dc; r,c=r1,c1
+                        while True:
+                            if 0<=r<hh and 0<=c<ww and out[r,c]==bg2: out[r,c]=color
+                            if r==r2 and c==c2: break
+                            e2=2*err
+                            if e2>-dc: err-=dc; r+=sr
+                            if e2<dr: err+=dr; c+=sc
+            gs.append([out.tolist()])
+        return gs
+    result=apply(task)
+    if score_task(task,result): return result, "OG:connect_diagonal"
+    return None, None
+
+
+def try_gravity_bottom(task):
+    """Drop all non-bg pixels to bottom of each column."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output']); h,w=gi.shape
+    bg=int(np.argmax(np.bincount(gi.flatten())))
+    test=np.full_like(gi,bg)
+    for c in range(w):
+        vals=[int(gi[r,c]) for r in range(h) if gi[r,c]!=bg]
+        for i,v in enumerate(reversed(vals)): test[h-1-i,c]=v
+    if not np.array_equal(test,go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+        bg2=int(np.argmax(np.bincount(gi2.flatten())))
+        t2=np.full_like(gi2,bg2)
+        for c in range(w2):
+            vals=[int(gi2[r,c]) for r in range(h2) if gi2[r,c]!=bg2]
+            for i,v in enumerate(reversed(vals)): t2[h2-1-i,c]=v
+        if not np.array_equal(t2,go2): return None, None
+    def apply(t):
+        gs=[]
+        for tc in t['test']:
+            a=np.array(tc['input']); hh,ww=a.shape
+            bg2=int(np.argmax(np.bincount(a.flatten())))
+            out=np.full_like(a,bg2)
+            for c in range(ww):
+                vals=[int(a[r,c]) for r in range(hh) if a[r,c]!=bg2]
+                for i,v in enumerate(reversed(vals)): out[hh-1-i,c]=v
+            gs.append([out.tolist()])
+        return gs
+    result=apply(task)
+    if score_task(task,result): return result, "OG:gravity_bottom"
+    return None, None
+
+
 ALL_OG_SOLVERS = [
     # Original (skip move_to_target — too slow, 0 finds)
     ("keep_by_property", try_keep_by_property),
@@ -3258,6 +3664,13 @@ ALL_OG_SOLVERS = [
     ("symmetry_complete", try_symmetry_completion),
     ("move_toward", try_move_object_toward_anchor),
     ("color_rotation", try_color_rotation_map),
+    # Generalized stamp engine (biggest target: 260 tasks)
+    ("gen_stamp", try_generalized_stamp),
+    # Fill enclosed with new color
+    ("fill_enc_new", try_fill_enclosed_new_color),
+    ("fill_enc_region", try_fill_enclosed_per_region),
+    ("connect_diag", try_connect_diagonal),
+    ("gravity_bottom", try_gravity_bottom),
 ]
 
 
