@@ -63,6 +63,13 @@ try:
 except ImportError:
     HAS_ADV = False
 
+# Object Graph
+try:
+    from arc_object_graph import solve_with_object_graph
+    HAS_OG = True
+except ImportError:
+    HAS_OG = False
+
 
 # ══════════════════════════════════════════════════════════════════════
 # UNIFIED SOLVER
@@ -194,6 +201,18 @@ class UnifiedSolver:
                 except Exception:
                     continue
 
+        # ── METHOD 3.5: Object Graph (relational reasoning) ──
+        if HAS_OG:
+            try:
+                og_result, og_method = solve_with_object_graph(task)
+                if og_result and score_task(task, og_result):
+                    self.stats[f'OG'] += 1
+                    if filename:
+                        self.solved_by[filename] = og_method
+                    return og_result, og_method
+            except Exception:
+                pass
+
         # ── METHOD 4: JEPA World Model ──
         if self.jepa_solver:
             try:
@@ -304,6 +323,7 @@ def run_benchmark(data_dir, limit=None, verbose=False,
     print(f"  S1: {S1_LABEL}")
     print(f"  Mental Models: {'Yes' if HAS_MM else 'No'}")
     print(f"  Advanced Ops: {'Yes (' + str(len(ALL_ADVANCED_OPS)) + ' ops)' if HAS_ADV else 'No'}")
+    print(f"  Object Graph: {'Yes' if HAS_OG else 'No'}")
     print(f"  JEPA: {'Yes' if HAS_JEPA and enable_jepa else 'No'}")
     print(f"  Synth Proposer: {'Yes' if HAS_SYNTH and enable_synth else 'No'}")
     print("=" * 70)
