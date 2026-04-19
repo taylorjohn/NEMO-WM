@@ -3882,6 +3882,121 @@ def try_most_common_shape_crop(task):
     return None, None
 
 
+def try_color_cycle(task):
+    """Each color maps to another in a learned cycle/mapping."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    cmap = {}
+    for p in pairs:
+        gi = np.array(p['input']); go = np.array(p['output'])
+        for r in range(gi.shape[0]):
+            for c in range(gi.shape[1]):
+                ic, oc = int(gi[r,c]), int(go[r,c])
+                if ic == oc: continue
+                if ic in cmap and cmap[ic] != oc: return None, None
+                cmap[ic] = oc
+    if not cmap: return None, None
+    if all(k == v for k, v in cmap.items()): return None, None
+    def apply(t):
+        gs = []
+        for tc in t['test']:
+            a = np.array(tc['input']); out = a.copy()
+            for r in range(a.shape[0]):
+                for c in range(a.shape[1]):
+                    if int(a[r,c]) in cmap: out[r,c] = cmap[int(a[r,c])]
+            gs.append([out.tolist()])
+        return gs
+    result = apply(task)
+    if score_task(task, result): return result, "OG:color_cycle"
+    return None, None
+
+
+def try_split_xor_and(task):
+    """Split at divider column/row, output = AND/XOR/OR of halves."""
+    pairs = task['train']
+    gi = np.array(pairs[0]['input']); go = np.array(pairs[0]['output'])
+    h, w = gi.shape; bg = int(np.argmax(np.bincount(gi.flatten())))
+    for axis in ['v', 'h']:
+        n = w if axis == 'v' else h
+        for di in range(n):
+            if axis == 'v':
+                line = gi[:, di]
+            else:
+                line = gi[di, :]
+            vals = set(int(v) for v in line)
+            if len(vals) != 1: continue
+            div_color = int(line[0])
+            if div_color == bg: continue
+            if axis == 'v':
+                a_half = gi[:, :di]; b_half = gi[:, di+1:]
+            else:
+                a_half = gi[:di, :]; b_half = gi[di+1:, :]
+            if a_half.shape != b_half.shape or a_half.shape != go.shape: continue
+            for mode in ['and', 'xor', 'or']:
+                for oc in range(1, 10):
+                    test = np.full(go.shape, bg, dtype=int)
+                    for r in range(a_half.shape[0]):
+                        for c in range(a_half.shape[1]):
+                            an = a_half[r,c]!=bg; bn = b_half[r,c]!=bg
+                            if mode=='and' and an and bn: test[r,c]=oc
+                            elif mode=='xor' and an!=bn: test[r,c]=oc
+                            elif mode=='or' and (an or bn): test[r,c]=oc
+                    if not np.array_equal(test, go): continue
+                    ok = True
+                    for p in pairs[1:]:
+                        gi2=np.array(p['input']); go2=np.array(p['output'])
+                        bg2=int(np.argmax(np.bincount(gi2.flatten())))
+                        matched = False
+                        n2 = gi2.shape[1] if axis=='v' else gi2.shape[0]
+                        for di2 in range(n2):
+                            if axis=='v': line2=gi2[:,di2]
+                            else: line2=gi2[di2,:]
+                            if len(set(int(v) for v in line2))!=1 or int(line2[0])!=div_color: continue
+                            if axis=='v': a2=gi2[:,:di2]; b2=gi2[:,di2+1:]
+                            else: a2=gi2[:di2,:]; b2=gi2[di2+1:,:]
+                            if a2.shape!=b2.shape or a2.shape!=go2.shape: continue
+                            t2=np.full(go2.shape,bg2,dtype=int)
+                            for r in range(a2.shape[0]):
+                                for c in range(a2.shape[1]):
+                                    an2=a2[r,c]!=bg2; bn2=b2[r,c]!=bg2
+                                    if mode=='and' and an2 and bn2: t2[r,c]=oc
+                                    elif mode=='xor' and an2!=bn2: t2[r,c]=oc
+                                    elif mode=='or' and (an2 or bn2): t2[r,c]=oc
+                            if np.array_equal(t2,go2): matched=True; break
+                        if not matched: ok=False; break
+                    if not ok: continue
+                    def mk(divc=div_color,m=mode,occ=oc,ax=axis):
+                        def apply(t):
+                            gs=[]
+                            for tc in t['test']:
+                                a=np.array(tc['input'])
+                                bg2=int(np.argmax(np.bincount(a.flatten())))
+                                n2=a.shape[1] if ax=='v' else a.shape[0]
+                                done=False
+                                for di2 in range(n2):
+                                    if ax=='v': line2=a[:,di2]
+                                    else: line2=a[di2,:]
+                                    if len(set(int(v) for v in line2))!=1 or int(line2[0])!=divc: continue
+                                    if ax=='v': a2=a[:,:di2]; b2=a[:,di2+1:]
+                                    else: a2=a[:di2,:]; b2=a[di2+1:,:]
+                                    if a2.shape!=b2.shape: continue
+                                    out=np.full(a2.shape,bg2,dtype=int)
+                                    for r in range(a2.shape[0]):
+                                        for c in range(a2.shape[1]):
+                                            an2=a2[r,c]!=bg2; bn2=b2[r,c]!=bg2
+                                            if m=='and' and an2 and bn2: out[r,c]=occ
+                                            elif m=='xor' and an2!=bn2: out[r,c]=occ
+                                            elif m=='or' and (an2 or bn2): out[r,c]=occ
+                                    gs.append([out.tolist()]); done=True; break
+                                if not done: gs.append([a.tolist()])
+                            return gs
+                        return apply
+                    result=mk()(task)
+                    if score_task(task,result): return result, f"OG:split_{ax}_{mode}_c{oc}"
+    return None, None
+
+
 ALL_OG_SOLVERS = [
     # Original (skip move_to_target — too slow, 0 finds)
     ("keep_by_property", try_keep_by_property),
@@ -3964,6 +4079,8 @@ ALL_OG_SOLVERS = [
     ("downsample", try_downsample_max),
     ("color_map", try_learned_color_map),
     ("most_common_shape", try_most_common_shape_crop),
+    ("color_cycle", try_color_cycle),
+    ("split_xor_and", try_split_xor_and),
 ]
 
 
