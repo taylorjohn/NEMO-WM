@@ -2484,6 +2484,223 @@ def try_replace_color_with_pattern(task):
     return None, None
 
 
+def try_fill_nearest_object_color(task):
+    """Fill each bg cell with the color of its nearest object (Manhattan)."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    gi = np.array(pairs[0]['input']); go = np.array(pairs[0]['output']); h, w = gi.shape
+    bg = int(np.argmax(np.bincount(gi.flatten())))
+    objs, _ = extract_objects(gi)
+    if len(objs) < 2: return None, None
+    # Build cell list per object for distance calc
+    test = gi.copy()
+    for r in range(h):
+        for c in range(w):
+            if gi[r, c] == bg:
+                best_d, best_c = float('inf'), bg
+                for o in objs:
+                    for cr, cc in o.cells:
+                        d = abs(r-cr) + abs(c-cc)
+                        if d < best_d:
+                            best_d = d; best_c = o.color
+                test[r, c] = best_c
+    if np.array_equal(test, go):
+        def apply(t):
+            guesses = []
+            for tc in t['test']:
+                a = np.array(tc['input']); hh, ww = a.shape
+                bg2 = int(np.argmax(np.bincount(a.flatten())))
+                objs2, _ = extract_objects(a)
+                out = a.copy()
+                for r in range(hh):
+                    for c in range(ww):
+                        if a[r, c] == bg2:
+                            bd, bc = float('inf'), bg2
+                            for o in objs2:
+                                for cr, cc in o.cells:
+                                    d = abs(r-cr)+abs(c-cc)
+                                    if d < bd: bd, bc = d, o.color
+                            out[r, c] = bc
+                guesses.append([out.tolist()])
+            return guesses
+        result = apply(task)
+        if score_task(task, result): return result, "OG:fill_nearest"
+    return None, None
+
+
+def try_recolor_by_grid_pattern(task):
+    """Recolor based on position: checkerboard, row/col parity, quadrant, distance ring."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    for pattern in ['checker', 'row_par', 'col_par', 'dist_ring', 'quadrant']:
+        rule = {}; ok = True
+        for p in pairs:
+            gi = np.array(p['input']); go = np.array(p['output']); h, w = gi.shape
+            for r in range(h):
+                for c in range(w):
+                    ic = int(gi[r, c]); oc = int(go[r, c])
+                    if pattern == 'checker': pv = (r+c) % 2
+                    elif pattern == 'row_par': pv = r % 2
+                    elif pattern == 'col_par': pv = c % 2
+                    elif pattern == 'dist_ring': pv = min(r, h-1-r, c, w-1-c) % 3
+                    elif pattern == 'quadrant': pv = (0 if r < h//2 else 2) + (0 if c < w//2 else 1)
+                    key = (ic, pv)
+                    if key in rule and rule[key] != oc: ok = False; break
+                    rule[key] = oc
+                if not ok: break
+            if not ok: break
+        if not ok or not rule: continue
+        if all(k[0] == v for k, v in rule.items()): continue
+        def mk(pt=pattern, rl=rule):
+            def apply(t):
+                guesses = []
+                for tc in t['test']:
+                    a = np.array(tc['input']); hh, ww = a.shape
+                    out = a.copy()
+                    for r in range(hh):
+                        for c in range(ww):
+                            if pt == 'checker': pv = (r+c)%2
+                            elif pt == 'row_par': pv = r%2
+                            elif pt == 'col_par': pv = c%2
+                            elif pt == 'dist_ring': pv = min(r,hh-1-r,c,ww-1-c)%3
+                            elif pt == 'quadrant': pv = (0 if r<hh//2 else 2)+(0 if c<ww//2 else 1)
+                            key = (int(a[r,c]), pv)
+                            if key in rl: out[r,c] = rl[key]
+                    guesses.append([out.tolist()])
+                return guesses
+            return apply
+        result = mk()(task)
+        if score_task(task, result): return result, f"OG:pattern_{pattern}"
+    return None, None
+
+
+def try_color_complement(task):
+    """Each color X becomes 9-X (complement in ARC's 0-9 space)."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    gi = np.array(pairs[0]['input']); go = np.array(pairs[0]['output'])
+    bg = int(np.argmax(np.bincount(gi.flatten())))
+    test = gi.copy()
+    for r in range(gi.shape[0]):
+        for c in range(gi.shape[1]):
+            if gi[r,c] != bg: test[r,c] = 9 - gi[r,c]
+    if np.array_equal(test, go):
+        for p in pairs[1:]:
+            gi2 = np.array(p['input']); go2 = np.array(p['output'])
+            bg2 = int(np.argmax(np.bincount(gi2.flatten())))
+            t2 = gi2.copy()
+            for r in range(gi2.shape[0]):
+                for c in range(gi2.shape[1]):
+                    if gi2[r,c] != bg2: t2[r,c] = 9 - gi2[r,c]
+            if not np.array_equal(t2, go2): return None, None
+        def apply(t):
+            guesses = []
+            for tc in t['test']:
+                a = np.array(tc['input'])
+                bg2 = int(np.argmax(np.bincount(a.flatten())))
+                out = a.copy()
+                out[out != bg2] = 9 - out[out != bg2]
+                guesses.append([out.tolist()])
+            return guesses
+        result = apply(task)
+        if score_task(task, result): return result, "OG:color_complement"
+    return None, None
+
+
+def try_color_offset(task):
+    """Each non-bg color X becomes (X+N) mod 10 for some fixed N."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    gi = np.array(pairs[0]['input']); go = np.array(pairs[0]['output'])
+    bg = int(np.argmax(np.bincount(gi.flatten())))
+    for offset in range(1, 9):
+        test = gi.copy()
+        for r in range(gi.shape[0]):
+            for c in range(gi.shape[1]):
+                if gi[r,c] != bg:
+                    test[r,c] = (gi[r,c] + offset) % 10
+                    if test[r,c] == 0: test[r,c] = 10 - offset  # avoid bg
+        if np.array_equal(test, go):
+            ok = True
+            for p in pairs[1:]:
+                gi2 = np.array(p['input']); go2 = np.array(p['output'])
+                bg2 = int(np.argmax(np.bincount(gi2.flatten())))
+                t2 = gi2.copy()
+                for r in range(gi2.shape[0]):
+                    for c in range(gi2.shape[1]):
+                        if gi2[r,c] != bg2:
+                            t2[r,c] = (gi2[r,c] + offset) % 10
+                            if t2[r,c] == 0: t2[r,c] = 10 - offset
+                if not np.array_equal(t2, go2): ok = False; break
+            if ok:
+                def mk(off=offset):
+                    def apply(t):
+                        guesses = []
+                        for tc in t['test']:
+                            a = np.array(tc['input'])
+                            bg2 = int(np.argmax(np.bincount(a.flatten())))
+                            out = a.copy()
+                            for r in range(a.shape[0]):
+                                for c in range(a.shape[1]):
+                                    if a[r,c] != bg2:
+                                        out[r,c] = (a[r,c] + off) % 10
+                                        if out[r,c] == 0: out[r,c] = 10 - off
+                            guesses.append([out.tolist()])
+                        return guesses
+                    return apply
+                result = mk()(task)
+                if score_task(task, result): return result, f"OG:color_offset_{offset}"
+    return None, None
+
+
+def try_conditional_fill(task):
+    """Fill bg with dominant color, but preserve objects matching a property."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    gi = np.array(pairs[0]['input']); go = np.array(pairs[0]['output'])
+    bg = int(np.argmax(np.bincount(gi.flatten())))
+    objs, _ = extract_objects(gi)
+    if len(objs) < 2: return None, None
+    # What color fills the bg?
+    new_bg_cells = [(r,c) for r in range(gi.shape[0]) for c in range(gi.shape[1])
+                     if gi[r,c] == bg and go[r,c] != bg]
+    if not new_bg_cells: return None, None
+    fill_color = int(go[new_bg_cells[0][0], new_bg_cells[0][1]])
+    if not all(int(go[r,c]) == fill_color for r,c in new_bg_cells): return None, None
+    # Which objects are preserved vs overwritten?
+    preserved = [o for o in objs if all(go[r,c] == o.color for r,c in o.cells)]
+    overwritten = [o for o in objs if not all(go[r,c] == o.color for r,c in o.cells)]
+    if not preserved or not overwritten: return None, None
+    # What distinguishes preserved from overwritten?
+    for prop in ['color', 'size_gt', 'size_lt', 'rectangular']:
+        if prop == 'color':
+            pc = set(o.color for o in preserved)
+            oc = set(o.color for o in overwritten)
+            if pc & oc: continue  # overlap
+            def mk(fc=fill_color, keep_colors=pc):
+                def apply(t):
+                    guesses = []
+                    for tc in t['test']:
+                        a = np.array(tc['input'])
+                        bg2 = int(np.argmax(np.bincount(a.flatten())))
+                        objs2, _ = extract_objects(a)
+                        out = np.full_like(a, fc)
+                        for o in objs2:
+                            if o.color in keep_colors:
+                                for r, c in o.cells: out[r, c] = o.color
+                        guesses.append([out.tolist()])
+                    return guesses
+                return apply
+            result = mk()(task)
+            if score_task(task, result): return result, "OG:cond_fill_by_color"
+    return None, None
+
+
 ALL_OG_SOLVERS = [
     # Original (skip move_to_target — too slow, 0 finds)
     ("keep_by_property", try_keep_by_property),
@@ -2538,6 +2755,12 @@ ALL_OG_SOLVERS = [
     ("histogram", try_color_histogram_row),
     ("crop_content", try_extract_non_bg_bbox),
     ("stamp_markers", try_replace_color_with_pattern),
+    # High-impact gap fillers
+    ("fill_nearest", try_fill_nearest_object_color),
+    ("grid_pattern", try_recolor_by_grid_pattern),
+    ("color_complement", try_color_complement),
+    ("color_offset", try_color_offset),
+    ("conditional_fill", try_conditional_fill),
 ]
 
 
