@@ -3597,6 +3597,291 @@ def try_gravity_bottom(task):
     return None, None
 
 
+def try_reflect_position(task):
+    """Copy each non-bg pixel to its reflected position across grid center."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output']); h,w=gi.shape
+    bg=int(np.argmax(np.bincount(gi.flatten())))
+    for ref_type in ['h', 'v', 'both']:
+        test = gi.copy()
+        for r in range(h):
+            for c in range(w):
+                if gi[r,c] != bg:
+                    if ref_type in ['h','both']:
+                        mr = h-1-r
+                        if 0<=mr<h and test[mr,c]==bg: test[mr,c]=gi[r,c]
+                    if ref_type in ['v','both']:
+                        mc = w-1-c
+                        if 0<=mc<w and test[r,mc]==bg: test[r,mc]=gi[r,c]
+                    if ref_type == 'both':
+                        if 0<=mr<h and 0<=mc<w and test[mr,mc]==bg: test[mr,mc]=gi[r,c]
+        if np.array_equal(test, go):
+            ok = True
+            for p in pairs[1:]:
+                gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+                bg2=int(np.argmax(np.bincount(gi2.flatten())))
+                t2=gi2.copy()
+                for r in range(h2):
+                    for c in range(w2):
+                        if gi2[r,c]!=bg2:
+                            if ref_type in ['h','both']:
+                                mr=h2-1-r
+                                if 0<=mr<h2 and t2[mr,c]==bg2: t2[mr,c]=gi2[r,c]
+                            if ref_type in ['v','both']:
+                                mc=w2-1-c
+                                if 0<=mc<w2 and t2[r,mc]==bg2: t2[r,mc]=gi2[r,c]
+                            if ref_type=='both':
+                                if 0<=mr<h2 and 0<=mc<w2 and t2[mr,mc]==bg2: t2[mr,mc]=gi2[r,c]
+                if not np.array_equal(t2, go2): ok=False; break
+            if ok:
+                def mk(rt=ref_type):
+                    def apply(t):
+                        gs=[]
+                        for tc in t['test']:
+                            a=np.array(tc['input']); hh,ww=a.shape
+                            bg2=int(np.argmax(np.bincount(a.flatten())))
+                            out=a.copy()
+                            for r in range(hh):
+                                for c in range(ww):
+                                    if a[r,c]!=bg2:
+                                        if rt in ['h','both']:
+                                            mr=hh-1-r
+                                            if 0<=mr<hh and out[mr,c]==bg2: out[mr,c]=a[r,c]
+                                        if rt in ['v','both']:
+                                            mc=ww-1-c
+                                            if 0<=mc<ww and out[r,mc]==bg2: out[r,mc]=a[r,c]
+                                        if rt=='both':
+                                            if 0<=mr<hh and 0<=mc<ww and out[mr,mc]==bg2: out[mr,mc]=a[r,c]
+                            gs.append([out.tolist()])
+                        return gs
+                    return apply
+                result=mk()(task)
+                if score_task(task, result): return result, f"OG:reflect_{ref_type}"
+    return None, None
+
+
+def try_rotate_grid(task):
+    """Output = input rotated by 90, 180, or 270 degrees."""
+    pairs = task['train']
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    for k in [1, 2, 3]:
+        if np.array_equal(np.rot90(gi, k), go):
+            ok=True
+            for p in pairs[1:]:
+                if not np.array_equal(np.rot90(np.array(p['input']),k), np.array(p['output'])):
+                    ok=False; break
+            if ok:
+                def mk(kk=k):
+                    def apply(t):
+                        return [[np.rot90(np.array(tc['input']),kk).tolist()] for tc in t['test']]
+                    return apply
+                result=mk()(task)
+                if score_task(task, result): return result, f"OG:rotate_{k*90}"
+    return None, None
+
+
+def try_flip_grid(task):
+    """Output = input flipped horizontally or vertically."""
+    pairs = task['train']
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    for flip_type in ['h', 'v']:
+        if flip_type == 'h': flipped = gi[:, ::-1]
+        else: flipped = gi[::-1, :]
+        if np.array_equal(flipped, go):
+            ok=True
+            for p in pairs[1:]:
+                gi2=np.array(p['input'])
+                if flip_type=='h': f2=gi2[:,::-1]
+                else: f2=gi2[::-1,:]
+                if not np.array_equal(f2, np.array(p['output'])): ok=False; break
+            if ok:
+                def mk(ft=flip_type):
+                    def apply(t):
+                        gs=[]
+                        for tc in t['test']:
+                            a=np.array(tc['input'])
+                            if ft=='h': gs.append([a[:,::-1].tolist()])
+                            else: gs.append([a[::-1,:].tolist()])
+                        return gs
+                    return apply
+                result=mk()(task)
+                if score_task(task, result): return result, f"OG:flip_{flip_type}"
+    return None, None
+
+
+def try_gravity_top(task):
+    """Drop all non-bg pixels to top of each column."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output']); h,w=gi.shape
+    bg=int(np.argmax(np.bincount(gi.flatten())))
+    test=np.full_like(gi,bg)
+    for c in range(w):
+        vals=[int(gi[r,c]) for r in range(h) if gi[r,c]!=bg]
+        for i,v in enumerate(vals): test[i,c]=v
+    if not np.array_equal(test,go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+        bg2=int(np.argmax(np.bincount(gi2.flatten())))
+        t2=np.full_like(gi2,bg2)
+        for c in range(w2):
+            vals=[int(gi2[r,c]) for r in range(h2) if gi2[r,c]!=bg2]
+            for i,v in enumerate(vals): t2[i,c]=v
+        if not np.array_equal(t2,go2): return None, None
+    def apply(t):
+        gs=[]
+        for tc in t['test']:
+            a=np.array(tc['input']); hh,ww=a.shape
+            bg2=int(np.argmax(np.bincount(a.flatten())))
+            out=np.full_like(a,bg2)
+            for c in range(ww):
+                vals=[int(a[r,c]) for r in range(hh) if a[r,c]!=bg2]
+                for i,v in enumerate(vals): out[i,c]=v
+            gs.append([out.tolist()])
+        return gs
+    result=apply(task)
+    if score_task(task,result): return result, "OG:gravity_top"
+    return None, None
+
+
+def try_repeat_cols(task):
+    """Output repeats input columns N times."""
+    pairs = task['train']
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    if go.shape[0]!=gi.shape[0] or go.shape[1]<=gi.shape[1]: return None, None
+    if go.shape[1]%gi.shape[1]!=0: return None, None
+    reps=go.shape[1]//gi.shape[1]
+    if not np.array_equal(np.tile(gi,(1,reps)),go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output'])
+        if go2.shape[1]%gi2.shape[1]!=0 or go2.shape[1]//gi2.shape[1]!=reps: return None, None
+        if not np.array_equal(np.tile(gi2,(1,reps)),go2): return None, None
+    def mk(r=reps):
+        def apply(t):
+            return [[np.tile(np.array(tc['input']),(1,r)).tolist()] for tc in t['test']]
+        return apply
+    result=mk()(task)
+    if score_task(task,result): return result, f"OG:repeat_cols_{reps}x"
+    return None, None
+
+
+def try_downsample_max(task):
+    """Downsample grid by taking most common non-bg in NxN blocks."""
+    pairs = task['train']
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    ih,iw=gi.shape; oh,ow=go.shape
+    if oh>=ih or ow>=iw: return None, None
+    if ih%oh!=0 or iw%ow!=0: return None, None
+    bh,bw=ih//oh,iw//ow
+    bg=int(np.argmax(np.bincount(gi.flatten())))
+    test=np.full((oh,ow),bg,dtype=int)
+    for r in range(oh):
+        for c in range(ow):
+            block=gi[r*bh:(r+1)*bh,c*bw:(c+1)*bw]
+            nz=[int(v) for v in block.flatten() if v!=bg]
+            if nz: test[r,c]=Counter(nz).most_common(1)[0][0]
+    if not np.array_equal(test,go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output'])
+        if gi2.shape[0]%go2.shape[0]!=0 or gi2.shape[1]%go2.shape[1]!=0: return None, None
+        if gi2.shape[0]//go2.shape[0]!=bh or gi2.shape[1]//go2.shape[1]!=bw: return None, None
+        bg2=int(np.argmax(np.bincount(gi2.flatten())))
+        t2=np.full(go2.shape,bg2,dtype=int)
+        for r in range(go2.shape[0]):
+            for c in range(go2.shape[1]):
+                block=gi2[r*bh:(r+1)*bh,c*bw:(c+1)*bw]
+                nz=[int(v) for v in block.flatten() if v!=bg2]
+                if nz: t2[r,c]=Counter(nz).most_common(1)[0][0]
+        if not np.array_equal(t2,go2): return None, None
+    def mk(bbh=bh,bbw=bw):
+        def apply(t):
+            gs=[]
+            for tc in t['test']:
+                a=np.array(tc['input'])
+                bg2=int(np.argmax(np.bincount(a.flatten())))
+                oh2,ow2=a.shape[0]//bbh,a.shape[1]//bbw
+                out=np.full((oh2,ow2),bg2,dtype=int)
+                for r in range(oh2):
+                    for c in range(ow2):
+                        block=a[r*bbh:(r+1)*bbh,c*bbw:(c+1)*bbw]
+                        nz=[int(v) for v in block.flatten() if v!=bg2]
+                        if nz: out[r,c]=Counter(nz).most_common(1)[0][0]
+                gs.append([out.tolist()])
+            return gs
+        return apply
+    result=mk()(task)
+    if score_task(task,result): return result, f"OG:downsample_{bh}x"
+    return None, None
+
+
+def try_learned_color_map(task):
+    """Learn a complete color→color mapping from all training pairs."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    cmap={}
+    for p in pairs:
+        gi=np.array(p['input']); go=np.array(p['output'])
+        for r in range(gi.shape[0]):
+            for c in range(gi.shape[1]):
+                ic=int(gi[r,c]); oc=int(go[r,c])
+                if ic in cmap and cmap[ic]!=oc: return None, None
+                cmap[ic]=oc
+    if not cmap or all(k==v for k,v in cmap.items()): return None, None
+    def apply(t):
+        gs=[]
+        for tc in t['test']:
+            a=np.array(tc['input']); out=a.copy()
+            for r in range(a.shape[0]):
+                for c in range(a.shape[1]):
+                    if int(a[r,c]) in cmap: out[r,c]=cmap[int(a[r,c])]
+            gs.append([out.tolist()])
+        return gs
+    result=apply(task)
+    if score_task(task,result): return result, "OG:color_map"
+    return None, None
+
+
+def try_most_common_shape_crop(task):
+    """Output = crop of the most frequently occurring shape."""
+    pairs = task['train']
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    objs,bg=extract_objects(gi)
+    if len(objs) < 2: return None, None
+    shape_counts = Counter(o.shape_hash for o in objs)
+    most_common_shape = shape_counts.most_common(1)[0][0]
+    candidates = [o for o in objs if o.shape_hash == most_common_shape]
+    for cand in candidates:
+        crop = cand.crop(gi)
+        if crop.shape == go.shape and np.array_equal(crop, go):
+            ok=True
+            for p in pairs[1:]:
+                gi2=np.array(p['input']); go2=np.array(p['output'])
+                objs2,_=extract_objects(gi2)
+                sc2=Counter(o.shape_hash for o in objs2)
+                mc2=sc2.most_common(1)[0][0]
+                c2=[o for o in objs2 if o.shape_hash==mc2]
+                matched=any(np.array_equal(cc.crop(gi2),go2) for cc in c2 if cc.crop(gi2).shape==go2.shape)
+                if not matched: ok=False; break
+            if ok:
+                def apply(t):
+                    gs=[]
+                    for tc in t['test']:
+                        a=np.array(tc['input'])
+                        objs2,_=extract_objects(a)
+                        sc2=Counter(o.shape_hash for o in objs2)
+                        mc2=sc2.most_common(1)[0][0]
+                        c2=[o for o in objs2 if o.shape_hash==mc2]
+                        gs.append([c2[0].crop(a).tolist()] if c2 else [a.tolist()])
+                    return gs
+                result=apply(task)
+                if score_task(task,result): return result, "OG:most_common_shape"
+    return None, None
+
+
 ALL_OG_SOLVERS = [
     # Original (skip move_to_target — too slow, 0 finds)
     ("keep_by_property", try_keep_by_property),
@@ -3671,6 +3956,14 @@ ALL_OG_SOLVERS = [
     ("fill_enc_region", try_fill_enclosed_per_region),
     ("connect_diag", try_connect_diagonal),
     ("gravity_bottom", try_gravity_bottom),
+    ("reflect", try_reflect_position),
+    ("rotate", try_rotate_grid),
+    ("flip", try_flip_grid),
+    ("gravity_top", try_gravity_top),
+    ("repeat_cols", try_repeat_cols),
+    ("downsample", try_downsample_max),
+    ("color_map", try_learned_color_map),
+    ("most_common_shape", try_most_common_shape_crop),
 ]
 
 
