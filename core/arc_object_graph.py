@@ -2701,6 +2701,496 @@ def try_conditional_fill(task):
     return None, None
 
 
+def try_two_step_og_chain(task):
+    """Try chaining two OG/ADV solvers: apply solver A to get intermediate, then solver B.
+    This is the composition layer that finds tasks needing 2-step reasoning."""
+    pairs = task['train']
+    tests = task['test']
+    
+    # Import ADV ops for chaining
+    try:
+        from arc_advanced_ops import ALL_ADVANCED_OPS
+        adv_ops = ALL_ADVANCED_OPS
+    except:
+        adv_ops = []
+    
+    # Build list of "transform functions" that take pairs and return a rule
+    # Each rule is: grid → grid
+    transform_fns = []
+    
+    # Fast ADV ops (skip slow ones)
+    fast_adv = [n for n, _ in adv_ops if n not in ('connected_flood', 'flood_seeds', 'pattern_stamp')]
+    for name, fn in adv_ops:
+        if name in fast_adv:
+            transform_fns.append((f"ADV:{name}", fn))
+    
+    # OG single-step transforms (only ones that preserve grid size)
+    og_single = [
+        ("OG:fill_h", try_fill_between_same_color_h),
+        ("OG:fill_v", try_fill_between_same_color_v),
+        ("OG:fill_hv", try_fill_between_same_color_hv),
+        ("OG:fill_row", try_fill_row_col_from_object),
+        ("OG:connect", try_connect_same_color),
+        ("OG:grow", try_grow_objects),
+        ("OG:shrink", try_shrink_objects),
+        ("OG:outline", try_outline_objects),
+        ("OG:fill_bbox", try_fill_bbox),
+        ("OG:maj_fill", try_majority_color_fill),
+        ("OG:complement", try_color_complement),
+    ]
+    
+    # For each first-step op, try to get it to produce an intermediate
+    # Then for each second-step op, try to solve intermediate→output
+    
+    # Limit search: try top 15 first-ops × top 15 second-ops = 225 combinations
+    for name_a, fn_a in transform_fns[:15]:
+        try:
+            rule_a = fn_a(pairs)
+            if rule_a is None:
+                continue
+            
+            # Compute intermediates
+            intermediates = []
+            ok = True
+            for p in pairs:
+                try:
+                    mid = rule_a(p['input'])
+                    mid_arr = np.array(mid) if not isinstance(mid, np.ndarray) else mid
+                    # Check that mid is different from input (op did something)
+                    if np.array_equal(mid_arr, np.array(p['input'])):
+                        ok = False; break
+                    # Check same size as output (most ARC tasks preserve size)
+                    go = np.array(p['output'])
+                    if mid_arr.shape != go.shape:
+                        ok = False; break
+                    intermediates.append({
+                        'input': mid_arr.tolist(),
+                        'output': p['output']
+                    })
+                except:
+                    ok = False; break
+            
+            if not ok or not intermediates:
+                continue
+            
+            # Try second-step ops on intermediate→output
+            for name_b, fn_b in transform_fns[:15]:
+                if name_b == name_a:
+                    continue
+                try:
+                    rule_b = fn_b(intermediates)
+                    if rule_b is None:
+                        continue
+                    
+                    # Verify full chain on all training pairs
+                    chain_ok = True
+                    for p in pairs:
+                        try:
+                            mid = rule_a(p['input'])
+                            mid_list = mid.tolist() if isinstance(mid, np.ndarray) else mid
+                            final = rule_b(mid_list)
+                            final_arr = np.array(final) if not isinstance(final, np.ndarray) else final
+                            if not np.array_equal(final_arr, np.array(p['output'])):
+                                chain_ok = False; break
+                        except:
+                            chain_ok = False; break
+                    
+                    if not chain_ok:
+                        continue
+                    
+                    # Apply chain to test cases
+                    guesses = []
+                    test_ok = True
+                    for tc in tests:
+                        try:
+                            mid = rule_a(tc['input'])
+                            mid_list = mid.tolist() if isinstance(mid, np.ndarray) else mid
+                            final = rule_b(mid_list)
+                            final_arr = np.array(final) if not isinstance(final, np.ndarray) else final
+                            guesses.append([final_arr.tolist()])
+                        except:
+                            test_ok = False; break
+                    
+                    if test_ok and guesses and score_task(task, guesses):
+                        return guesses, f"CHAIN:{name_a}→{name_b}"
+                
+                except:
+                    continue
+        except:
+            continue
+    
+    return None, None
+
+
+def try_stamp_cross_at_pixels(task):
+    """Stamp a small pattern (cross, diamond, plus) centered on each non-bg pixel.
+    Discovered from 0ca9ddb6: each colored pixel gets a cross/diamond stamp."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    
+    # Learn stamps per color across ALL training pairs
+    gi = np.array(pairs[0]['input']); go = np.array(pairs[0]['output']); h, w = gi.shape
+    bg = int(np.argmax(np.bincount(gi.flatten())))
+    
+    color_stamps = {}  # color → {(dr, dc): stamp_color}
+    color_instances = {}  # color → count across all pairs
+    
+    for p in pairs:
+        gi_p = np.array(p['input']); go_p = np.array(p['output'])
+        hp, wp = gi_p.shape
+        for r in range(hp):
+            for c in range(wp):
+                if gi_p[r, c] != bg:
+                    color = int(gi_p[r, c])
+                    color_instances[color] = color_instances.get(color, 0) + 1
+                    stamp = {}
+                    for dr in range(-2, 3):
+                        for dc in range(-2, 3):
+                            if dr == 0 and dc == 0: continue
+                            nr, nc = r + dr, c + dc
+                            if 0 <= nr < hp and 0 <= nc < wp:
+                                if go_p[nr, nc] != gi_p[nr, nc] and go_p[nr, nc] != bg:
+                                    stamp[(dr, dc)] = int(go_p[nr, nc])
+                    if stamp:
+                        if color in color_stamps:
+                            # Intersect with existing
+                            common = {k: v for k, v in stamp.items()
+                                       if k in color_stamps[color] and color_stamps[color][k] == v}
+                            color_stamps[color] = common
+                        else:
+                            color_stamps[color] = stamp
+    
+    # Only keep stamps for colors with 2+ instances AND non-empty stamps
+    color_stamps = {c: s for c, s in color_stamps.items()
+                     if s and color_instances.get(c, 0) >= 2}
+    
+    if not color_stamps:
+        return None, None
+    
+    # Verify: apply stamps and check
+    test = gi.copy()
+    for r in range(h):
+        for c in range(w):
+            if gi[r, c] != bg:
+                color = int(gi[r, c])
+                if color in color_stamps:
+                    for (dr, dc), sc in color_stamps[color].items():
+                        nr, nc = r + dr, c + dc
+                        if 0 <= nr < h and 0 <= nc < w and test[nr, nc] == bg:
+                            test[nr, nc] = sc
+    
+    if not np.array_equal(test, go):
+        return None, None
+    
+    # Verify on all pairs
+    for p in pairs[1:]:
+        gi2 = np.array(p['input']); go2 = np.array(p['output'])
+        t2 = gi2.copy()
+        bg2 = int(np.argmax(np.bincount(gi2.flatten())))
+        for r in range(gi2.shape[0]):
+            for c in range(gi2.shape[1]):
+                if gi2[r, c] != bg2 and int(gi2[r, c]) in color_stamps:
+                    for (dr, dc), sc in color_stamps[int(gi2[r, c])].items():
+                        nr, nc = r + dr, c + dc
+                        if 0 <= nr < gi2.shape[0] and 0 <= nc < gi2.shape[1] and t2[nr, nc] == bg2:
+                            t2[nr, nc] = sc
+        if not np.array_equal(t2, go2):
+            return None, None
+    
+    def mk(stamps=color_stamps):
+        def apply(t):
+            guesses = []
+            for tc in t['test']:
+                a = np.array(tc['input']); hh, ww = a.shape
+                bg2 = int(np.argmax(np.bincount(a.flatten())))
+                out = a.copy()
+                for r in range(hh):
+                    for c in range(ww):
+                        if a[r, c] != bg2 and int(a[r, c]) in stamps:
+                            for (dr, dc), sc in stamps[int(a[r, c])].items():
+                                nr, nc = r + dr, c + dc
+                                if 0 <= nr < hh and 0 <= nc < ww and out[nr, nc] == bg2:
+                                    out[nr, nc] = sc
+                guesses.append([out.tolist()])
+            return guesses
+        return apply
+    result = mk()(task)
+    if score_task(task, result): return result, "OG:stamp_cross"
+    return None, None
+
+
+def try_symmetry_completion(task):
+    """Complete a symmetric pattern by mirroring existing non-bg pixels.
+    Discovered from 11852cab: fill missing symmetric positions."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    gi = np.array(pairs[0]['input']); go = np.array(pairs[0]['output']); h, w = gi.shape
+    bg = int(np.argmax(np.bincount(gi.flatten())))
+    
+    # Find center of non-bg content
+    nz = np.argwhere(gi != bg)
+    if len(nz) < 2: return None, None
+    cr = (nz[:, 0].min() + nz[:, 0].max()) / 2
+    cc = (nz[:, 1].min() + nz[:, 1].max()) / 2
+    
+    for sym_type in ['4fold', 'h_mirror', 'v_mirror', 'diag']:
+        test = gi.copy()
+        for r in range(h):
+            for c in range(w):
+                if gi[r, c] != bg:
+                    mirrors = []
+                    if sym_type in ['4fold', 'h_mirror']:
+                        mr = int(round(2 * cr - r))
+                        mirrors.append((mr, c))
+                    if sym_type in ['4fold', 'v_mirror']:
+                        mc = int(round(2 * cc - c))
+                        mirrors.append((r, mc))
+                    if sym_type == '4fold':
+                        mirrors.append((int(round(2*cr-r)), int(round(2*cc-c))))
+                    if sym_type == 'diag':
+                        dr, dc = r - round(cr), c - round(cc)
+                        mirrors.append((int(round(cr + dc)), int(round(cc + dr))))
+                    
+                    for mr, mc in mirrors:
+                        if 0 <= mr < h and 0 <= mc < w and test[mr, mc] == bg:
+                            test[mr, mc] = int(gi[r, c])
+        
+        if np.array_equal(test, go):
+            for p in pairs[1:]:
+                gi2 = np.array(p['input']); go2 = np.array(p['output'])
+                bg2 = int(np.argmax(np.bincount(gi2.flatten())))
+                nz2 = np.argwhere(gi2 != bg2)
+                if len(nz2) < 2: return None, None
+                cr2 = (nz2[:,0].min()+nz2[:,0].max())/2
+                cc2 = (nz2[:,1].min()+nz2[:,1].max())/2
+                t2 = gi2.copy()
+                for r in range(gi2.shape[0]):
+                    for c in range(gi2.shape[1]):
+                        if gi2[r,c] != bg2:
+                            ms = []
+                            if sym_type in ['4fold','h_mirror']: ms.append((int(round(2*cr2-r)),c))
+                            if sym_type in ['4fold','v_mirror']: ms.append((r,int(round(2*cc2-c))))
+                            if sym_type == '4fold': ms.append((int(round(2*cr2-r)),int(round(2*cc2-c))))
+                            if sym_type == 'diag':
+                                dr,dc=r-round(cr2),c-round(cc2)
+                                ms.append((int(round(cr2+dc)),int(round(cc2+dr))))
+                            for mr,mc in ms:
+                                if 0<=mr<gi2.shape[0] and 0<=mc<gi2.shape[1] and t2[mr,mc]==bg2:
+                                    t2[mr,mc]=int(gi2[r,c])
+                if not np.array_equal(t2, go2): break
+            else:
+                def mk(st=sym_type):
+                    def apply(t):
+                        guesses = []
+                        for tc in t['test']:
+                            a = np.array(tc['input']); hh,ww = a.shape
+                            bg2 = int(np.argmax(np.bincount(a.flatten())))
+                            nz2 = np.argwhere(a!=bg2)
+                            if len(nz2)<2: guesses.append([a.tolist()]); continue
+                            cr2=(nz2[:,0].min()+nz2[:,0].max())/2
+                            cc2=(nz2[:,1].min()+nz2[:,1].max())/2
+                            out = a.copy()
+                            for r in range(hh):
+                                for c in range(ww):
+                                    if a[r,c]!=bg2:
+                                        ms=[]
+                                        if st in ['4fold','h_mirror']: ms.append((int(round(2*cr2-r)),c))
+                                        if st in ['4fold','v_mirror']: ms.append((r,int(round(2*cc2-c))))
+                                        if st=='4fold': ms.append((int(round(2*cr2-r)),int(round(2*cc2-c))))
+                                        if st=='diag':
+                                            dr,dc=r-round(cr2),c-round(cc2)
+                                            ms.append((int(round(cr2+dc)),int(round(cc2+dr))))
+                                        for mr,mc in ms:
+                                            if 0<=mr<hh and 0<=mc<ww and out[mr,mc]==bg2:
+                                                out[mr,mc]=int(a[r,c])
+                            guesses.append([out.tolist()])
+                        return guesses
+                    return apply
+                result = mk()(task)
+                if score_task(task, result): return result, f"OG:sym_complete_{sym_type}"
+    return None, None
+
+
+def try_move_object_toward_anchor(task):
+    """Move one object toward another (translate until adjacent).
+    Discovered from 05f2a901: object 2 slides toward object 8."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    
+    gi = np.array(pairs[0]['input']); go = np.array(pairs[0]['output']); h, w = gi.shape
+    bg = int(np.argmax(np.bincount(gi.flatten())))
+    objs_in, _ = extract_objects(gi)
+    objs_out, _ = extract_objects(go)
+    if len(objs_in) < 2: return None, None
+    
+    # Find which object moved and which is the anchor
+    for mover in objs_in:
+        # Check if mover's cells changed in output
+        cells_same = all(go[r, c] == mover.color for r, c in mover.cells)
+        if cells_same: continue  # didn't move
+        
+        # Find matching object in output (same color, same shape)
+        for mo in objs_out:
+            if mo.color != mover.color or mo.shape_hash != mover.shape_hash: continue
+            if mo.size != mover.size: continue
+            
+            # Compute translation vector
+            dr = int(round(mo.center[0] - mover.center[0]))
+            dc = int(round(mo.center[1] - mover.center[1]))
+            if dr == 0 and dc == 0: continue
+            
+            # Which anchor did it move toward?
+            for anchor in objs_in:
+                if anchor.id == mover.id: continue
+                # Did moving get closer to anchor?
+                old_dist = abs(mover.center[0]-anchor.center[0]) + abs(mover.center[1]-anchor.center[1])
+                new_dist = abs(mo.center[0]-anchor.center[0]) + abs(mo.center[1]-anchor.center[1])
+                if new_dist >= old_dist: continue
+                
+                # Verify: clear old position, draw new position
+                test = gi.copy()
+                for r, c in mover.cells: test[r, c] = bg
+                for r, c in mover.cells:
+                    nr, nc = r + dr, c + dc
+                    if 0 <= nr < h and 0 <= nc < w: test[nr, nc] = mover.color
+                
+                if np.array_equal(test, go):
+                    mover_color = mover.color; anchor_color = anchor.color
+                    def mk(mc=mover_color, ac=anchor_color):
+                        def apply(t):
+                            guesses = []
+                            for tc in t['test']:
+                                a = np.array(tc['input']); hh, ww = a.shape
+                                bg2 = int(np.argmax(np.bincount(a.flatten())))
+                                objs2, _ = extract_objects(a)
+                                movers = [o for o in objs2 if o.color == mc]
+                                anchors = [o for o in objs2 if o.color == ac]
+                                out = a.copy()
+                                if movers and anchors:
+                                    mv = movers[0]; an = anchors[0]
+                                    # Move toward anchor until adjacent
+                                    ddr = 1 if an.center[0] > mv.center[0] else (-1 if an.center[0] < mv.center[0] else 0)
+                                    ddc = 1 if an.center[1] > mv.center[1] else (-1 if an.center[1] < mv.center[1] else 0)
+                                    # Slide until touching
+                                    for step in range(1, max(hh, ww)):
+                                        new_cells = [(r+ddr*step, c+ddc*step) for r, c in mv.cells]
+                                        if any(nr<0 or nr>=hh or nc<0 or nc>=ww for nr, nc in new_cells): break
+                                        # Check if touching anchor
+                                        anc_set = set(an.cells)
+                                        touching = any((nr+dr2, nc+dc2) in anc_set
+                                                        for nr, nc in new_cells
+                                                        for dr2, dc2 in [(-1,0),(1,0),(0,-1),(0,1)])
+                                        if touching:
+                                            for r, c in mv.cells: out[r, c] = bg2
+                                            for nr, nc in new_cells: out[nr, nc] = mc
+                                            break
+                                guesses.append([out.tolist()])
+                            return guesses
+                        return apply
+                    result = mk()(task)
+                    if score_task(task, result): return result, f"OG:move_toward_{anchor_color}"
+    return None, None
+
+
+def try_color_rotation_map(task):
+    """Apply a color rotation defined by a key region in the grid.
+    Discovered from 0becf7df: top-left 2x2 defines color mapping."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    gi = np.array(pairs[0]['input']); go = np.array(pairs[0]['output']); h, w = gi.shape
+    bg = int(np.argmax(np.bincount(gi.flatten())))
+    
+    # Try using small corner regions as color keys
+    for kh in [2, 3]:
+        for kw in [2, 3]:
+            if kh >= h or kw >= w: continue
+            for corner in ['tl', 'tr', 'bl', 'br']:
+                if corner == 'tl': key = gi[:kh, :kw]
+                elif corner == 'tr': key = gi[:kh, w-kw:]
+                elif corner == 'bl': key = gi[h-kh:, :kw]
+                elif corner == 'br': key = gi[h-kh:, w-kw:]
+                
+                key_colors = [int(v) for v in key.flatten() if v != bg]
+                if len(key_colors) < 2: continue
+                
+                # Build color rotation from key
+                unique_key = list(dict.fromkeys(key_colors))  # preserve order
+                if len(unique_key) < 2: continue
+                
+                # Rotation: each color maps to the next in the key
+                cmap = {}
+                for i, c in enumerate(unique_key):
+                    cmap[c] = unique_key[(i + 1) % len(unique_key)]
+                
+                # Apply rotation to all non-key, non-bg cells
+                test = gi.copy()
+                for r in range(h):
+                    for c in range(w):
+                        # Skip the key region
+                        if corner == 'tl' and r < kh and c < kw: continue
+                        if corner == 'tr' and r < kh and c >= w-kw: continue
+                        if corner == 'bl' and r >= h-kh and c < kw: continue
+                        if corner == 'br' and r >= h-kh and c >= w-kw: continue
+                        
+                        if int(gi[r, c]) in cmap:
+                            test[r, c] = cmap[int(gi[r, c])]
+                
+                if np.array_equal(test, go):
+                    # Verify on other pairs
+                    ok = True
+                    for p in pairs[1:]:
+                        gi2 = np.array(p['input']); go2 = np.array(p['output'])
+                        bg2 = int(np.argmax(np.bincount(gi2.flatten())))
+                        if corner == 'tl': k2 = gi2[:kh, :kw]
+                        elif corner == 'tr': k2 = gi2[:kh, gi2.shape[1]-kw:]
+                        elif corner == 'bl': k2 = gi2[gi2.shape[0]-kh:, :kw]
+                        elif corner == 'br': k2 = gi2[gi2.shape[0]-kh:, gi2.shape[1]-kw:]
+                        kc2 = list(dict.fromkeys(int(v) for v in k2.flatten() if v != bg2))
+                        if len(kc2) < 2: ok = False; break
+                        cm2 = {c: kc2[(i+1)%len(kc2)] for i, c in enumerate(kc2)}
+                        t2 = gi2.copy()
+                        for r in range(gi2.shape[0]):
+                            for c in range(gi2.shape[1]):
+                                if corner=='tl' and r<kh and c<kw: continue
+                                if corner=='tr' and r<kh and c>=gi2.shape[1]-kw: continue
+                                if corner=='bl' and r>=gi2.shape[0]-kh and c<kw: continue
+                                if corner=='br' and r>=gi2.shape[0]-kh and c>=gi2.shape[1]-kw: continue
+                                if int(gi2[r,c]) in cm2: t2[r,c]=cm2[int(gi2[r,c])]
+                        if not np.array_equal(t2, go2): ok = False; break
+                    if not ok: continue
+                    
+                    def mk(cn=corner, kk_h=kh, kk_w=kw):
+                        def apply(t):
+                            guesses = []
+                            for tc in t['test']:
+                                a = np.array(tc['input']); hh, ww = a.shape
+                                bg2 = int(np.argmax(np.bincount(a.flatten())))
+                                if cn=='tl': k=a[:kk_h,:kk_w]
+                                elif cn=='tr': k=a[:kk_h,ww-kk_w:]
+                                elif cn=='bl': k=a[hh-kk_h:,:kk_w]
+                                elif cn=='br': k=a[hh-kk_h:,ww-kk_w:]
+                                kc=list(dict.fromkeys(int(v) for v in k.flatten() if v!=bg2))
+                                cm={c:kc[(i+1)%len(kc)] for i,c in enumerate(kc)}
+                                out=a.copy()
+                                for r in range(hh):
+                                    for c in range(ww):
+                                        if cn=='tl' and r<kk_h and c<kk_w: continue
+                                        if cn=='tr' and r<kk_h and c>=ww-kk_w: continue
+                                        if cn=='bl' and r>=hh-kk_h and c<kk_w: continue
+                                        if cn=='br' and r>=hh-kk_h and c>=ww-kk_w: continue
+                                        if int(a[r,c]) in cm: out[r,c]=cm[int(a[r,c])]
+                                guesses.append([out.tolist()])
+                            return guesses
+                        return apply
+                    result = mk()(task)
+                    if score_task(task, result): return result, f"OG:color_rotate_{corner}_{kh}x{kw}"
+    return None, None
+
+
 ALL_OG_SOLVERS = [
     # Original (skip move_to_target — too slow, 0 finds)
     ("keep_by_property", try_keep_by_property),
@@ -2761,6 +3251,13 @@ ALL_OG_SOLVERS = [
     ("color_complement", try_color_complement),
     ("color_offset", try_color_offset),
     ("conditional_fill", try_conditional_fill),
+    # Multi-step composition (runs last, most expensive)
+    ("two_step_chain", try_two_step_og_chain),
+    # Discovered by inspecting model's thought process
+    ("stamp_cross", try_stamp_cross_at_pixels),
+    ("symmetry_complete", try_symmetry_completion),
+    ("move_toward", try_move_object_toward_anchor),
+    ("color_rotation", try_color_rotation_map),
 ]
 
 
