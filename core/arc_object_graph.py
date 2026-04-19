@@ -2137,6 +2137,353 @@ def try_majority_color_fill(task):
     return None, None
 
 
+def try_fill_between_same_color_h(task):
+    """Fill horizontal gaps between same-color objects."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    gi = np.array(pairs[0]['input']); go = np.array(pairs[0]['output']); h, w = gi.shape
+    bg = int(np.argmax(np.bincount(gi.flatten())))
+    test = gi.copy()
+    for r in range(h):
+        row = gi[r]
+        # Find spans of same color on this row
+        for color in set(int(v) for v in row if v != bg):
+            cols = [c for c in range(w) if row[c] == color]
+            if len(cols) >= 2:
+                for c in range(min(cols), max(cols) + 1):
+                    if test[r, c] == bg: test[r, c] = color
+    if np.array_equal(test, go):
+        def apply(t):
+            guesses = []
+            for tc in t['test']:
+                a = np.array(tc['input']); hh, ww = a.shape
+                bg2 = int(np.argmax(np.bincount(a.flatten())))
+                out = a.copy()
+                for r in range(hh):
+                    for color in set(int(v) for v in a[r] if v != bg2):
+                        cols = [c for c in range(ww) if a[r, c] == color]
+                        if len(cols) >= 2:
+                            for c in range(min(cols), max(cols) + 1):
+                                if out[r, c] == bg2: out[r, c] = color
+                guesses.append([out.tolist()])
+            return guesses
+        result = apply(task)
+        if score_task(task, result): return result, "OG:fill_between_h"
+    return None, None
+
+
+def try_fill_between_same_color_v(task):
+    """Fill vertical gaps between same-color objects."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    gi = np.array(pairs[0]['input']); go = np.array(pairs[0]['output']); h, w = gi.shape
+    bg = int(np.argmax(np.bincount(gi.flatten())))
+    test = gi.copy()
+    for c in range(w):
+        col = gi[:, c]
+        for color in set(int(v) for v in col if v != bg):
+            rows = [r for r in range(h) if col[r] == color]
+            if len(rows) >= 2:
+                for r in range(min(rows), max(rows) + 1):
+                    if test[r, c] == bg: test[r, c] = color
+    if np.array_equal(test, go):
+        def apply(t):
+            guesses = []
+            for tc in t['test']:
+                a = np.array(tc['input']); hh, ww = a.shape
+                bg2 = int(np.argmax(np.bincount(a.flatten())))
+                out = a.copy()
+                for c in range(ww):
+                    for color in set(int(v) for v in a[:, c] if v != bg2):
+                        rows = [r for r in range(hh) if a[r, c] == color]
+                        if len(rows) >= 2:
+                            for r in range(min(rows), max(rows) + 1):
+                                if out[r, c] == bg2: out[r, c] = color
+                guesses.append([out.tolist()])
+            return guesses
+        result = apply(task)
+        if score_task(task, result): return result, "OG:fill_between_v"
+    return None, None
+
+
+def try_fill_between_same_color_hv(task):
+    """Fill both horizontal AND vertical gaps."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    gi = np.array(pairs[0]['input']); go = np.array(pairs[0]['output']); h, w = gi.shape
+    bg = int(np.argmax(np.bincount(gi.flatten())))
+    test = gi.copy()
+    # Horizontal
+    for r in range(h):
+        for color in set(int(v) for v in gi[r] if v != bg):
+            cols = [c for c in range(w) if gi[r, c] == color]
+            if len(cols) >= 2:
+                for c in range(min(cols), max(cols) + 1):
+                    if test[r, c] == bg: test[r, c] = color
+    # Vertical
+    for c in range(w):
+        for color in set(int(v) for v in gi[:, c] if v != bg):
+            rows = [r for r in range(h) if gi[r, c] == color]
+            if len(rows) >= 2:
+                for r in range(min(rows), max(rows) + 1):
+                    if test[r, c] == bg: test[r, c] = color
+    if np.array_equal(test, go):
+        def apply(t):
+            guesses = []
+            for tc in t['test']:
+                a = np.array(tc['input']); hh, ww = a.shape
+                bg2 = int(np.argmax(np.bincount(a.flatten())))
+                out = a.copy()
+                for r in range(hh):
+                    for color in set(int(v) for v in a[r] if v != bg2):
+                        cols = [c for c in range(ww) if a[r, c] == color]
+                        if len(cols) >= 2:
+                            for c in range(min(cols), max(cols) + 1):
+                                if out[r, c] == bg2: out[r, c] = color
+                for c in range(ww):
+                    for color in set(int(v) for v in a[:, c] if v != bg2):
+                        rows = [r for r in range(hh) if a[r, c] == color]
+                        if len(rows) >= 2:
+                            for r in range(min(rows), max(rows) + 1):
+                                if out[r, c] == bg2: out[r, c] = color
+                guesses.append([out.tolist()])
+            return guesses
+        result = apply(task)
+        if score_task(task, result): return result, "OG:fill_between_hv"
+    return None, None
+
+
+def try_count_colors_output(task):
+    """Output is a tiny grid encoding the count of each color.
+    e.g., output row = [color, count] or output = histogram."""
+    pairs = task['train']
+    gi = np.array(pairs[0]['input']); go = np.array(pairs[0]['output'])
+    bg = int(np.argmax(np.bincount(gi.flatten())))
+    
+    # Try: output is 1×N where N = number of unique non-bg colors
+    nz_colors = sorted(set(int(v) for v in gi.flatten() if v != bg))
+    if go.shape == (1, len(nz_colors)) and list(go[0]) == nz_colors:
+        ok = all(
+            np.array(p['output']).shape == (1, len(set(int(v) for v in np.array(p['input']).flatten() if v != int(np.argmax(np.bincount(np.array(p['input']).flatten())))))) and
+            list(np.array(p['output'])[0]) == sorted(set(int(v) for v in np.array(p['input']).flatten() if v != int(np.argmax(np.bincount(np.array(p['input']).flatten())))))
+            for p in pairs[1:]
+        )
+        if ok:
+            def apply(t):
+                guesses = []
+                for tc in t['test']:
+                    a = np.array(tc['input'])
+                    bg2 = int(np.argmax(np.bincount(a.flatten())))
+                    colors = sorted(set(int(v) for v in a.flatten() if v != bg2))
+                    guesses.append([np.array([colors], dtype=int).tolist()])
+                return guesses
+            result = apply(task)
+            if score_task(task, result): return result, "OG:count_unique_colors"
+    
+    # Try: output is Nx1 listing colors sorted
+    if go.shape == (len(nz_colors), 1) and [int(go[i,0]) for i in range(len(nz_colors))] == nz_colors:
+        ok = True
+        for p in pairs[1:]:
+            gi2 = np.array(p['input']); go2 = np.array(p['output'])
+            bg2 = int(np.argmax(np.bincount(gi2.flatten())))
+            c2 = sorted(set(int(v) for v in gi2.flatten() if v != bg2))
+            if go2.shape != (len(c2), 1) or [int(go2[i,0]) for i in range(len(c2))] != c2:
+                ok = False; break
+        if ok:
+            def apply(t):
+                guesses = []
+                for tc in t['test']:
+                    a = np.array(tc['input'])
+                    bg2 = int(np.argmax(np.bincount(a.flatten())))
+                    colors = sorted(set(int(v) for v in a.flatten() if v != bg2))
+                    guesses.append([np.array([[c] for c in colors], dtype=int).tolist()])
+                return guesses
+            result = apply(task)
+            if score_task(task, result): return result, "OG:list_colors_v"
+    return None, None
+
+
+def try_count_objects_output(task):
+    """Output encodes the number of objects."""
+    pairs = task['train']
+    gi = np.array(pairs[0]['input']); go = np.array(pairs[0]['output'])
+    objs, bg = extract_objects(gi)
+    n = len(objs)
+    
+    # 1x1 output = object count
+    if go.shape == (1, 1) and int(go[0, 0]) == n:
+        ok = all(int(np.array(p['output'])[0,0]) == len(extract_objects(np.array(p['input']))[0]) for p in pairs[1:])
+        if ok:
+            def apply(t):
+                return [[np.array([[len(extract_objects(np.array(tc['input']))[0])]], dtype=int).tolist()] for tc in t['test']]
+            result = apply(task)
+            if score_task(task, result): return result, "OG:count_objects_1x1"
+    
+    # NxN output where N = object count, filled with specific color
+    if go.shape == (n, n):
+        fill = int(go[0, 0])
+        if np.all(go == fill):
+            ok = True
+            for p in pairs[1:]:
+                gi2 = np.array(p['input']); go2 = np.array(p['output'])
+                n2 = len(extract_objects(gi2)[0])
+                if go2.shape != (n2, n2) or not np.all(go2 == fill): ok = False; break
+            if ok:
+                def mk(fc=fill):
+                    def apply(t):
+                        return [[np.full((len(extract_objects(np.array(tc['input']))[0]),
+                                          len(extract_objects(np.array(tc['input']))[0])), fc, dtype=int).tolist()]
+                                for tc in t['test']]
+                    return apply
+                result = mk()(task)
+                if score_task(task, result): return result, "OG:count_objects_NxN"
+    return None, None
+
+
+def try_color_histogram_row(task):
+    """Output = histogram: one row per color, width = count of that color."""
+    pairs = task['train']
+    gi = np.array(pairs[0]['input']); go = np.array(pairs[0]['output'])
+    bg = int(np.argmax(np.bincount(gi.flatten())))
+    
+    # Count non-bg colors
+    counts = Counter(int(v) for v in gi.flatten() if v != bg)
+    if not counts: return None, None
+    
+    # Try: output rows = colors sorted, width = count
+    sorted_colors = sorted(counts.keys())
+    expected_rows = []
+    for color in sorted_colors:
+        expected_rows.append([color] * counts[color])
+    
+    # Pad to same width
+    max_w = max(len(r) for r in expected_rows) if expected_rows else 0
+    padded = [r + [bg] * (max_w - len(r)) for r in expected_rows]
+    expected = np.array(padded, dtype=int) if padded else np.array([[]], dtype=int)
+    
+    if expected.shape == go.shape and np.array_equal(expected, go):
+        ok = True
+        for p in pairs[1:]:
+            gi2 = np.array(p['input']); go2 = np.array(p['output'])
+            bg2 = int(np.argmax(np.bincount(gi2.flatten())))
+            c2 = Counter(int(v) for v in gi2.flatten() if v != bg2)
+            sc2 = sorted(c2.keys())
+            rows2 = [[c]*c2[c] for c in sc2]
+            mw2 = max(len(r) for r in rows2) if rows2 else 0
+            p2 = [r + [bg2]*(mw2-len(r)) for r in rows2]
+            e2 = np.array(p2, dtype=int) if p2 else np.array([[]], dtype=int)
+            if not np.array_equal(e2, go2): ok = False; break
+        if ok:
+            def apply(t):
+                guesses = []
+                for tc in t['test']:
+                    a = np.array(tc['input'])
+                    bg2 = int(np.argmax(np.bincount(a.flatten())))
+                    c2 = Counter(int(v) for v in a.flatten() if v != bg2)
+                    sc2 = sorted(c2.keys())
+                    rows2 = [[c]*c2[c] for c in sc2]
+                    mw2 = max(len(r) for r in rows2) if rows2 else 1
+                    p2 = [r + [bg2]*(mw2-len(r)) for r in rows2]
+                    guesses.append([np.array(p2, dtype=int).tolist() if p2 else [[0]]])
+                return guesses
+            result = apply(task)
+            if score_task(task, result): return result, "OG:color_histogram"
+    return None, None
+
+
+def try_extract_non_bg_bbox(task):
+    """Output = bounding box of all non-bg content (tighter crop than border_crop)."""
+    pairs = task['train']
+    gi = np.array(pairs[0]['input']); go = np.array(pairs[0]['output'])
+    if go.shape[0] >= gi.shape[0] and go.shape[1] >= gi.shape[1]: return None, None
+    bg = int(np.argmax(np.bincount(gi.flatten())))
+    nz = np.argwhere(gi != bg)
+    if len(nz) == 0: return None, None
+    r1, c1 = nz.min(axis=0); r2, c2 = nz.max(axis=0)
+    crop = gi[r1:r2+1, c1:c2+1]
+    if crop.shape == go.shape and np.array_equal(crop, go):
+        for p in pairs[1:]:
+            gi2 = np.array(p['input']); go2 = np.array(p['output'])
+            bg2 = int(np.argmax(np.bincount(gi2.flatten())))
+            nz2 = np.argwhere(gi2 != bg2)
+            if len(nz2) == 0: return None, None
+            rr1, cc1 = nz2.min(axis=0); rr2, cc2 = nz2.max(axis=0)
+            if not np.array_equal(gi2[rr1:rr2+1, cc1:cc2+1], go2): return None, None
+        def apply(t):
+            guesses = []
+            for tc in t['test']:
+                a = np.array(tc['input'])
+                bg2 = int(np.argmax(np.bincount(a.flatten())))
+                nz2 = np.argwhere(a != bg2)
+                if len(nz2) == 0: guesses.append([a.tolist()]); continue
+                rr1, cc1 = nz2.min(axis=0); rr2, cc2 = nz2.max(axis=0)
+                guesses.append([a[rr1:rr2+1, cc1:cc2+1].tolist()])
+            return guesses
+        result = apply(task)
+        if score_task(task, result): return result, "OG:crop_to_content"
+    return None, None
+
+
+def try_replace_color_with_pattern(task):
+    """Replace each occurrence of color X with a small pattern from another object."""
+    pairs = task['train']
+    gi = np.array(pairs[0]['input']); go = np.array(pairs[0]['output'])
+    if gi.shape != go.shape: return None, None
+    objs, bg = extract_objects(gi)
+    if len(objs) < 2: return None, None
+    
+    # Find the "template" object (smallest) and the "marker" color
+    objs_sorted = sorted(objs, key=lambda o: o.size)
+    template = objs_sorted[0]
+    tcrop = template.crop(gi)
+    th, tw = tcrop.shape
+    
+    # Find single-pixel markers of different color
+    markers = [o for o in objs if o.size == 1 and o.color != template.color]
+    if not markers: return None, None
+    
+    # Check: does replacing each marker with the template produce output?
+    test = gi.copy()
+    # Remove template from grid first
+    for r, c in template.cells: test[r, c] = bg
+    for m in markers:
+        mr, mc = m.cells[0]
+        for r in range(th):
+            for c in range(tw):
+                nr, nc = mr - th//2 + r, mc - tw//2 + c
+                if 0 <= nr < gi.shape[0] and 0 <= nc < gi.shape[1]:
+                    if tcrop[r, c] != bg:
+                        test[nr, nc] = tcrop[r, c]
+    
+    if np.array_equal(test, go):
+        def apply(t):
+            guesses = []
+            for tc in t['test']:
+                a = np.array(tc['input'])
+                objs2, bg2 = extract_objects(a)
+                if len(objs2) < 2: guesses.append([a.tolist()]); continue
+                os2 = sorted(objs2, key=lambda o: o.size)
+                tmpl = os2[0]; tc2 = tmpl.crop(a); tth, ttw = tc2.shape
+                marks = [o for o in objs2 if o.size == 1 and o.color != tmpl.color]
+                out = a.copy()
+                for r, c in tmpl.cells: out[r, c] = bg2
+                for m in marks:
+                    mr, mc = m.cells[0]
+                    for r in range(tth):
+                        for c in range(ttw):
+                            nr, nc = mr - tth//2 + r, mc - ttw//2 + c
+                            if 0 <= nr < a.shape[0] and 0 <= nc < a.shape[1]:
+                                if tc2[r, c] != bg2: out[nr, nc] = tc2[r, c]
+                guesses.append([out.tolist()])
+            return guesses
+        result = apply(task)
+        if score_task(task, result): return result, "OG:stamp_at_markers"
+    return None, None
+
+
 ALL_OG_SOLVERS = [
     # Original (skip move_to_target — too slow, 0 finds)
     ("keep_by_property", try_keep_by_property),
@@ -2182,6 +2529,15 @@ ALL_OG_SOLVERS = [
     ("extract_largest", try_extract_largest_object),
     ("extract_smallest", try_extract_smallest_object),
     ("majority_fill", try_majority_color_fill),
+    # Gap-filling batch: fill patterns, counting, extraction
+    ("fill_between_h", try_fill_between_same_color_h),
+    ("fill_between_v", try_fill_between_same_color_v),
+    ("fill_between_hv", try_fill_between_same_color_hv),
+    ("count_colors", try_count_colors_output),
+    ("count_objects", try_count_objects_output),
+    ("histogram", try_color_histogram_row),
+    ("crop_content", try_extract_non_bg_bbox),
+    ("stamp_markers", try_replace_color_with_pattern),
 ]
 
 
