@@ -495,12 +495,20 @@ def compose_scene(description, size=15):
     desc = description.lower().strip()
 
     if 'house' in desc:
-        # Simple house: triangle roof + rectangle body
+        # Simple house: triangle roof (peak up) + rectangle body + door
         mid = size // 2
-        artist.draw_rect(size//3, size//4, size-2, size*3//4, color=3, fill=True)
-        for i in range(size//3 + 1):
-            artist.draw_line_h(size//3 - i, mid - i, mid + i, color=2)
-        artist.draw_rect(size*2//3, mid-1, size-2, mid+1, color=4, fill=True)  # door
+        roof_top = 1
+        roof_bot = size // 3
+        roof_height = roof_bot - roof_top
+        # Body below roof
+        artist.draw_rect(roof_bot, size//4, size-2, size*3//4, color=3, fill=True)
+        # Roof: triangle narrowing upward to peak
+        for i in range(roof_height + 1):
+            row = roof_bot - i
+            half_width = (roof_height - i) * (size//4) // max(roof_height, 1)
+            artist.draw_line_h(row, mid - half_width, mid + half_width, color=2)
+        # Door
+        artist.draw_rect(size*2//3, mid-1, size-2, mid+1, color=4, fill=True)
 
     elif 'face' in desc:
         mid = size // 2

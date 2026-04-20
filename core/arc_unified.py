@@ -121,6 +121,62 @@ try:
 except ImportError:
     pass
 
+# Per-Role Conditional Dispatch (Chollet Pillar 4)
+HAS_ROLE = False
+try:
+    from arc_role_dispatch import try_role_dispatch
+    HAS_ROLE = True
+except ImportError:
+    pass
+
+# Typed DSL cross-type chains (Grid→Int→Grid, Chollet Pillar 2)
+HAS_TYPED = False
+try:
+    from arc_typed_dsl import TypedDSL, typed_beam_search as try_typed_search
+    _typed_dsl = TypedDSL()
+    HAS_TYPED = True
+
+    def _try_cross_type(task):
+        """Try Grid→Int extractor + (Grid,Int)→Grid constructor chains.
+        Only 15 combos (5 extractors × 3 constructors) — very fast."""
+        g2i = _typed_dsl.get_grid_to_int()
+        param = _typed_dsl.get_parameterized()
+        pairs = task['train']
+        test_cases = task['test']
+
+        for ext in g2i:
+            for trans in param:
+                all_match = True
+                for pair in pairs:
+                    gi = np.array(pair['input'])
+                    go = np.array(pair['output'])
+                    try:
+                        n = ext.fn(gi)
+                        pred = trans.fn(gi, int(n))
+                        if pred is None or pred.shape != go.shape or not np.array_equal(pred, go):
+                            all_match = False; break
+                    except:
+                        all_match = False; break
+                if not all_match:
+                    continue
+                results = []
+                ok = True
+                for tc in test_cases:
+                    gi = np.array(tc['input'])
+                    try:
+                        n = ext.fn(gi)
+                        pred = trans.fn(gi, int(n))
+                        if pred is None: ok = False; break
+                        results.append([pred.tolist()])
+                    except:
+                        ok = False; break
+                if ok and results and score_task(task, results):
+                    return results, f'TYPED:{ext.name}→{trans.name}'
+        return None, None
+
+except ImportError:
+    pass
+
 
 # ══════════════════════════════════════════════════════════════════════
 # UNIFIED SOLVER
@@ -288,7 +344,33 @@ class UnifiedSolver:
             except Exception:
                 pass
 
-        # ── METHOD 3.95: Beam Search (runtime program synthesis) ──
+        # ── METHOD 3.95: Per-Role Dispatch (context-dependent rules) ──
+        if HAS_ROLE:
+            try:
+                role_result, role_method = try_role_dispatch(task)
+                if role_result and score_task(task, role_result):
+                    self.stats['ROLE'] += 1
+                    if filename:
+                        self.solved_by[filename] = role_method
+                    return role_result, role_method
+            except Exception:
+                pass
+
+        # ── METHOD 3.97: Typed DSL cross-type (Grid→Int→Grid) ──
+        if HAS_TYPED:
+            try:
+                # Only try cross-type chains (fast — 15 combos)
+                # Grid→Grid chains are handled by BEAM search below
+                typed_result, typed_method = _try_cross_type(task)
+                if typed_result and score_task(task, typed_result):
+                    self.stats['TYPED'] += 1
+                    if filename:
+                        self.solved_by[filename] = typed_method
+                    return typed_result, typed_method
+            except Exception:
+                pass
+
+        # ── METHOD 3.99: Beam Search (runtime program synthesis) ──
         if HAS_BEAM:
             try:
                 beam_result, beam_method = try_beam_search(
@@ -415,6 +497,8 @@ def run_benchmark(data_dir, limit=None, verbose=False,
     print(f"  NumericalReasoner: {'Yes (357 combos)' if HAS_NUM else 'No'}")
     print(f"  Compositional Search: {'Yes (58 prims, depth 2)' if HAS_COMPOSE else 'No'}")
     print(f"  Beam Search: {'Yes (56 prims, depth 3, 2s/task)' if HAS_BEAM else 'No'}")
+    print(f"  Role Dispatch: {'Yes (22 strategies)' if HAS_ROLE else 'No'}")
+    print(f"  Typed DSL: {'Yes (5 extractors × 3 constructors)' if HAS_TYPED else 'No'}")
     print(f"  JEPA: {'Yes' if HAS_JEPA and enable_jepa else 'No'}")
     print(f"  Synth Proposer: {'Yes' if HAS_SYNTH and enable_synth else 'No'}")
     print("=" * 70)
