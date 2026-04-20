@@ -4793,6 +4793,196 @@ def try_translate_content(task):
     return None, None
 
 
+def try_learned_color_map(task):
+    pairs=task['train']
+    for p in pairs:
+        if np.array(p['input']).shape!=np.array(p['output']).shape: return None, None
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output']); h,w=gi.shape
+    cmap={}
+    for r in range(h):
+        for c in range(w):
+            ic=int(gi[r,c]); oc=int(go[r,c])
+            if ic in cmap and cmap[ic]!=oc: return None, None
+            cmap[ic]=oc
+    if not cmap or all(k==v for k,v in cmap.items()): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output'])
+        if gi2.shape!=go2.shape: return None, None
+        for r in range(gi2.shape[0]):
+            for c in range(gi2.shape[1]):
+                ic=int(gi2[r,c]); oc=int(go2[r,c])
+                if ic in cmap and cmap[ic]!=oc: return None, None
+                cmap[ic]=oc
+    def apply(t):
+        gs=[]
+        for tc in t['test']:
+            a=np.array(tc['input'])
+            gs.append([[[cmap.get(int(v),int(v)) for v in row] for row in a.tolist()]])
+        return gs
+    result=apply(task)
+    if score_task(task,result): return result, "OG:color_map"
+    return None, None
+
+def try_repeat_tile(task):
+    pairs=task['train']
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    ih,iw=gi.shape; oh,ow=go.shape
+    if oh<ih or ow<iw or oh%ih!=0 or ow%iw!=0: return None, None
+    nh,nw=oh//ih,ow//iw
+    if nh<2 and nw<2: return None, None
+    if not np.array_equal(np.tile(gi,(nh,nw)),go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output'])
+        if go2.shape!=(gi2.shape[0]*nh,gi2.shape[1]*nw) or not np.array_equal(np.tile(gi2,(nh,nw)),go2): return None, None
+    def mk(n1=nh,n2=nw):
+        def apply(t):
+            return [[np.tile(np.array(tc['input']),(n1,n2)).tolist()] for tc in t['test']]
+        return apply
+    result=mk()(task)
+    if score_task(task,result): return result, f"OG:tile_{nh}x{nw}"
+    return None, None
+
+def try_crop_to_content(task):
+    pairs=task['train']
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    bg=int(np.argmax(np.bincount(gi.flatten())))
+    nz=np.argwhere(gi!=bg)
+    if len(nz)==0: return None, None
+    r1,c1=nz.min(axis=0); r2,c2=nz.max(axis=0)
+    if not np.array_equal(gi[r1:r2+1,c1:c2+1],go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output'])
+        bg2=int(np.argmax(np.bincount(gi2.flatten())))
+        nz2=np.argwhere(gi2!=bg2)
+        r12,c12=nz2.min(axis=0); r22,c22=nz2.max(axis=0)
+        if not np.array_equal(gi2[r12:r22+1,c12:c22+1],go2): return None, None
+    def apply(t):
+        gs=[]
+        for tc in t['test']:
+            a=np.array(tc['input']); bg2=int(np.argmax(np.bincount(a.flatten())))
+            nz2=np.argwhere(a!=bg2); r12,c12=nz2.min(axis=0); r22,c22=nz2.max(axis=0)
+            gs.append([a[r12:r22+1,c12:c22+1].tolist()])
+        return gs
+    result=apply(task)
+    if score_task(task,result): return result, "OG:crop_to_content"
+    return None, None
+
+def try_upscale_pixels(task):
+    pairs=task['train']
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    ih,iw=gi.shape; oh,ow=go.shape
+    if oh<=ih or ow<=iw or oh%ih!=0 or ow%iw!=0: return None, None
+    sh,sw=oh//ih,ow//iw
+    if not np.array_equal(np.repeat(np.repeat(gi,sh,axis=0),sw,axis=1),go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output'])
+        if go2.shape!=(gi2.shape[0]*sh,gi2.shape[1]*sw) or not np.array_equal(np.repeat(np.repeat(gi2,sh,axis=0),sw,axis=1),go2): return None, None
+    def mk(s1=sh,s2=sw):
+        def apply(t):
+            return [[np.repeat(np.repeat(np.array(tc['input']),s1,axis=0),s2,axis=1).tolist()] for tc in t['test']]
+        return apply
+    result=mk()(task)
+    if score_task(task,result): return result, f"OG:upscale_{sh}x{sw}"
+    return None, None
+
+def try_recolor_neighbor_count(task):
+    pairs=task['train']
+    for p in pairs:
+        if np.array(p['input']).shape!=np.array(p['output']).shape: return None, None
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output']); h,w=gi.shape
+    bg=int(np.argmax(np.bincount(gi.flatten())))
+    ctc={}
+    for r in range(h):
+        for c in range(w):
+            if gi[r,c]==bg: continue
+            nc=sum(1 for dr,dc in [(-1,0),(1,0),(0,-1),(0,1)] if 0<=r+dr<h and 0<=c+dc<w and gi[r+dr,c+dc]!=bg)
+            oc=int(go[r,c])
+            if nc in ctc and ctc[nc]!=oc: return None, None
+            ctc[nc]=oc
+    if not ctc or len(set(ctc.values()))<=1: return None, None
+    test=gi.copy()
+    for r in range(h):
+        for c in range(w):
+            if gi[r,c]==bg: continue
+            nc=sum(1 for dr,dc in [(-1,0),(1,0),(0,-1),(0,1)] if 0<=r+dr<h and 0<=c+dc<w and gi[r+dr,c+dc]!=bg)
+            if nc in ctc: test[r,c]=ctc[nc]
+    if not np.array_equal(test,go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+        bg2=int(np.argmax(np.bincount(gi2.flatten())))
+        t2=gi2.copy()
+        for r in range(h2):
+            for c in range(w2):
+                if gi2[r,c]==bg2: continue
+                nc=sum(1 for dr,dc in [(-1,0),(1,0),(0,-1),(0,1)] if 0<=r+dr<h2 and 0<=c+dc<w2 and gi2[r+dr,c+dc]!=bg2)
+                if nc in ctc: t2[r,c]=ctc[nc]
+        if not np.array_equal(t2,go2): return None, None
+    def mk(c2c=ctc):
+        def apply(t):
+            gs=[]
+            for tc in t['test']:
+                a=np.array(tc['input']); hh,ww=a.shape
+                bg2=int(np.argmax(np.bincount(a.flatten())))
+                out=a.copy()
+                for r in range(hh):
+                    for c in range(ww):
+                        if a[r,c]==bg2: continue
+                        nc=sum(1 for dr,dc in [(-1,0),(1,0),(0,-1),(0,1)] if 0<=r+dr<hh and 0<=c+dc<ww and a[r+dr,c+dc]!=bg2)
+                        if nc in c2c: out[r,c]=c2c[nc]
+                gs.append([out.tolist()])
+            return gs
+        return apply
+    result=mk()(task)
+    if score_task(task,result): return result, "OG:recolor_neighbor_count"
+    return None, None
+
+def try_transpose_grid(task):
+    pairs=task['train']
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    if not np.array_equal(gi.T,go): return None, None
+    for p in pairs[1:]:
+        if not np.array_equal(np.array(p['input']).T,np.array(p['output'])): return None, None
+    def apply(t):
+        return [[np.array(tc['input']).T.tolist()] for tc in t['test']]
+    result=apply(task)
+    if score_task(task,result): return result, "OG:transpose"
+    return None, None
+
+def try_extract_largest_obj(task):
+    pairs=task['train']
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    objs,_=extract_objects(gi)
+    if len(objs)<2: return None, None
+    largest=max(objs,key=lambda o:o.size)
+    if not np.array_equal(largest.crop(gi),go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output'])
+        objs2,_=extract_objects(gi2)
+        if not np.array_equal(max(objs2,key=lambda o:o.size).crop(gi2),go2): return None, None
+    def apply(t):
+        return [[max(extract_objects(np.array(tc['input']))[0],key=lambda o:o.size).crop(np.array(tc['input'])).tolist()] for tc in t['test']]
+    result=apply(task)
+    if score_task(task,result): return result, "OG:extract_largest"
+    return None, None
+
+def try_extract_smallest_obj(task):
+    pairs=task['train']
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    objs,_=extract_objects(gi)
+    if len(objs)<2: return None, None
+    smallest=min(objs,key=lambda o:o.size)
+    if not np.array_equal(smallest.crop(gi),go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output'])
+        objs2,_=extract_objects(gi2)
+        if not np.array_equal(min(objs2,key=lambda o:o.size).crop(gi2),go2): return None, None
+    def apply(t):
+        return [[min(extract_objects(np.array(tc['input']))[0],key=lambda o:o.size).crop(np.array(tc['input'])).tolist()] for tc in t['test']]
+    result=apply(task)
+    if score_task(task,result): return result, "OG:extract_smallest"
+    return None, None
+
+
 ALL_OG_SOLVERS = [
     # Original (skip move_to_target — too slow, 0 finds)
     ("keep_by_property", try_keep_by_property),
@@ -4894,6 +5084,14 @@ ALL_OG_SOLVERS = [
     ("quad_overlay", try_quadrant_overlay),
     ("per_obj_transform", try_per_object_transform),
     ("translate", try_translate_content),
+    ("color_map", try_learned_color_map),
+    ("tile", try_repeat_tile),
+    ("crop_content", try_crop_to_content),
+    ("upscale", try_upscale_pixels),
+    ("neighbor_count", try_recolor_neighbor_count),
+    ("transpose", try_transpose_grid),
+    ("extract_largest", try_extract_largest_obj),
+    ("extract_smallest", try_extract_smallest_obj),
 ]
 
 
