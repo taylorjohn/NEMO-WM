@@ -177,6 +177,22 @@ try:
 except ImportError:
     pass
 
+# Bidirectional Search (forward + backward meet-in-middle)
+HAS_BIDIR = False
+try:
+    from arc_bidirectional import try_bidirectional
+    HAS_BIDIR = True
+except ImportError:
+    pass
+
+# Pixel Diff Solver (same-size tasks with small changes)
+HAS_PDIFF = False
+try:
+    from arc_pixel_diff import try_pixel_diff
+    HAS_PDIFF = True
+except ImportError:
+    pass
+
 
 # ══════════════════════════════════════════════════════════════════════
 # UNIFIED SOLVER
@@ -332,6 +348,18 @@ class UnifiedSolver:
             except Exception:
                 pass
 
+        # ── METHOD 3.8: Pixel Diff (same-size small changes) ──
+        if HAS_PDIFF:
+            try:
+                pdiff_result, pdiff_method = try_pixel_diff(task)
+                if pdiff_result and score_task(task, pdiff_result):
+                    self.stats['PDIFF'] += 1
+                    if filename:
+                        self.solved_by[filename] = pdiff_method
+                    return pdiff_result, pdiff_method
+            except Exception:
+                pass
+
         # ── METHOD 3.9: Compositional Search (primitive chaining) ──
         if HAS_COMPOSE:
             try:
@@ -367,6 +395,19 @@ class UnifiedSolver:
                     if filename:
                         self.solved_by[filename] = typed_method
                     return typed_result, typed_method
+            except Exception:
+                pass
+
+        # ── METHOD 3.98: Bidirectional Search (meet-in-middle) ──
+        if HAS_BIDIR:
+            try:
+                bidir_result, bidir_method = try_bidirectional(
+                    task, max_depth=1, time_limit=1.0)
+                if bidir_result and score_task(task, bidir_result):
+                    self.stats['BIDIR'] += 1
+                    if filename:
+                        self.solved_by[filename] = bidir_method
+                    return bidir_result, bidir_method
             except Exception:
                 pass
 
@@ -499,6 +540,7 @@ def run_benchmark(data_dir, limit=None, verbose=False,
     print(f"  Beam Search: {'Yes (56 prims, depth 3, 2s/task)' if HAS_BEAM else 'No'}")
     print(f"  Role Dispatch: {'Yes (22 strategies)' if HAS_ROLE else 'No'}")
     print(f"  Typed DSL: {'Yes (5 extractors × 3 constructors)' if HAS_TYPED else 'No'}")
+    print(f"  Bidirectional: {'Yes (26 invertible prims)' if HAS_BIDIR else 'No'}")
     print(f"  JEPA: {'Yes' if HAS_JEPA and enable_jepa else 'No'}")
     print(f"  Synth Proposer: {'Yes' if HAS_SYNTH and enable_synth else 'No'}")
     print("=" * 70)
