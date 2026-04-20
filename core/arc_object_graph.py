@@ -4613,6 +4613,137 @@ def try_stamp_bbox_relative(task):
     return None, None
 
 
+def try_quadrant_overlay(task):
+    """Split grid at cross dividers into 4 quadrants, overlay with OR/AND/XOR."""
+    pairs=task['train']
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    h,w=gi.shape; bg=int(np.argmax(np.bincount(gi.flatten())))
+    h_div=v_div=None
+    for r in range(h):
+        if len(set(int(gi[r,c]) for c in range(w)))==1 and int(gi[r,0])!=bg: h_div=r; break
+    for c in range(w):
+        if len(set(int(gi[r,c]) for r in range(h)))==1 and int(gi[0,c])!=bg: v_div=c; break
+    if h_div is None or v_div is None: return None, None
+    quads=[gi[:h_div,:v_div],gi[:h_div,v_div+1:],gi[h_div+1:,:v_div],gi[h_div+1:,v_div+1:]]
+    if len(set(q.shape for q in quads))!=1: return None, None
+    qh,qw=quads[0].shape
+    if go.shape!=(qh,qw): return None, None
+    for mode in ['or','and','xor']:
+        test=np.full((qh,qw),bg,dtype=int)
+        for r in range(qh):
+            for c in range(qw):
+                vals=[int(q[r,c]) for q in quads if q[r,c]!=bg]
+                if mode=='or' and vals: test[r,c]=vals[0]
+                elif mode=='and' and len(vals)==len(quads): test[r,c]=vals[0]
+                elif mode=='xor' and len(vals)==1: test[r,c]=vals[0]
+        if not np.array_equal(test,go): continue
+        ok=True
+        for p in pairs[1:]:
+            gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+            bg2=int(np.argmax(np.bincount(gi2.flatten())))
+            hd2=vd2=None
+            for r in range(h2):
+                if len(set(int(gi2[r,c]) for c in range(w2)))==1 and int(gi2[r,0])!=bg2: hd2=r; break
+            for c in range(w2):
+                if len(set(int(gi2[r,c]) for r in range(h2)))==1 and int(gi2[0,c])!=bg2: vd2=c; break
+            if hd2 is None or vd2 is None: ok=False; break
+            q2s=[gi2[:hd2,:vd2],gi2[:hd2,vd2+1:],gi2[hd2+1:,:vd2],gi2[hd2+1:,vd2+1:]]
+            if len(set(q.shape for q in q2s))!=1 or q2s[0].shape!=go2.shape: ok=False; break
+            qh2,qw2=q2s[0].shape; t2=np.full((qh2,qw2),bg2,dtype=int)
+            for r in range(qh2):
+                for c in range(qw2):
+                    vals=[int(q[r,c]) for q in q2s if q[r,c]!=bg2]
+                    if mode=='or' and vals: t2[r,c]=vals[0]
+                    elif mode=='and' and len(vals)==len(q2s): t2[r,c]=vals[0]
+                    elif mode=='xor' and len(vals)==1: t2[r,c]=vals[0]
+            if not np.array_equal(t2,go2): ok=False; break
+        if not ok: continue
+        def mk(m=mode):
+            def apply(t):
+                gs=[]
+                for tc in t['test']:
+                    a=np.array(tc['input']); hh,ww=a.shape
+                    bg2=int(np.argmax(np.bincount(a.flatten())))
+                    hd2=vd2=None
+                    for r in range(hh):
+                        if len(set(int(a[r,c]) for c in range(ww)))==1 and int(a[r,0])!=bg2: hd2=r; break
+                    for c in range(ww):
+                        if len(set(int(a[r,c]) for r in range(hh)))==1 and int(a[0,c])!=bg2: vd2=c; break
+                    if hd2 and vd2:
+                        q2s=[a[:hd2,:vd2],a[:hd2,vd2+1:],a[hd2+1:,:vd2],a[hd2+1:,vd2+1:]]
+                        qh2,qw2=q2s[0].shape; out=np.full((qh2,qw2),bg2,dtype=int)
+                        for r in range(qh2):
+                            for c in range(qw2):
+                                vals=[int(q[r,c]) for q in q2s if q[r,c]!=bg2]
+                                if m=='or' and vals: out[r,c]=vals[0]
+                                elif m=='and' and len(vals)==len(q2s): out[r,c]=vals[0]
+                                elif m=='xor' and len(vals)==1: out[r,c]=vals[0]
+                        gs.append([out.tolist()])
+                    else: gs.append([a.tolist()])
+                return gs
+            return apply
+        result=mk()(task)
+        if score_task(task,result): return result, f"OG:quad_{mode}"
+    return None, None
+
+
+def try_per_object_transform(task):
+    """Learn what happens to each object type (by shape+color+size) and apply."""
+    pairs=task['train']
+    for p in pairs:
+        if np.array(p['input']).shape!=np.array(p['output']).shape: return None, None
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output']); h,w=gi.shape
+    bg=int(np.argmax(np.bincount(gi.flatten())))
+    objs,_=extract_objects(gi)
+    if len(objs)<2: return None, None
+    transforms={}
+    for o in objs:
+        r1,r2,c1,c2=o.bbox
+        in_r=gi[r1:r2+1,c1:c2+1]; out_r=go[r1:r2+1,c1:c2+1]
+        if not np.array_equal(in_r,out_r):
+            diff={}
+            for r in range(in_r.shape[0]):
+                for c in range(in_r.shape[1]):
+                    if in_r[r,c]!=out_r[r,c]: diff[(r,c)]=(int(in_r[r,c]),int(out_r[r,c]))
+            if diff: transforms[(o.color,o.shape_hash,o.size)]=diff
+    if not transforms: return None, None
+    test=gi.copy()
+    for o in objs:
+        key=(o.color,o.shape_hash,o.size)
+        if key in transforms:
+            r1,_,c1,_=o.bbox
+            for (dr,dc),(old,new) in transforms[key].items(): test[r1+dr,c1+dc]=new
+    if not np.array_equal(test,go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output'])
+        objs2,_=extract_objects(gi2); t2=gi2.copy()
+        for o in objs2:
+            key=(o.color,o.shape_hash,o.size)
+            if key in transforms:
+                r1,_,c1,_=o.bbox
+                for (dr,dc),(old,new) in transforms[key].items():
+                    if r1+dr<gi2.shape[0] and c1+dc<gi2.shape[1]: t2[r1+dr,c1+dc]=new
+        if not np.array_equal(t2,go2): return None, None
+    def mk(tr=transforms):
+        def apply(t):
+            gs=[]
+            for tc in t['test']:
+                a=np.array(tc['input'])
+                objs2,_=extract_objects(a); out=a.copy()
+                for o in objs2:
+                    key=(o.color,o.shape_hash,o.size)
+                    if key in tr:
+                        r1,_,c1,_=o.bbox
+                        for (dr,dc),(old,new) in tr[key].items():
+                            if r1+dr<a.shape[0] and c1+dc<a.shape[1]: out[r1+dr,c1+dc]=new
+                gs.append([out.tolist()])
+            return gs
+        return apply
+    result=mk()(task)
+    if score_task(task,result): return result, "OG:per_obj_transform"
+    return None, None
+
+
 ALL_OG_SOLVERS = [
     # Original (skip move_to_target — too slow, 0 finds)
     ("keep_by_property", try_keep_by_property),
@@ -4711,6 +4842,8 @@ ALL_OG_SOLVERS = [
     ("obj_center_stamp", try_obj_center_stamp),
     ("scale_asym", try_scale_asymmetric),
     ("bbox_stamp", try_stamp_bbox_relative),
+    ("quad_overlay", try_quadrant_overlay),
+    ("per_obj_transform", try_per_object_transform),
 ]
 
 
