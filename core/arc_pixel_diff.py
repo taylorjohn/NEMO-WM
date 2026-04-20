@@ -392,10 +392,58 @@ def _apply_rule(task, rule_fn):
 # PIXEL DIFF SOLVER — tries all pixel-level rules
 # ═══════════════════════════════════════════════════════════
 
+def try_color_swap(task):
+    """Simple color swap: all pixels of color X become color Y."""
+    pairs = task['train']
+    
+    gi0, go0 = np.array(pairs[0]['input']), np.array(pairs[0]['output'])
+    if gi0.shape != go0.shape:
+        return None, None
+    
+    # Learn color mapping from first pair
+    color_map = {}
+    for r in range(gi0.shape[0]):
+        for c in range(gi0.shape[1]):
+            if gi0[r, c] != go0[r, c]:
+                old, new = int(gi0[r, c]), int(go0[r, c])
+                if old in color_map and color_map[old] != new:
+                    return None, None  # Inconsistent
+                color_map[old] = new
+    
+    if not color_map:
+        return None, None
+    
+    # Verify on all pairs
+    for pair in pairs:
+        gi, go = np.array(pair['input']), np.array(pair['output'])
+        if gi.shape != go.shape:
+            return None, None
+        pred = gi.copy()
+        for old_c, new_c in color_map.items():
+            pred[gi == old_c] = new_c
+        if not np.array_equal(pred, go):
+            return None, None
+    
+    # Apply to test
+    results = []
+    for tc in task['test']:
+        gi = np.array(tc['input'])
+        pred = gi.copy()
+        for old_c, new_c in color_map.items():
+            pred[gi == old_c] = new_c
+        results.append([pred.tolist()])
+    
+    if score_task(task, results):
+        cm_str = '+'.join(f'{k}to{v}' for k, v in color_map.items())
+        return results, f'PDIFF:color_swap_{cm_str}'
+    return None, None
+
+
 def try_pixel_diff(task):
     """Try all pixel-level diff rules. Returns (result, method) or (None, None)."""
     strategies = [
         try_fill_holes,
+        try_color_swap,
         try_color_intersection,
         try_extend_lines,
         try_majority_fill,
