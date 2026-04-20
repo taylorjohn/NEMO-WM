@@ -1140,6 +1140,9 @@ footer {
   .nav-cta { display: none; }
   .nav-hamburger { display: flex; }
 
+  /* ARC section responsive */
+  #arc div[style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
+
   /* Hero */
   .hero { padding: 7rem 1.25rem 4rem; }
   .hero h1 { font-size: clamp(2rem, 8vw, 3.5rem); }
@@ -1236,32 +1239,28 @@ footer {
 <nav>
   <div class="nav-logo">NeMo<span>-WM</span></div>
   <ul class="nav-links">
+    <li><a href="#arc">ARC-AGI-2</a></li>
     <li><a href="#capabilities">20 Questions</a></li>
-    <li><a href="#extend">Extend</a></li>
     <li><a href="#results">Results</a></li>
     <li><a href="#mechanism">Mechanism</a></li>
-    <li><a href="#probe">Probe</a></li>
-    <li><a href="#audit">Auditability</a></li>
     <li><a href="#applications">Applications</a></li>
-    <li><a href="#sustainability">Power</a></li>
     <li><a href="#about">About</a></li>
   </ul>
-  <a href="showcase.html" class="nav-cta" style="margin-right:0.75rem;border-color:var(--green);color:var(--green)">🎬 Demos</a><a href="components.html" class="nav-cta" style="margin-right:0.75rem;border-color:var(--accent3);color:var(--accent3)">🧩 Architecture</a><a href="dashboard.html" class="nav-cta" style="margin-right:0.75rem;border-color:var(--gold);color:var(--gold)" target="_blank">⚡ Dashboard</a><a href="https://github.com/taylorjohn/NEMO-WM" class="nav-cta" target="_blank">↗ GitHub</a>
+  <a href="arc-solver.html" class="nav-cta" style="margin-right:0.75rem;border-color:var(--gold);color:var(--gold)">🧩 ARC Solver</a><a href="math.html" class="nav-cta" style="margin-right:0.75rem;border-color:var(--green);color:var(--green)">📐 Math</a><a href="showcase.html" class="nav-cta" style="margin-right:0.75rem;border-color:var(--accent3);color:var(--accent3)">🎬 Demos</a><a href="https://github.com/taylorjohn/NEMO-WM" class="nav-cta" target="_blank">↗ GitHub</a>
 <button class="nav-hamburger" id="hamburger" aria-label="Menu" onclick="toggleMenu()">
   <span></span><span></span><span></span>
 </button>
 </nav>
 <div class="nav-drawer" id="navDrawer">
+  <a href="#arc" onclick="closeMenu()">ARC-AGI-2 Solver</a>
+  <a href="arc-solver.html" onclick="closeMenu()">🧩 ARC Solver Page</a>
+  <a href="math.html" onclick="closeMenu()">📐 Math Curriculum</a>
   <a href="#capabilities" onclick="closeMenu()">20 Questions</a>
-  <a href="#extend" onclick="closeMenu()">Extend</a>
   <a href="#results" onclick="closeMenu()">Results</a>
   <a href="#mechanism" onclick="closeMenu()">Mechanism</a>
-  <a href="#probe" onclick="closeMenu()">Probe</a>
-  <a href="#audit" onclick="closeMenu()">Auditability</a>
   <a href="#applications" onclick="closeMenu()">Applications</a>
-  <a href="#sustainability" onclick="closeMenu()">Power</a>
   <a href="#about" onclick="closeMenu()">About</a>
-  <a href="dashboard.html" target="_blank">⚡ Live Dashboard</a>
+  <a href="showcase.html" onclick="closeMenu()">🎬 Demos</a>
   <a href="https://github.com/taylorjohn/NEMO-WM" target="_blank">↗ GitHub</a>
 </div>
 
@@ -1269,19 +1268,27 @@ footer {
 <div class="hero">
   <div class="hero-bg"></div>
   <div class="hero-grid"></div>
-  <div class="hero-tag"><span class="live-dot"></span> Preprint — April 2026 · v21.0 · arXiv submitted · NeurIPS 2026</div>
+  <div class="hero-tag"><span class="live-dot"></span> April 2026 · v21.0 · arXiv submitted · ARC-AGI-2: 105/1000 (10.5%)</div>
   <h1>The World Model That <em>Knows</em> Itself</h1>
   <p class="hero-sub">
-    20 introspective questions. Grounded language (648 words, no LLM). Inverted-U neuromodulation.
-    Counterfactual reasoning. Bidirectional replay. Physics discovery. 1.2M params · CPU only · 8W inference.
+    20 introspective questions. 105/1000 ARC-AGI-2 at $0/task. Grounded language (648 words, no LLM). 
+    Math curriculum (10/10 levels). Inverted-U neuromodulation. 1.2M params · CPU only · 8W inference.
   </p>
   <div class="hero-actions">
-    <a href="https://arxiv.org/search/?searchtype=author&query=Taylor+John&start=0" class="btn-primary" target="_blank">↓ Paper (arXiv — submitting)</a>
+    <a href="#arc" class="btn-primary">↓ ARC-AGI-2 Results</a>
     <a href="https://github.com/taylorjohn/NEMO-WM" class="btn-ghost" target="_blank">↗ View on GitHub</a>
-    <a href="#results" class="btn-ghost">→ See Results</a>
-    <a href="dashboard.html" target="_blank" class="btn-ghost" style="border-color:var(--gold);color:var(--gold)">⚡ Live Dashboard</a>
+    <a href="#results" class="btn-ghost">→ All Results</a>
+    <a href="math.html" class="btn-ghost" style="border-color:var(--green);color:var(--green)">📐 Math</a>
   </div>
   <div class="stat-strip">
+    <div class="stat">
+      <div class="stat-val">105</div>
+      <div class="stat-label">ARC-AGI-2 Tasks</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">$0</div>
+      <div class="stat-label">Per Task Cost</div>
+    </div>
     <div class="stat">
       <div class="stat-val">20</div>
       <div class="stat-label">Introspective Qs</div>
@@ -1341,6 +1348,121 @@ footer {
 </div>
 
 <!-- MECHANISM -->
+
+<!-- ARC-AGI-2 SOLVER SHOWCASE -->
+<section id="arc" style="padding:5rem 3rem;background:var(--bg2);border-top:1px solid var(--border)">
+  <div style="max-width:1100px;margin:0 auto">
+    <div style="text-align:center;margin-bottom:0.5rem">
+      <span style="font-family:var(--mono);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.15em;color:var(--gold);background:rgba(245,158,11,0.1);padding:0.3rem 0.8rem;border-radius:4px;border:1px solid rgba(245,158,11,0.2)">ARC-AGI-2 · LLM-Free Efficiency Frontier</span>
+    </div>
+    <h2 style="font-size:2.2rem;text-align:center;margin:1rem 0 0.5rem;color:var(--text)">
+      105/1000 at $0/task
+    </h2>
+    <p style="text-align:center;color:var(--text2);font-size:0.95rem;margin-bottom:3rem;max-width:700px;margin-left:auto;margin-right:auto">
+      The highest LLM-free score ever reported on ARC-AGI-2. Pure symbolic reasoning: 112 OG solvers + NumericalReasoner + compositional search. Zero neural networks. 91ms/task.
+    </p>
+
+    <!-- Score + comparison -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-bottom:3rem">
+      <!-- Big score -->
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:2.5rem;text-align:center">
+        <div style="font-family:var(--mono);font-size:4rem;font-weight:700;background:linear-gradient(135deg,var(--gold),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent">105</div>
+        <div style="font-family:var(--mono);font-size:1.2rem;color:var(--text2)">/1000 tasks solved</div>
+        <div style="margin-top:1.5rem;display:flex;justify-content:center;gap:2rem">
+          <div><div style="font-family:var(--mono);font-weight:700;color:var(--green)">$0</div><div style="font-size:0.7rem;color:var(--text3)">per task</div></div>
+          <div><div style="font-family:var(--mono);font-weight:700;color:var(--accent2)">91ms</div><div style="font-size:0.7rem;color:var(--text3)">per task</div></div>
+          <div><div style="font-family:var(--mono);font-weight:700;color:var(--accent3)">0</div><div style="font-size:0.7rem;color:var(--text3)">LLM calls</div></div>
+        </div>
+        <div style="margin-top:1rem">
+          <a href="arc-solver.html" style="font-family:var(--mono);font-size:0.75rem;color:var(--gold);text-decoration:none;border:1px solid rgba(245,158,11,0.3);padding:0.4rem 1rem;border-radius:6px">→ Full ARC Solver Page</a>
+        </div>
+      </div>
+
+      <!-- Leaderboard comparison -->
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:1.5rem;font-family:var(--mono);font-size:0.75rem">
+        <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text3);margin-bottom:1rem">ARC-AGI-2 Leaderboard</div>
+        <div style="display:flex;flex-direction:column;gap:0.5rem">
+          <div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">Imbue + Gemini 3.1</span><span>95.1%</span><span style="color:var(--text3)">$8.71</span></div>
+          <div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">Poetiq Refinement</span><span>54%</span><span style="color:var(--text3)">$30.57</span></div>
+          <div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">Claude Opus 4.5</span><span>37.6%</span><span style="color:var(--text3)">$2.20</span></div>
+          <div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">NVARC (Kaggle 1st)</span><span>24%</span><span style="color:var(--text3)">~$0.20</span></div>
+          <div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">MindsAI (Kaggle 3rd)</span><span>12.6%</span><span style="color:var(--text3)">~$0.10</span></div>
+          <div style="display:flex;justify-content:space-between;padding:0.5rem 0.6rem;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:6px"><span style="color:var(--gold);font-weight:600">NeMo-WM</span><span style="color:var(--gold);font-weight:700">10.5%</span><span style="color:var(--green);font-weight:700">$0.00</span></div>
+          <div style="display:flex;justify-content:space-between;padding:0.4rem 0"><span style="color:var(--text3)">Pure DSL ceiling</span><span style="color:var(--text3)">&lt;5%</span><span style="color:var(--text3)">$0</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Solver families -->
+    <h3 style="font-family:var(--mono);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--accent2);margin-bottom:1.5rem">Solver Architecture</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0.8rem;margin-bottom:3rem">
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1rem;border-top:3px solid var(--accent)">
+        <div style="font-weight:600;margin-bottom:0.3rem">S1 Phase 2</div>
+        <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text3)">37 strategies · 54 tasks</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1rem;border-top:3px solid var(--accent3)">
+        <div style="font-weight:600;margin-bottom:0.3rem">Object Graph</div>
+        <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text3)">112 solvers · 33 tasks</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1rem;border-top:3px solid var(--green)">
+        <div style="font-weight:600;margin-bottom:0.3rem">Advanced Ops</div>
+        <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text3)">50 operations · 14 tasks</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1rem;border-top:3px solid var(--gold)">
+        <div style="font-weight:600;margin-bottom:0.3rem">NumericalReasoner</div>
+        <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text3)">357 combos · count→transform</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1rem;border-top:3px solid var(--red)">
+        <div style="font-weight:600;margin-bottom:0.3rem">Compositional Search</div>
+        <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text3)">58 prims · depth-3 chaining</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1rem;border-top:3px solid var(--accent2)">
+        <div style="font-weight:600;margin-bottom:0.3rem">Mental Models</div>
+        <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text3)">geometric compose · 4 tasks</div>
+      </div>
+    </div>
+
+    <!-- Math + Knowledge -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem">
+      <!-- Math -->
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:1.5rem">
+        <div style="display:flex;align-items:center;gap:0.8rem;margin-bottom:1rem">
+          <span style="font-size:1.8rem">📐</span>
+          <div>
+            <div style="font-weight:600">Math Curriculum</div>
+            <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text3)">10 levels · 500/500 DeepMind benchmark</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:0.3rem;flex-wrap:wrap;margin-bottom:1rem">
+          <span style="font-size:0.65rem;padding:0.15rem 0.4rem;background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.2);border-radius:3px;color:#4CAF50">★ Counting</span>
+          <span style="font-size:0.65rem;padding:0.15rem 0.4rem;background:rgba(33,150,243,0.1);border:1px solid rgba(33,150,243,0.2);border-radius:3px;color:#2196F3">★ Arithmetic</span>
+          <span style="font-size:0.65rem;padding:0.15rem 0.4rem;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.2);border-radius:3px;color:#FF9800">★ Algebra</span>
+          <span style="font-size:0.65rem;padding:0.15rem 0.4rem;background:rgba(156,39,176,0.1);border:1px solid rgba(156,39,176,0.2);border-radius:3px;color:#9C27B0">★ Geometry</span>
+          <span style="font-size:0.65rem;padding:0.15rem 0.4rem;background:rgba(255,87,34,0.1);border:1px solid rgba(255,87,34,0.2);border-radius:3px;color:#FF5722">★ Combinatorics</span>
+        </div>
+        <a href="math.html" style="font-family:var(--mono);font-size:0.75rem;color:var(--green);text-decoration:none">→ Interactive Math Showcase</a>
+      </div>
+
+      <!-- Knowledge -->
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:1.5rem">
+        <div style="display:flex;align-items:center;gap:0.8rem;margin-bottom:1rem">
+          <span style="font-size:1.8rem">🧠</span>
+          <div>
+            <div style="font-weight:600">Knowledge Base</div>
+            <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text3)">7 diagnostic suites · all passing</div>
+          </div>
+        </div>
+        <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text2);line-height:1.8">
+          13 object attributes · 13 spatial relations<br>
+          8 role types · 23 DSA patterns (2,913 LeetCode)<br>
+          D4 group theory · RCC-8 · Rectangle Algebra<br>
+          30-dim feature vectors · 58 compose primitives
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- SPRINT D6++ CAPABILITIES -->
 <section id="capabilities" style="padding:5rem 3rem;background:var(--bg);border-top:1px solid var(--border)">
   <div style="max-width:1100px;margin:0 auto">
