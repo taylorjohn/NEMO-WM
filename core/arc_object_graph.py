@@ -4543,6 +4543,76 @@ def try_scale_asymmetric(task):
     return None, None
 
 
+def try_stamp_bbox_relative(task):
+    """Learn stamp offsets relative to object bbox top-left, keyed by (color, shape)."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output']); h,w=gi.shape
+    bg=int(np.argmax(np.bincount(gi.flatten())))
+    objs,_=extract_objects(gi)
+    if len(objs)<1 or len(objs)>10: return None, None
+    from collections import defaultdict
+    obj_stamps={}
+    for o in objs:
+        r1,r2,c1,c2=o.bbox; stamp={}
+        for r in range(max(0,r1-3),min(h,r2+4)):
+            for c in range(max(0,c1-3),min(w,c2+4)):
+                if go[r,c]!=gi[r,c]: stamp[(r-r1,c-c1)]=int(go[r,c])
+        if stamp: obj_stamps[o.id]=stamp
+    if not obj_stamps: return None, None
+    shape_stamps=defaultdict(list)
+    for o in objs:
+        if o.id in obj_stamps: shape_stamps[(o.color,o.shape_hash)].append(obj_stamps[o.id])
+    learned={}
+    for key,stamps in shape_stamps.items():
+        if len(stamps)==1: learned[key]=stamps[0]
+        else:
+            common=stamps[0].copy()
+            for s in stamps[1:]: common={k:v for k,v in common.items() if k in s and s[k]==v}
+            if common: learned[key]=common
+    if not learned: return None, None
+    test=gi.copy()
+    for o in objs:
+        key=(o.color,o.shape_hash)
+        if key not in learned: continue
+        r1,_,c1,_=o.bbox
+        for (dr,dc),sc in learned[key].items():
+            nr,nc=r1+dr,c1+dc
+            if 0<=nr<h and 0<=nc<w: test[nr,nc]=sc
+    if not np.array_equal(test,go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+        objs2,_=extract_objects(gi2); t2=gi2.copy()
+        for o in objs2:
+            key=(o.color,o.shape_hash)
+            if key not in learned: continue
+            r1,_,c1,_=o.bbox
+            for (dr,dc),sc in learned[key].items():
+                nr,nc=r1+dr,c1+dc
+                if 0<=nr<h2 and 0<=nc<w2: t2[nr,nc]=sc
+        if not np.array_equal(t2,go2): return None, None
+    def mk(lr=learned):
+        def apply(t):
+            gs=[]
+            for tc in t['test']:
+                a=np.array(tc['input']); hh,ww=a.shape
+                objs2,_=extract_objects(a); out=a.copy()
+                for o in objs2:
+                    key=(o.color,o.shape_hash)
+                    if key not in lr: continue
+                    r1,_,c1,_=o.bbox
+                    for (dr,dc),sc in lr[key].items():
+                        nr,nc=r1+dr,c1+dc
+                        if 0<=nr<hh and 0<=nc<ww: out[nr,nc]=sc
+                gs.append([out.tolist()])
+            return gs
+        return apply
+    result=mk()(task)
+    if score_task(task,result): return result, "OG:bbox_stamp"
+    return None, None
+
+
 ALL_OG_SOLVERS = [
     # Original (skip move_to_target — too slow, 0 finds)
     ("keep_by_property", try_keep_by_property),
@@ -4640,6 +4710,7 @@ ALL_OG_SOLVERS = [
     ("recolor_exact_size", try_recolor_by_exact_size),
     ("obj_center_stamp", try_obj_center_stamp),
     ("scale_asym", try_scale_asymmetric),
+    ("bbox_stamp", try_stamp_bbox_relative),
 ]
 
 
