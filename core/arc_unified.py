@@ -193,6 +193,30 @@ try:
 except ImportError:
     pass
 
+# Per-Object Learning (learn recolor/delete rules from training pairs)
+HAS_LEARN = False
+try:
+    from arc_per_object_learn import try_per_object_learning
+    HAS_LEARN = True
+except ImportError:
+    pass
+
+# Diff Template (learn pixel offset patterns from training pairs)
+HAS_DIFF_TMPL = False
+try:
+    from arc_diff_template import try_diff_template
+    HAS_DIFF_TMPL = True
+except ImportError:
+    pass
+
+# Local Neighborhood Rule (cellular automaton from examples)
+HAS_LOCAL = False
+try:
+    from arc_local_rule import try_local_rule
+    HAS_LOCAL = True
+except ImportError:
+    pass
+
 
 # ══════════════════════════════════════════════════════════════════════
 # UNIFIED SOLVER
@@ -357,6 +381,42 @@ class UnifiedSolver:
                     if filename:
                         self.solved_by[filename] = pdiff_method
                     return pdiff_result, pdiff_method
+            except Exception:
+                pass
+
+        # ── METHOD 3.85: Per-Object Learning (learn rules from pairs) ──
+        if HAS_LEARN:
+            try:
+                learn_result, learn_method = try_per_object_learning(task)
+                if learn_result and score_task(task, learn_result):
+                    self.stats['LEARN'] += 1
+                    if filename:
+                        self.solved_by[filename] = learn_method
+                    return learn_result, learn_method
+            except Exception:
+                pass
+
+        # ── METHOD 3.87: Diff Template (pixel offset patterns) ──
+        if HAS_DIFF_TMPL:
+            try:
+                dt_result, dt_method = try_diff_template(task)
+                if dt_result and score_task(task, dt_result):
+                    self.stats['DIFF_TMPL'] += 1
+                    if filename:
+                        self.solved_by[filename] = dt_method
+                    return dt_result, dt_method
+            except Exception:
+                pass
+
+        # ── METHOD 3.88: Local Neighborhood Rule (pixel automaton) ──
+        if HAS_LOCAL:
+            try:
+                local_result, local_method = try_local_rule(task)
+                if local_result and score_task(task, local_result):
+                    self.stats['LOCAL'] += 1
+                    if filename:
+                        self.solved_by[filename] = local_method
+                    return local_result, local_method
             except Exception:
                 pass
 
