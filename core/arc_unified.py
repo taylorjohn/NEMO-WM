@@ -113,6 +113,14 @@ try:
 except ImportError:
     pass
 
+# Beam Search (runtime program synthesis)
+HAS_BEAM = False
+try:
+    from arc_beam_search import try_beam_search
+    HAS_BEAM = True
+except ImportError:
+    pass
+
 
 # ══════════════════════════════════════════════════════════════════════
 # UNIFIED SOLVER
@@ -280,6 +288,19 @@ class UnifiedSolver:
             except Exception:
                 pass
 
+        # ── METHOD 3.95: Beam Search (runtime program synthesis) ──
+        if HAS_BEAM:
+            try:
+                beam_result, beam_method = try_beam_search(
+                    task, beam_width=16, max_depth=3, time_limit=2.0)
+                if beam_result and score_task(task, beam_result):
+                    self.stats['BEAM'] += 1
+                    if filename:
+                        self.solved_by[filename] = beam_method
+                    return beam_result, beam_method
+            except Exception:
+                pass
+
         # ── METHOD 4: JEPA World Model ──
         if self.jepa_solver:
             try:
@@ -393,6 +414,7 @@ def run_benchmark(data_dir, limit=None, verbose=False,
     print(f"  Object Graph: {'Yes' if HAS_OG else 'No'}")
     print(f"  NumericalReasoner: {'Yes (357 combos)' if HAS_NUM else 'No'}")
     print(f"  Compositional Search: {'Yes (58 prims, depth 2)' if HAS_COMPOSE else 'No'}")
+    print(f"  Beam Search: {'Yes (56 prims, depth 3, 2s/task)' if HAS_BEAM else 'No'}")
     print(f"  JEPA: {'Yes' if HAS_JEPA and enable_jepa else 'No'}")
     print(f"  Synth Proposer: {'Yes' if HAS_SYNTH and enable_synth else 'No'}")
     print("=" * 70)
