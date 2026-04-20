@@ -4744,6 +4744,55 @@ def try_per_object_transform(task):
     return None, None
 
 
+def try_translate_content(task):
+    """Shift all non-bg content by a learned (dr,dc) offset."""
+    pairs=task['train']
+    for p in pairs:
+        if np.array(p['input']).shape!=np.array(p['output']).shape: return None, None
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output']); h,w=gi.shape
+    bg=int(np.argmax(np.bincount(gi.flatten())))
+    nz_in=np.argwhere(gi!=bg); nz_out=np.argwhere(go!=bg)
+    if len(nz_in)==0 or len(nz_out)==0 or len(nz_in)!=len(nz_out): return None, None
+    dr=int(round(nz_out[:,0].mean()-nz_in[:,0].mean()))
+    dc=int(round(nz_out[:,1].mean()-nz_in[:,1].mean()))
+    if dr==0 and dc==0: return None, None
+    test=np.full_like(gi,bg)
+    for r in range(h):
+        for c in range(w):
+            if gi[r,c]!=bg:
+                nr,nc=r+dr,c+dc
+                if 0<=nr<h and 0<=nc<w: test[nr,nc]=gi[r,c]
+    if not np.array_equal(test,go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+        bg2=int(np.argmax(np.bincount(gi2.flatten())))
+        t2=np.full_like(gi2,bg2)
+        for r in range(h2):
+            for c in range(w2):
+                if gi2[r,c]!=bg2:
+                    nr,nc=r+dr,c+dc
+                    if 0<=nr<h2 and 0<=nc<w2: t2[nr,nc]=gi2[r,c]
+        if not np.array_equal(t2,go2): return None, None
+    def mk(ddr=dr,ddc=dc):
+        def apply(t):
+            gs=[]
+            for tc in t['test']:
+                a=np.array(tc['input']); hh,ww=a.shape
+                bg2=int(np.argmax(np.bincount(a.flatten())))
+                out=np.full_like(a,bg2)
+                for r in range(hh):
+                    for c in range(ww):
+                        if a[r,c]!=bg2:
+                            nr,nc=r+ddr,c+ddc
+                            if 0<=nr<hh and 0<=nc<ww: out[nr,nc]=a[r,c]
+                gs.append([out.tolist()])
+            return gs
+        return apply
+    result=mk()(task)
+    if score_task(task,result): return result, f"OG:translate_{dr}_{dc}"
+    return None, None
+
+
 ALL_OG_SOLVERS = [
     # Original (skip move_to_target — too slow, 0 finds)
     ("keep_by_property", try_keep_by_property),
@@ -4844,6 +4893,7 @@ ALL_OG_SOLVERS = [
     ("bbox_stamp", try_stamp_bbox_relative),
     ("quad_overlay", try_quadrant_overlay),
     ("per_obj_transform", try_per_object_transform),
+    ("translate", try_translate_content),
 ]
 
 
