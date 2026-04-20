@@ -266,16 +266,84 @@ class PerObjectLearner:
         
         # Strategy 1: Learn recolor rules
         result = self._try_recolor_rules(task)
-        if result: return result
+        if result and result[0]: return result
         
-        # Strategy 2: Learn delete rules  
+        # Strategy 2: Recolor by nearest singleton
+        result = self._try_recolor_nearest(task)
+        if result and result[0]: return result
+        
+        # Strategy 3: Learn delete rules  
         result = self._try_delete_rules(task)
-        if result: return result
+        if result and result[0]: return result
         
-        # Strategy 3: Learn keep-one rules
+        # Strategy 4: Learn keep-one rules
         result = self._try_keep_rules(task)
-        if result: return result
+        if result and result[0]: return result
         
+        return None, None
+    
+    def _try_recolor_nearest(self, task):
+        """Recolor each majority-color object to its nearest singleton's color."""
+        pairs = task['train']
+        for pair in pairs:
+            gi, go = np.array(pair['input']), np.array(pair['output'])
+            if gi.shape != go.shape: return None, None
+        
+        bg = int(np.argmax(np.bincount(np.array(pairs[0]['input']).flatten())))
+        
+        all_ok = True
+        for pair in pairs:
+            gi, go = np.array(pair['input']), np.array(pair['output'])
+            try:
+                in_objs, _ = extract_objects(gi, bg=bg)
+            except: return None, None
+            if not in_objs: return None, None
+            
+            color_counts = Counter(o.color for o in in_objs)
+            if len(color_counts) < 2: return None, None
+            singletons = [o for o in in_objs if color_counts[o.color] == 1 and o.size <= 3]
+            majority_color = max(color_counts, key=color_counts.get)
+            targets = [o for o in in_objs if o.color == majority_color]
+            
+            if not singletons or not targets:
+                all_ok = False; break
+            
+            pred = gi.copy()
+            for obj in targets:
+                dists = [(abs(obj.center[0]-s.center[0]) + abs(obj.center[1]-s.center[1]), s)
+                         for s in singletons]
+                nearest = min(dists, key=lambda x: x[0])[1]
+                for r, c in obj.cells:
+                    pred[r, c] = nearest.color
+            
+            if not np.array_equal(pred, go):
+                all_ok = False; break
+        
+        if not all_ok:
+            return None, None
+        
+        results = []
+        for tc in task['test']:
+            gi = np.array(tc['input'])
+            try:
+                in_objs, _ = extract_objects(gi, bg=bg)
+            except: return None, None
+            color_counts = Counter(o.color for o in in_objs)
+            singletons = [o for o in in_objs if color_counts[o.color] == 1 and o.size <= 3]
+            majority_color = max(color_counts, key=color_counts.get) if color_counts else None
+            if not majority_color or not singletons: return None, None
+            targets = [o for o in in_objs if o.color == majority_color]
+            pred = gi.copy()
+            for obj in targets:
+                dists = [(abs(obj.center[0]-s.center[0]) + abs(obj.center[1]-s.center[1]), s)
+                         for s in singletons]
+                nearest = min(dists, key=lambda x: x[0])[1]
+                for r, c in obj.cells:
+                    pred[r, c] = nearest.color
+            results.append([pred.tolist()])
+        
+        if results and score_task(task, results):
+            return results, 'LEARN:recolor_nearest'
         return None, None
     
     def _try_recolor_rules(self, task):
