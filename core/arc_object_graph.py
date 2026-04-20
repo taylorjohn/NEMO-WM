@@ -5101,6 +5101,725 @@ def try_fill_enclosed_const(task):
     return None, None
 
 
+def try_pattern_checker(task):
+    """Fixed per-color mapping learned from ALL training pairs."""
+    pairs=task['train']
+    for p in pairs:
+        if np.array(p['input']).shape!=np.array(p['output']).shape: return None, None
+    cmap={}
+    for p in pairs:
+        gi2=np.array(p['input']); go2=np.array(p['output'])
+        for r in range(gi2.shape[0]):
+            for c in range(gi2.shape[1]):
+                ic=int(gi2[r,c]); oc=int(go2[r,c])
+                if ic in cmap and cmap[ic]!=oc: return None, None
+                cmap[ic]=oc
+    if not cmap or all(k==v for k,v in cmap.items()) or len(set(cmap.values()))<=1: return None, None
+    def apply(t):
+        gs=[]
+        for tc in t['test']:
+            a=np.array(tc['input'])
+            gs.append([[[cmap.get(int(v),int(v)) for v in row] for row in a.tolist()]])
+        return gs
+    result=apply(task)
+    if score_task(task,result): return result, "OG:pattern_checker"
+    return None, None
+
+
+def try_gravity_objects(task):
+    """Move whole objects in a direction until they hit wall or another object."""
+    pairs=task['train']
+    for p in pairs:
+        if np.array(p['input']).shape!=np.array(p['output']).shape: return None, None
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output']); h,w=gi.shape
+    bg=int(np.argmax(np.bincount(gi.flatten())))
+    objs,_=extract_objects(gi)
+    if len(objs)<2: return None, None
+    dirs={'down':(1,0),'up':(-1,0),'right':(0,1),'left':(0,-1)}
+    for direction,(dr,dc) in dirs.items():
+        test=np.full_like(gi,bg)
+        if direction=='down': so=sorted(objs,key=lambda o:o.bbox[1],reverse=True)
+        elif direction=='up': so=sorted(objs,key=lambda o:o.bbox[0])
+        elif direction=='right': so=sorted(objs,key=lambda o:o.bbox[3],reverse=True)
+        else: so=sorted(objs,key=lambda o:o.bbox[2])
+        for o in so:
+            r1,r2,c1,c2=o.bbox; oh=r2-r1+1; ow=c2-c1+1; crop=o.crop(gi)
+            nr1,nc1=r1,c1
+            while True:
+                nnr,nnc=nr1+dr,nc1+dc; blocked=False
+                for r in range(oh):
+                    for c in range(ow):
+                        if crop[r,c]==bg: continue
+                        pr,pc=nnr+r,nnc+c
+                        if pr<0 or pr>=h or pc<0 or pc>=w or test[pr,pc]!=bg: blocked=True; break
+                    if blocked: break
+                if blocked: break
+                nr1,nc1=nnr,nnc
+            for r in range(oh):
+                for c in range(ow):
+                    if crop[r,c]!=bg: test[nr1+r,nc1+c]=crop[r,c]
+        if not np.array_equal(test,go): continue
+        ok=True
+        for p in pairs[1:]:
+            gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+            bg2=int(np.argmax(np.bincount(gi2.flatten())))
+            objs2,_=extract_objects(gi2)
+            if direction=='down': so2=sorted(objs2,key=lambda o:o.bbox[1],reverse=True)
+            elif direction=='up': so2=sorted(objs2,key=lambda o:o.bbox[0])
+            elif direction=='right': so2=sorted(objs2,key=lambda o:o.bbox[3],reverse=True)
+            else: so2=sorted(objs2,key=lambda o:o.bbox[2])
+            t2=np.full_like(gi2,bg2)
+            for o in so2:
+                r1,r2,c1,c2=o.bbox; oh2=r2-r1+1; ow2=c2-c1+1; crop2=o.crop(gi2)
+                nr1,nc1=r1,c1
+                while True:
+                    nnr,nnc=nr1+dr,nc1+dc; blocked=False
+                    for r in range(oh2):
+                        for c in range(ow2):
+                            if crop2[r,c]==bg2: continue
+                            pr,pc=nnr+r,nnc+c
+                            if pr<0 or pr>=h2 or pc<0 or pc>=w2 or t2[pr,pc]!=bg2: blocked=True; break
+                        if blocked: break
+                    if blocked: break
+                    nr1,nc1=nnr,nnc
+                for r in range(oh2):
+                    for c in range(ow2):
+                        if crop2[r,c]!=bg2: t2[nr1+r,nc1+c]=crop2[r,c]
+            if not np.array_equal(t2,go2): ok=False; break
+        if not ok: continue
+        def mk(d=direction,ddr=dr,ddc=dc):
+            def apply(t):
+                gs=[]
+                for tc in t['test']:
+                    a=np.array(tc['input']); hh,ww=a.shape
+                    bg2=int(np.argmax(np.bincount(a.flatten())))
+                    objs2,_=extract_objects(a)
+                    if d=='down': so2=sorted(objs2,key=lambda o:o.bbox[1],reverse=True)
+                    elif d=='up': so2=sorted(objs2,key=lambda o:o.bbox[0])
+                    elif d=='right': so2=sorted(objs2,key=lambda o:o.bbox[3],reverse=True)
+                    else: so2=sorted(objs2,key=lambda o:o.bbox[2])
+                    out=np.full_like(a,bg2)
+                    for o in so2:
+                        r1,r2,c1,c2=o.bbox; oh2=r2-r1+1; ow2=c2-c1+1; crop2=o.crop(a)
+                        nr1,nc1=r1,c1
+                        while True:
+                            nnr,nnc=nr1+ddr,nc1+ddc; blocked=False
+                            for r in range(oh2):
+                                for c in range(ow2):
+                                    if crop2[r,c]==bg2: continue
+                                    pr,pc=nnr+r,nnc+c
+                                    if pr<0 or pr>=hh or pc<0 or pc>=ww or out[pr,pc]!=bg2: blocked=True; break
+                                if blocked: break
+                            if blocked: break
+                            nr1,nc1=nnr,nnc
+                        for r in range(oh2):
+                            for c in range(ow2):
+                                if crop2[r,c]!=bg2: out[nr1+r,nc1+c]=crop2[r,c]
+                    gs.append([out.tolist()])
+                return gs
+            return apply
+        result=mk()(task)
+        if score_task(task,result): return result, f"OG:gravity_obj_{direction}"
+    return None, None
+
+
+def try_reflect_position(task):
+    """Add reflected copy of non-bg pixels across H, V, or both axes."""
+    pairs=task['train']
+    for p in pairs:
+        if np.array(p['input']).shape!=np.array(p['output']).shape: return None, None
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output']); h,w=gi.shape
+    bg=int(np.argmax(np.bincount(gi.flatten())))
+    for mode in ['h','v','hv']:
+        test=gi.copy()
+        for r in range(h):
+            for c in range(w):
+                if gi[r,c]!=bg:
+                    targets=[]
+                    if 'h' in mode: targets.append((r,w-1-c))
+                    if 'v' in mode: targets.append((h-1-r,c))
+                    if mode=='hv': targets.append((h-1-r,w-1-c))
+                    for nr,nc in targets:
+                        if test[nr,nc]==bg: test[nr,nc]=gi[r,c]
+        if not np.array_equal(test,go): continue
+        ok=True
+        for p in pairs[1:]:
+            gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+            bg2=int(np.argmax(np.bincount(gi2.flatten())))
+            t2=gi2.copy()
+            for r in range(h2):
+                for c in range(w2):
+                    if gi2[r,c]!=bg2:
+                        targets=[]
+                        if 'h' in mode: targets.append((r,w2-1-c))
+                        if 'v' in mode: targets.append((h2-1-r,c))
+                        if mode=='hv': targets.append((h2-1-r,w2-1-c))
+                        for nr,nc in targets:
+                            if t2[nr,nc]==bg2: t2[nr,nc]=gi2[r,c]
+            if not np.array_equal(t2,go2): ok=False; break
+        if not ok: continue
+        def mk(m=mode):
+            def apply(t):
+                gs=[]
+                for tc in t['test']:
+                    a=np.array(tc['input']); hh,ww=a.shape
+                    bg2=int(np.argmax(np.bincount(a.flatten())))
+                    out=a.copy()
+                    for r in range(hh):
+                        for c in range(ww):
+                            if a[r,c]!=bg2:
+                                targets=[]
+                                if 'h' in m: targets.append((r,ww-1-c))
+                                if 'v' in m: targets.append((hh-1-r,c))
+                                if m=='hv': targets.append((hh-1-r,ww-1-c))
+                                for nr,nc in targets:
+                                    if out[nr,nc]==bg2: out[nr,nc]=a[r,c]
+                    gs.append([out.tolist()])
+                return gs
+            return apply
+        result=mk()(task)
+        if score_task(task,result): return result, f"OG:reflect_{mode}"
+    return None, None
+
+
+def try_scale_by_property(task):
+    """Scale grid by N where N = object count or color count."""
+    pairs=task['train']
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    ih,iw=gi.shape; oh,ow=go.shape
+    if oh<=ih or ow<=iw: return None, None
+    bg=int(np.argmax(np.bincount(gi.flatten())))
+    objs,_=extract_objects(gi)
+    for use_objs in [True, False]:
+        n=len(objs) if use_objs else len(set(int(v) for v in gi.flatten())-{bg})
+        if n<2 or n>10 or oh!=ih*n or ow!=iw*n: continue
+        if not np.array_equal(np.repeat(np.repeat(gi,n,axis=0),n,axis=1),go): continue
+        ok=True
+        for p in pairs[1:]:
+            gi2=np.array(p['input']); go2=np.array(p['output'])
+            bg2=int(np.argmax(np.bincount(gi2.flatten())))
+            objs2,_=extract_objects(gi2)
+            n2=len(objs2) if use_objs else len(set(int(v) for v in gi2.flatten())-{bg2})
+            if go2.shape!=(gi2.shape[0]*n2,gi2.shape[1]*n2) or not np.array_equal(np.repeat(np.repeat(gi2,n2,axis=0),n2,axis=1),go2):
+                ok=False; break
+        if not ok: continue
+        def mk(uo=use_objs):
+            def apply(t):
+                gs=[]
+                for tc in t['test']:
+                    a=np.array(tc['input']); bg2=int(np.argmax(np.bincount(a.flatten())))
+                    objs2,_=extract_objects(a)
+                    n2=len(objs2) if uo else len(set(int(v) for v in a.flatten())-{bg2})
+                    gs.append([np.repeat(np.repeat(a,n2,axis=0),n2,axis=1).tolist()])
+                return gs
+            return apply
+        result=mk()(task)
+        prop='obj_count' if use_objs else 'color_count'
+        if score_task(task,result): return result, f"OG:scale_by_{prop}"
+    return None, None
+
+
+def try_symmetry_complete(task):
+    """Complete grid to be symmetric (H, V, HV, or 4-fold)."""
+    pairs=task['train']
+    for p in pairs:
+        if np.array(p['input']).shape!=np.array(p['output']).shape: return None, None
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output']); h,w=gi.shape
+    bg=int(np.argmax(np.bincount(gi.flatten())))
+    for mode in ['h','v','hv','4fold']:
+        test=gi.copy()
+        if mode=='h':
+            for r in range(h):
+                for c in range(w):
+                    mc=w-1-c
+                    if test[r,c]==bg and test[r,mc]!=bg: test[r,c]=test[r,mc]
+                    elif test[r,mc]==bg and test[r,c]!=bg: test[r,mc]=test[r,c]
+        elif mode=='v':
+            for r in range(h):
+                for c in range(w):
+                    mr=h-1-r
+                    if test[r,c]==bg and test[mr,c]!=bg: test[r,c]=test[mr,c]
+                    elif test[mr,c]==bg and test[r,c]!=bg: test[mr,c]=test[r,c]
+        elif mode=='hv':
+            for r in range(h):
+                for c in range(w):
+                    mc=w-1-c; mr=h-1-r
+                    vals=[test[r,c],test[r,mc],test[mr,c],test[mr,mc]]
+                    nz=[v for v in vals if v!=bg]
+                    if nz:
+                        fill=nz[0]
+                        for pr,pc in [(r,c),(r,mc),(mr,c),(mr,mc)]:
+                            if test[pr,pc]==bg: test[pr,pc]=fill
+        elif mode=='4fold':
+            for r in range(h):
+                for c in range(w):
+                    positions=[(r,c),(r,w-1-c),(h-1-r,c),(h-1-r,w-1-c)]
+                    if h==w: positions.extend([(c,r),(c,w-1-r),(w-1-c,r),(w-1-c,w-1-r)])
+                    vals=[test[pr,pc] for pr,pc in positions if 0<=pr<h and 0<=pc<w]
+                    nz=[v for v in vals if v!=bg]
+                    if nz:
+                        fill=nz[0]
+                        for pr,pc in positions:
+                            if 0<=pr<h and 0<=pc<w and test[pr,pc]==bg: test[pr,pc]=fill
+        if not np.array_equal(test,go): continue
+        ok=True
+        for p in pairs[1:]:
+            gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+            bg2=int(np.argmax(np.bincount(gi2.flatten())))
+            t2=gi2.copy()
+            if mode=='h':
+                for r in range(h2):
+                    for c in range(w2):
+                        mc=w2-1-c
+                        if t2[r,c]==bg2 and t2[r,mc]!=bg2: t2[r,c]=t2[r,mc]
+                        elif t2[r,mc]==bg2 and t2[r,c]!=bg2: t2[r,mc]=t2[r,c]
+            elif mode=='v':
+                for r in range(h2):
+                    for c in range(w2):
+                        mr=h2-1-r
+                        if t2[r,c]==bg2 and t2[mr,c]!=bg2: t2[r,c]=t2[mr,c]
+                        elif t2[mr,c]==bg2 and t2[r,c]!=bg2: t2[mr,c]=t2[r,c]
+            elif mode=='hv':
+                for r in range(h2):
+                    for c in range(w2):
+                        mc=w2-1-c; mr=h2-1-r
+                        vals=[t2[r,c],t2[r,mc],t2[mr,c],t2[mr,mc]]
+                        nz=[v for v in vals if v!=bg2]
+                        if nz:
+                            fill=nz[0]
+                            for pr,pc in [(r,c),(r,mc),(mr,c),(mr,mc)]:
+                                if t2[pr,pc]==bg2: t2[pr,pc]=fill
+            elif mode=='4fold':
+                for r in range(h2):
+                    for c in range(w2):
+                        positions=[(r,c),(r,w2-1-c),(h2-1-r,c),(h2-1-r,w2-1-c)]
+                        if h2==w2: positions.extend([(c,r),(c,w2-1-r),(w2-1-c,r),(w2-1-c,w2-1-r)])
+                        vals=[t2[pr,pc] for pr,pc in positions if 0<=pr<h2 and 0<=pc<w2]
+                        nz=[v for v in vals if v!=bg2]
+                        if nz:
+                            fill=nz[0]
+                            for pr,pc in positions:
+                                if 0<=pr<h2 and 0<=pc<w2 and t2[pr,pc]==bg2: t2[pr,pc]=fill
+            if not np.array_equal(t2,go2): ok=False; break
+        if not ok: continue
+        def mk(m=mode):
+            def apply(t):
+                gs=[]
+                for tc in t['test']:
+                    a=np.array(tc['input']); hh,ww=a.shape
+                    bg2=int(np.argmax(np.bincount(a.flatten())))
+                    out=a.copy()
+                    if m=='h':
+                        for r in range(hh):
+                            for c in range(ww):
+                                mc=ww-1-c
+                                if out[r,c]==bg2 and out[r,mc]!=bg2: out[r,c]=out[r,mc]
+                                elif out[r,mc]==bg2 and out[r,c]!=bg2: out[r,mc]=out[r,c]
+                    elif m=='v':
+                        for r in range(hh):
+                            for c in range(ww):
+                                mr=hh-1-r
+                                if out[r,c]==bg2 and out[mr,c]!=bg2: out[r,c]=out[mr,c]
+                                elif out[mr,c]==bg2 and out[r,c]!=bg2: out[mr,c]=out[r,c]
+                    elif m=='hv':
+                        for r in range(hh):
+                            for c in range(ww):
+                                mc=ww-1-c; mr=hh-1-r
+                                vals=[out[r,c],out[r,mc],out[mr,c],out[mr,mc]]
+                                nz=[v for v in vals if v!=bg2]
+                                if nz:
+                                    fill=nz[0]
+                                    for pr,pc in [(r,c),(r,mc),(mr,c),(mr,mc)]:
+                                        if out[pr,pc]==bg2: out[pr,pc]=fill
+                    elif m=='4fold':
+                        for r in range(hh):
+                            for c in range(ww):
+                                positions=[(r,c),(r,ww-1-c),(hh-1-r,c),(hh-1-r,ww-1-c)]
+                                if hh==ww: positions.extend([(c,r),(c,ww-1-r),(ww-1-c,r),(ww-1-c,ww-1-r)])
+                                vals=[out[pr,pc] for pr,pc in positions if 0<=pr<hh and 0<=pc<ww]
+                                nz=[v for v in vals if v!=bg2]
+                                if nz:
+                                    fill=nz[0]
+                                    for pr,pc in positions:
+                                        if 0<=pr<hh and 0<=pc<ww and out[pr,pc]==bg2: out[pr,pc]=fill
+                    gs.append([out.tolist()])
+                return gs
+            return apply
+        result=mk()(task)
+        if score_task(task,result): return result, f"OG:sym_complete_{mode}"
+    return None, None
+
+
+def try_overlay_on_template(task):
+    """Crop largest object as template, overlay smaller objects onto it."""
+    pairs=task['train']
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    objs,_=extract_objects(gi); bg=int(np.argmax(np.bincount(gi.flatten())))
+    if len(objs)<2: return None, None
+    template=max(objs,key=lambda o:o.size)
+    crop=template.crop(gi)
+    if crop.shape!=go.shape: return None, None
+    tr1,_,tc1,_=template.bbox; test=crop.copy()
+    for o in objs:
+        if o.id==template.id: continue
+        for r,c in o.cells:
+            nr,nc=r-tr1,c-tc1
+            if 0<=nr<test.shape[0] and 0<=nc<test.shape[1]: test[nr,nc]=o.color
+    if not np.array_equal(test,go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output'])
+        objs2,_=extract_objects(gi2)
+        t2=max(objs2,key=lambda o:o.size)
+        c2=t2.crop(gi2)
+        if c2.shape!=go2.shape: return None, None
+        tr12,_,tc12,_=t2.bbox; test2=c2.copy()
+        for o in objs2:
+            if o.id==t2.id: continue
+            for r,c in o.cells:
+                nr,nc=r-tr12,c-tc12
+                if 0<=nr<test2.shape[0] and 0<=nc<test2.shape[1]: test2[nr,nc]=o.color
+        if not np.array_equal(test2,go2): return None, None
+    def apply(t):
+        gs=[]
+        for tc in t['test']:
+            a=np.array(tc['input'])
+            objs2,_=extract_objects(a)
+            t2=max(objs2,key=lambda o:o.size)
+            out=t2.crop(a); tr12,_,tc12,_=t2.bbox
+            for o in objs2:
+                if o.id==t2.id: continue
+                for r,c in o.cells:
+                    nr,nc=r-tr12,c-tc12
+                    if 0<=nr<out.shape[0] and 0<=nc<out.shape[1]: out[nr,nc]=o.color
+            gs.append([out.tolist()])
+        return gs
+    result=apply(task)
+    if score_task(task,result): return result, "OG:overlay_on_template"
+    return None, None
+
+
+def try_periodic_recolor(task):
+    """Recolor based on (r%period, c%period, input_color) mapping."""
+    pairs=task['train']
+    for p in pairs:
+        if np.array(p['input']).shape!=np.array(p['output']).shape: return None, None
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output']); h,w=gi.shape
+    for pr in range(2,min(h,6)):
+        for pc in range(2,min(w,6)):
+            rmap={}; ok=True
+            for p in pairs:
+                gi2=np.array(p['input']); go2=np.array(p['output'])
+                for r in range(gi2.shape[0]):
+                    for c in range(gi2.shape[1]):
+                        key=(r%pr,c%pc,int(gi2[r,c]))
+                        val=int(go2[r,c])
+                        if key in rmap and rmap[key]!=val: ok=False; break
+                        rmap[key]=val
+                    if not ok: break
+                if not ok: break
+            if not ok or all(k[2]==v for k,v in rmap.items()): continue
+            def mk(rm=rmap,p1=pr,p2=pc):
+                def apply(t):
+                    gs=[]
+                    for tc in t['test']:
+                        a=np.array(tc['input']); out=a.copy()
+                        for r in range(a.shape[0]):
+                            for c in range(a.shape[1]):
+                                key=(r%p1,c%p2,int(a[r,c]))
+                                if key in rm: out[r,c]=rm[key]
+                        gs.append([out.tolist()])
+                    return gs
+                return apply
+            result=mk()(task)
+            if score_task(task,result): return result, f"OG:periodic_{pr}x{pc}"
+    return None, None
+
+
+def try_mirror_tile(task):
+    """Tile input with alternating H/V flips (kaleidoscope)."""
+    pairs=task['train']
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    ih,iw=gi.shape; oh,ow=go.shape
+    if oh<ih or ow<iw or oh%ih!=0 or ow%iw!=0: return None, None
+    nh,nw=oh//ih,ow//iw
+    if nh<2 and nw<2: return None, None
+    test=np.zeros((oh,ow),dtype=int)
+    for tr in range(nh):
+        for tc in range(nw):
+            block=gi.copy()
+            if tr%2==1: block=np.flipud(block)
+            if tc%2==1: block=np.fliplr(block)
+            test[tr*ih:(tr+1)*ih,tc*iw:(tc+1)*iw]=block
+    if not np.array_equal(test,go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output'])
+        ih2,iw2=gi2.shape
+        if go2.shape!=(ih2*nh,iw2*nw): return None, None
+        t2=np.zeros((ih2*nh,iw2*nw),dtype=int)
+        for tr in range(nh):
+            for tc in range(nw):
+                block=gi2.copy()
+                if tr%2==1: block=np.flipud(block)
+                if tc%2==1: block=np.fliplr(block)
+                t2[tr*ih2:(tr+1)*ih2,tc*iw2:(tc+1)*iw2]=block
+        if not np.array_equal(t2,go2): return None, None
+    def mk(n1=nh,n2=nw):
+        def apply(t):
+            gs=[]
+            for tc in t['test']:
+                a=np.array(tc['input']); hh,ww=a.shape
+                out=np.zeros((hh*n1,ww*n2),dtype=int)
+                for tr in range(n1):
+                    for tcc in range(n2):
+                        block=a.copy()
+                        if tr%2==1: block=np.flipud(block)
+                        if tcc%2==1: block=np.fliplr(block)
+                        out[tr*hh:(tr+1)*hh,tcc*ww:(tcc+1)*ww]=block
+                gs.append([out.tolist()])
+            return gs
+        return apply
+    result=mk()(task)
+    if score_task(task,result): return result, f"OG:mirror_tile_{nh}x{nw}"
+    return None, None
+
+
+def try_pixel_to_tile(task):
+    """Each pixel becomes an NxN tile in output, learned per color."""
+    pairs=task['train']
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    ih,iw=gi.shape; oh,ow=go.shape
+    if oh<=ih or ow<=iw or oh%ih!=0 or ow%iw!=0: return None, None
+    sh,sw=oh//ih,ow//iw
+    color_tiles={}
+    for r in range(ih):
+        for c in range(iw):
+            ic=int(gi[r,c]); tile=tuple(go[r*sh:(r+1)*sh,c*sw:(c+1)*sw].flatten())
+            if ic in color_tiles and color_tiles[ic]!=tile: return None, None
+            color_tiles[ic]=tile
+    if not color_tiles or len(color_tiles)<=1: return None, None
+    ta={k:np.array(v).reshape(sh,sw) for k,v in color_tiles.items()}
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output'])
+        if go2.shape!=(gi2.shape[0]*sh,gi2.shape[1]*sw): return None, None
+        for r in range(gi2.shape[0]):
+            for c in range(gi2.shape[1]):
+                ic=int(gi2[r,c])
+                if ic not in ta or not np.array_equal(go2[r*sh:(r+1)*sh,c*sw:(c+1)*sw],ta[ic]): return None, None
+    def mk(t=ta,s1=sh,s2=sw):
+        def apply(task):
+            gs=[]
+            for tc in task['test']:
+                a=np.array(tc['input']); out=np.zeros((a.shape[0]*s1,a.shape[1]*s2),dtype=int)
+                for r in range(a.shape[0]):
+                    for c in range(a.shape[1]):
+                        ic=int(a[r,c])
+                        if ic in t: out[r*s1:(r+1)*s1,c*s2:(c+1)*s2]=t[ic]
+                gs.append([out.tolist()])
+            return gs
+        return apply
+    result=mk()(task)
+    if score_task(task,result): return result, f"OG:pixel_to_tile_{sh}x{sw}"
+    return None, None
+
+
+def try_stamp_self_color(task):
+    """Stamp learned offsets around each non-bg pixel using that pixel's own color."""
+    pairs=task['train']
+    for p in pairs:
+        if np.array(p['input']).shape!=np.array(p['output']).shape: return None, None
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output']); h,w=gi.shape
+    bg=int(np.argmax(np.bincount(gi.flatten())))
+    pixels=[(r,c) for r in range(h) for c in range(w) if gi[r,c]!=bg]
+    if not pixels or len(pixels)>20: return None, None
+    r0,c0=pixels[0]; pc0=int(gi[r0,c0])
+    offsets=set()
+    for r in range(max(0,r0-5),min(h,r0+6)):
+        for c in range(max(0,c0-5),min(w,c0+6)):
+            if go[r,c]==pc0 and gi[r,c]!=pc0: offsets.add((r-r0,c-c0))
+    if not offsets: return None, None
+    if len(pixels)>1:
+        r1,c1=pixels[1]; pc1=int(gi[r1,c1])
+        off2={( r-r1,c-c1) for r in range(max(0,r1-5),min(h,r1+6)) for c in range(max(0,c1-5),min(w,c1+6)) if go[r,c]==pc1 and gi[r,c]!=pc1}
+        offsets=offsets&off2
+    if not offsets: return None, None
+    test=gi.copy()
+    for r,c in pixels:
+        color=int(gi[r,c])
+        for dr,dc in offsets:
+            nr,nc=r+dr,c+dc
+            if 0<=nr<h and 0<=nc<w and test[nr,nc]==bg: test[nr,nc]=color
+    if not np.array_equal(test,go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+        bg2=int(np.argmax(np.bincount(gi2.flatten())))
+        px2=[(r,c) for r in range(h2) for c in range(w2) if gi2[r,c]!=bg2]
+        t2=gi2.copy()
+        for r,c in px2:
+            color=int(gi2[r,c])
+            for dr,dc in offsets:
+                nr,nc=r+dr,c+dc
+                if 0<=nr<h2 and 0<=nc<w2 and t2[nr,nc]==bg2: t2[nr,nc]=color
+        if not np.array_equal(t2,go2): return None, None
+    def mk(off=offsets):
+        def apply(t):
+            gs=[]
+            for tc in t['test']:
+                a=np.array(tc['input']); hh,ww=a.shape
+                bg2=int(np.argmax(np.bincount(a.flatten())))
+                px=[(r,c) for r in range(hh) for c in range(ww) if a[r,c]!=bg2]
+                out=a.copy()
+                for r,c in px:
+                    color=int(a[r,c])
+                    for dr,dc in off:
+                        nr,nc=r+dr,c+dc
+                        if 0<=nr<hh and 0<=nc<ww and out[nr,nc]==bg2: out[nr,nc]=color
+                gs.append([out.tolist()])
+            return gs
+        return apply
+    result=mk()(task)
+    if score_task(task,result): return result, "OG:stamp_self_color"
+    return None, None
+
+
+def try_col_partition_overlay(task):
+    """Split into N equal column chunks, OR overlay."""
+    pairs=task['train']
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    h,w=gi.shape; bg=int(np.argmax(np.bincount(gi.flatten())))
+    oh,ow=go.shape
+    if oh!=h: return None, None
+    for n in range(2,6):
+        if w%n!=0: continue
+        cw=w//n
+        if cw!=ow: continue
+        chunks=[gi[:,i*cw:(i+1)*cw] for i in range(n)]
+        test=np.full((h,cw),bg,dtype=int)
+        for r in range(h):
+            for c in range(cw):
+                for chunk in chunks:
+                    if chunk[r,c]!=bg: test[r,c]=int(chunk[r,c]); break
+        if not np.array_equal(test,go): continue
+        ok=True
+        for p in pairs[1:]:
+            gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+            bg2=int(np.argmax(np.bincount(gi2.flatten())))
+            if w2%n!=0 or w2//n!=go2.shape[1] or h2!=go2.shape[0]: ok=False; break
+            cw2=w2//n; chunks2=[gi2[:,i*cw2:(i+1)*cw2] for i in range(n)]
+            t2=np.full((h2,cw2),bg2,dtype=int)
+            for r in range(h2):
+                for c in range(cw2):
+                    for chunk in chunks2:
+                        if chunk[r,c]!=bg2: t2[r,c]=int(chunk[r,c]); break
+            if not np.array_equal(t2,go2): ok=False; break
+        if not ok: continue
+        def mk(nn=n):
+            def apply(t):
+                gs=[]
+                for tc in t['test']:
+                    a=np.array(tc['input']); hh,ww=a.shape
+                    bg2=int(np.argmax(np.bincount(a.flatten())))
+                    cw2=ww//nn; chunks2=[a[:,i*cw2:(i+1)*cw2] for i in range(nn)]
+                    out=np.full((hh,cw2),bg2,dtype=int)
+                    for r in range(hh):
+                        for c in range(cw2):
+                            for chunk in chunks2:
+                                if chunk[r,c]!=bg2: out[r,c]=int(chunk[r,c]); break
+                    gs.append([out.tolist()])
+                return gs
+            return apply
+        result=mk()(task)
+        if score_task(task,result): return result, f"OG:col_part_or_{n}"
+    return None, None
+
+
+def try_context_recolor(task):
+    """Recolor based on (pixel_color, count_of_same_color_4neighbors)."""
+    pairs=task['train']
+    for p in pairs:
+        if np.array(p['input']).shape!=np.array(p['output']).shape: return None, None
+    rule={}
+    for p in pairs:
+        gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+        bg2=int(np.argmax(np.bincount(gi2.flatten())))
+        for r in range(h2):
+            for c in range(w2):
+                if gi2[r,c]==bg2: continue
+                ic=int(gi2[r,c])
+                nn=sum(1 for dr,dc in [(-1,0),(1,0),(0,-1),(0,1)] if 0<=r+dr<h2 and 0<=c+dc<w2 and gi2[r+dr,c+dc]==ic)
+                oc=int(go2[r,c])
+                key=(ic,nn)
+                if key in rule and rule[key]!=oc: return None, None
+                rule[key]=oc
+    if not rule or all(k[0]==v for k,v in rule.items()) or len(set(rule.values()))<=1: return None, None
+    for p in pairs:
+        gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+        bg2=int(np.argmax(np.bincount(gi2.flatten())))
+        t2=gi2.copy()
+        for r in range(h2):
+            for c in range(w2):
+                if gi2[r,c]==bg2: continue
+                ic=int(gi2[r,c])
+                nn=sum(1 for dr,dc in [(-1,0),(1,0),(0,-1),(0,1)] if 0<=r+dr<h2 and 0<=c+dc<w2 and gi2[r+dr,c+dc]==ic)
+                key=(ic,nn)
+                if key in rule: t2[r,c]=rule[key]
+        if not np.array_equal(t2,go2): return None, None
+    def mk(rl=rule):
+        def apply(t):
+            gs=[]
+            for tc in t['test']:
+                a=np.array(tc['input']); hh,ww=a.shape
+                bg2=int(np.argmax(np.bincount(a.flatten())))
+                out=a.copy()
+                for r in range(hh):
+                    for c in range(ww):
+                        if a[r,c]==bg2: continue
+                        ic=int(a[r,c]); nn=sum(1 for dr,dc in [(-1,0),(1,0),(0,-1),(0,1)] if 0<=r+dr<hh and 0<=c+dc<ww and a[r+dr,c+dc]==ic)
+                        key=(ic,nn)
+                        if key in rl: out[r,c]=rl[key]
+                gs.append([out.tolist()])
+            return gs
+        return apply
+    result=mk()(task)
+    if score_task(task,result): return result, "OG:context_recolor"
+    return None, None
+
+
+def try_sort_columns_down(task):
+    """Sort each column: non-bg values sorted and sunk to bottom."""
+    pairs=task['train']
+    for p in pairs:
+        if np.array(p['input']).shape!=np.array(p['output']).shape: return None, None
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output']); h,w=gi.shape
+    bg=int(np.argmax(np.bincount(gi.flatten())))
+    test=np.full_like(gi,bg)
+    for c in range(w):
+        vals=sorted([int(gi[r,c]) for r in range(h) if gi[r,c]!=bg])
+        for i,v in enumerate(vals): test[h-len(vals)+i,c]=v
+    if not np.array_equal(test,go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+        bg2=int(np.argmax(np.bincount(gi2.flatten())))
+        t2=np.full_like(gi2,bg2)
+        for c in range(w2):
+            vals=sorted([int(gi2[r,c]) for r in range(h2) if gi2[r,c]!=bg2])
+            for i,v in enumerate(vals): t2[h2-len(vals)+i,c]=v
+        if not np.array_equal(t2,go2): return None, None
+    def apply(t):
+        gs=[]
+        for tc in t['test']:
+            a=np.array(tc['input']); hh,ww=a.shape
+            bg2=int(np.argmax(np.bincount(a.flatten())))
+            out=np.full_like(a,bg2)
+            for c in range(ww):
+                vals=sorted([int(a[r,c]) for r in range(hh) if a[r,c]!=bg2])
+                for i,v in enumerate(vals): out[hh-len(vals)+i,c]=v
+            gs.append([out.tolist()])
+        return gs
+    result=apply(task)
+    if score_task(task,result): return result, "OG:sort_cols_down"
+    return None, None
+
+
 ALL_OG_SOLVERS = [
     # Original (skip move_to_target — too slow, 0 finds)
     ("keep_by_property", try_keep_by_property),
@@ -5213,7 +5932,59 @@ ALL_OG_SOLVERS = [
     ("flip_rotate", try_flip_rotate_grid),
     ("color_swap", try_color_swap_pair),
     ("fill_enc_const", try_fill_enclosed_const),
+    ("pattern_checker", try_pattern_checker),
+    ("gravity_objects", try_gravity_objects),
+    ("reflect", try_reflect_position),
+    ("scale_by_prop", try_scale_by_property),
+    ("sym_complete", try_symmetry_complete),
+    ("overlay_template", try_overlay_on_template),
+    ("periodic", try_periodic_recolor),
+    ("mirror_tile", try_mirror_tile),
+    ("pixel_to_tile", try_pixel_to_tile),
+    ("stamp_self_color", try_stamp_self_color),
+    ("col_part_or", try_col_partition_overlay),
+    ("color_swap_multi", try_color_swap_pair),
+    ("context_recolor", try_context_recolor),
+    ("sort_cols", try_sort_columns_down),
 ]
+
+def try_color_swap_any(task):
+    """Swap multiple color pairs simultaneously."""
+    pairs=task['train']
+    for p in pairs:
+        if np.array(p['input']).shape!=np.array(p['output']).shape: return None, None
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output']); h,w=gi.shape
+    swaps={}
+    for r in range(h):
+        for c in range(w):
+            ic=int(gi[r,c]); oc=int(go[r,c])
+            if ic!=oc:
+                if ic in swaps and swaps[ic]!=oc: return None, None
+                swaps[ic]=oc
+    if not swaps or len(swaps)>4 or len(set(swaps.values()))<=1: return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output'])
+        t2=gi2.copy()
+        for r in range(gi2.shape[0]):
+            for c in range(gi2.shape[1]):
+                ic=int(gi2[r,c])
+                if ic in swaps: t2[r,c]=swaps[ic]
+        if not np.array_equal(t2,go2): return None, None
+    def mk(sw=swaps):
+        def apply(t):
+            gs=[]
+            for tc in t['test']:
+                a=np.array(tc['input']); out=a.copy()
+                for r in range(a.shape[0]):
+                    for c in range(a.shape[1]):
+                        ic=int(a[r,c])
+                        if ic in sw: out[r,c]=sw[ic]
+                gs.append([out.tolist()])
+            return gs
+        return apply
+    result=mk()(task)
+    if score_task(task,result): return result, "OG:color_swap_multi"
+    return None, None
 
 
 def solve_with_object_graph(task):
