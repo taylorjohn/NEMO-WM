@@ -4187,6 +4187,271 @@ def try_remove_empty_rows_cols(task):
     return None, None
 
 
+def try_cross_stamp_diag(task):
+    """At each non-bg pixel: center→color A, cross lines→color B, diag neighbors→color C."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output']); h,w=gi.shape
+    bg=int(np.argmax(np.bincount(gi.flatten())))
+    pixels=[(r,c) for r in range(h) for c in range(w) if gi[r,c]!=bg]
+    if not pixels or len(pixels)>10: return None, None
+    r0,c0=pixels[0]
+    cc_c=int(go[r0,c0])
+    lc=None
+    for dr,dc in [(0,1),(0,-1),(1,0),(-1,0)]:
+        nr,nc=r0+dr,c0+dc
+        if 0<=nr<h and 0<=nc<w and go[nr,nc]!=bg: lc=int(go[nr,nc]); break
+    if lc is None: return None, None
+    dc_c=None
+    for dr,dc in [(-1,-1),(-1,1),(1,-1),(1,1)]:
+        nr,nc=r0+dr,c0+dc
+        if 0<=nr<h and 0<=nc<w and int(go[nr,nc]) not in (bg,lc,cc_c): dc_c=int(go[nr,nc]); break
+    test=gi.copy()
+    for r,c in pixels:
+        test[r,c]=cc_c
+        for ccc in range(w):
+            if test[r,ccc]==bg: test[r,ccc]=lc
+        for rr in range(h):
+            if test[rr,c]==bg: test[rr,c]=lc
+        if dc_c:
+            for dr,dc in [(-1,-1),(-1,1),(1,-1),(1,1)]:
+                nr,nc=r+dr,c+dc
+                if 0<=nr<h and 0<=nc<w and test[nr,nc]==bg: test[nr,nc]=dc_c
+    if not np.array_equal(test,go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+        bg2=int(np.argmax(np.bincount(gi2.flatten())))
+        px2=[(r,c) for r in range(h2) for c in range(w2) if gi2[r,c]!=bg2]
+        t2=gi2.copy()
+        for r,c in px2:
+            t2[r,c]=cc_c
+            for ccc in range(w2):
+                if t2[r,ccc]==bg2: t2[r,ccc]=lc
+            for rr in range(h2):
+                if t2[rr,c]==bg2: t2[rr,c]=lc
+            if dc_c:
+                for dr,dc in [(-1,-1),(-1,1),(1,-1),(1,1)]:
+                    nr,nc=r+dr,c+dc
+                    if 0<=nr<h2 and 0<=nc<w2 and t2[nr,nc]==bg2: t2[nr,nc]=dc_c
+        if not np.array_equal(t2,go2): return None, None
+    def mk(ccc2=cc_c,lcc=lc,dcc=dc_c):
+        def apply(t):
+            gs=[]
+            for tc in t['test']:
+                a=np.array(tc['input']); hh,ww=a.shape
+                bg2=int(np.argmax(np.bincount(a.flatten())))
+                px=[(r,c) for r in range(hh) for c in range(ww) if a[r,c]!=bg2]
+                out=a.copy()
+                for r,c in px:
+                    out[r,c]=ccc2
+                    for cc2 in range(ww):
+                        if out[r,cc2]==bg2: out[r,cc2]=lcc
+                    for rr in range(hh):
+                        if out[rr,c]==bg2: out[rr,c]=lcc
+                    if dcc:
+                        for dr,dc in [(-1,-1),(-1,1),(1,-1),(1,1)]:
+                            nr,nc=r+dr,c+dc
+                            if 0<=nr<hh and 0<=nc<ww and out[nr,nc]==bg2: out[nr,nc]=dcc
+                gs.append([out.tolist()])
+            return gs
+        return apply
+    result=mk()(task)
+    if score_task(task,result): return result, f"OG:cross_diag"
+    return None, None
+
+
+def try_learned_stamp_around_pixels(task):
+    """Learn what pattern gets added around each non-bg pixel by looking at output diffs."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output']); h,w=gi.shape
+    bg=int(np.argmax(np.bincount(gi.flatten())))
+    pixels=[(r,c) for r in range(h) for c in range(w) if gi[r,c]!=bg]
+    if not pixels or len(pixels)>15: return None, None
+    r0,c0=pixels[0]
+    stamp={}
+    for r in range(max(0,r0-4),min(h,r0+5)):
+        for c in range(max(0,c0-4),min(w,c0+5)):
+            if go[r,c]!=gi[r,c]: stamp[(r-r0,c-c0)]=int(go[r,c])
+    if not stamp: return None, None
+    if len(pixels)>1:
+        r1,c1=pixels[1]
+        stamp2={}
+        for r in range(max(0,r1-4),min(h,r1+5)):
+            for c in range(max(0,c1-4),min(w,c1+5)):
+                if go[r,c]!=gi[r,c]: stamp2[(r-r1,c-c1)]=int(go[r,c])
+        common={k:v for k,v in stamp.items() if k in stamp2 and stamp2[k]==v}
+        if not common: return None, None
+        stamp=common
+    test=gi.copy()
+    for r,c in pixels:
+        for (dr,dc),color in stamp.items():
+            nr,nc=r+dr,c+dc
+            if 0<=nr<h and 0<=nc<w: test[nr,nc]=color
+    if not np.array_equal(test,go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+        bg2=int(np.argmax(np.bincount(gi2.flatten())))
+        px2=[(r,c) for r in range(h2) for c in range(w2) if gi2[r,c]!=bg2]
+        t2=gi2.copy()
+        for r,c in px2:
+            for (dr,dc),color in stamp.items():
+                nr,nc=r+dr,c+dc
+                if 0<=nr<h2 and 0<=nc<w2: t2[nr,nc]=color
+        if not np.array_equal(t2,go2): return None, None
+    def mk(st=stamp):
+        def apply(t):
+            gs=[]
+            for tc in t['test']:
+                a=np.array(tc['input']); hh,ww=a.shape
+                bg2=int(np.argmax(np.bincount(a.flatten())))
+                px=[(r,c) for r in range(hh) for c in range(ww) if a[r,c]!=bg2]
+                out=a.copy()
+                for r,c in px:
+                    for (dr,dc),color in st.items():
+                        nr,nc=r+dr,c+dc
+                        if 0<=nr<hh and 0<=nc<ww: out[nr,nc]=color
+                gs.append([out.tolist()])
+            return gs
+        return apply
+    result=mk()(task)
+    if score_task(task,result): return result, "OG:learned_stamp"
+    return None, None
+
+
+def try_per_color_learned_stamp(task):
+    """Each color gets its own stamp pattern, learned from diffs."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output']); h,w=gi.shape
+    bg=int(np.argmax(np.bincount(gi.flatten())))
+    from collections import defaultdict
+    cp=defaultdict(list)
+    for r in range(h):
+        for c in range(w):
+            if gi[r,c]!=bg: cp[int(gi[r,c])].append((r,c))
+    if len(cp)<1: return None, None
+    color_stamps={}
+    for color,pixels in cp.items():
+        if not pixels: continue
+        r0,c0=pixels[0]; stamp={}
+        for r in range(max(0,r0-5),min(h,r0+6)):
+            for c in range(max(0,c0-5),min(w,c0+6)):
+                if go[r,c]!=gi[r,c]:
+                    dr,dc=r-r0,c-c0; dh=abs(dr)+abs(dc)
+                    closer=any(abs(r-pr)+abs(c-pc)<dh for pc2,pxs in cp.items() for pr,pc in pxs if (pr,pc)!=(r0,c0))
+                    if not closer: stamp[(dr,dc)]=int(go[r,c])
+        if stamp:
+            if len(pixels)>1:
+                r1,c1=pixels[1]; s2={}
+                for r in range(max(0,r1-5),min(h,r1+6)):
+                    for c in range(max(0,c1-5),min(w,c1+6)):
+                        if go[r,c]!=gi[r,c]:
+                            dr,dc=r-r1,c-c1; dh=abs(dr)+abs(dc)
+                            closer=any(abs(r-pr)+abs(c-pc)<dh for pc2,pxs in cp.items() for pr,pc in pxs if (pr,pc)!=(r1,c1))
+                            if not closer: s2[(dr,dc)]=int(go[r,c])
+                common={k:v for k,v in stamp.items() if k in s2 and s2[k]==v}
+                if common: stamp=common
+                else: continue
+            color_stamps[color]=stamp
+    if not color_stamps: return None, None
+    test=gi.copy()
+    for color,pixels in cp.items():
+        if color not in color_stamps: continue
+        for r,c in pixels:
+            for (dr,dc),sc in color_stamps[color].items():
+                nr,nc=r+dr,c+dc
+                if 0<=nr<h and 0<=nc<w: test[nr,nc]=sc
+    if not np.array_equal(test,go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+        bg2=int(np.argmax(np.bincount(gi2.flatten())))
+        cp2=defaultdict(list)
+        for r in range(h2):
+            for c in range(w2):
+                if gi2[r,c]!=bg2: cp2[int(gi2[r,c])].append((r,c))
+        t2=gi2.copy()
+        for color,pixels in cp2.items():
+            if color not in color_stamps: continue
+            for r,c in pixels:
+                for (dr,dc),sc in color_stamps[color].items():
+                    nr,nc=r+dr,c+dc
+                    if 0<=nr<h2 and 0<=nc<w2: t2[nr,nc]=sc
+        if not np.array_equal(t2,go2): return None, None
+    def mk(cs=color_stamps):
+        def apply(t):
+            gs=[]
+            for tc in t['test']:
+                a=np.array(tc['input']); hh,ww=a.shape
+                bg2=int(np.argmax(np.bincount(a.flatten())))
+                cp2=defaultdict(list)
+                for r in range(hh):
+                    for c in range(ww):
+                        if a[r,c]!=bg2: cp2[int(a[r,c])].append((r,c))
+                out=a.copy()
+                for color,pixels in cp2.items():
+                    if color not in cs: continue
+                    for r,c in pixels:
+                        for (dr,dc),sc in cs[color].items():
+                            nr,nc=r+dr,c+dc
+                            if 0<=nr<hh and 0<=nc<ww: out[nr,nc]=sc
+                gs.append([out.tolist()])
+            return gs
+        return apply
+    result=mk()(task)
+    if score_task(task,result): return result, "OG:per_color_stamp"
+    return None, None
+
+
+def try_recolor_by_exact_size(task):
+    """Recolor objects based on exact pixel count → learned output color."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    bg=int(np.argmax(np.bincount(gi.flatten())))
+    objs,_=extract_objects(gi)
+    if not objs: return None, None
+    stoc={}
+    for o in objs:
+        oc=Counter(int(go[r,c]) for r,c in o.cells).most_common(1)[0][0]
+        if o.size in stoc and stoc[o.size]!=oc: return None, None
+        stoc[o.size]=oc
+    if not stoc or all(k==v for k,v in stoc.items()) or len(set(stoc.values()))<=1: return None, None
+    test=gi.copy()
+    for o in objs:
+        if o.size in stoc:
+            for r,c in o.cells: test[r,c]=stoc[o.size]
+    if not np.array_equal(test,go): return None, None
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output'])
+        objs2,_=extract_objects(gi2)
+        t2=gi2.copy()
+        for o in objs2:
+            if o.size in stoc:
+                for r,c in o.cells: t2[r,c]=stoc[o.size]
+        if not np.array_equal(t2,go2): return None, None
+    def mk(s=stoc):
+        def apply(t):
+            gs=[]
+            for tc in t['test']:
+                a=np.array(tc['input'])
+                objs2,_=extract_objects(a)
+                out=a.copy()
+                for o in objs2:
+                    if o.size in s:
+                        for r,c in o.cells: out[r,c]=s[o.size]
+                gs.append([out.tolist()])
+            return gs
+        return apply
+    result=mk()(task)
+    if score_task(task,result): return result, "OG:recolor_exact_size"
+    return None, None
+
+
 ALL_OG_SOLVERS = [
     # Original (skip move_to_target — too slow, 0 finds)
     ("keep_by_property", try_keep_by_property),
@@ -4278,6 +4543,10 @@ ALL_OG_SOLVERS = [
     ("extract_largest2", try_extract_largest_crop),
     ("extract_smallest2", try_extract_smallest_crop),
     ("remove_empty_rc", try_remove_empty_rows_cols),
+    ("cross_diag", try_cross_stamp_diag),
+    ("learned_stamp", try_learned_stamp_around_pixels),
+    ("per_color_stamp", try_per_color_learned_stamp),
+    ("recolor_exact_size", try_recolor_by_exact_size),
 ]
 
 
