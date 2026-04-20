@@ -4983,6 +4983,124 @@ def try_extract_smallest_obj(task):
     return None, None
 
 
+def try_flip_rotate_grid(task):
+    pairs=task['train']
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    for name,fn in [('flip_h',np.fliplr),('flip_v',np.flipud),('rot90',lambda x:np.rot90(x)),('rot180',lambda x:np.rot90(x,2)),('rot270',lambda x:np.rot90(x,3))]:
+        if fn(gi).shape!=go.shape or not np.array_equal(fn(gi),go): continue
+        ok=True
+        for p in pairs[1:]:
+            if not np.array_equal(fn(np.array(p['input'])),np.array(p['output'])): ok=False; break
+        if ok:
+            def mk(f=fn,n=name):
+                def apply(t):
+                    return [[f(np.array(tc['input'])).tolist()] for tc in t['test']]
+                return apply
+            result=mk()(task)
+            if score_task(task,result): return result, f"OG:{name}"
+    return None, None
+
+def try_color_swap_pair(task):
+    pairs=task['train']
+    for p in pairs:
+        if np.array(p['input']).shape!=np.array(p['output']).shape: return None, None
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output']); h,w=gi.shape
+    swaps={}
+    for r in range(h):
+        for c in range(w):
+            ic=int(gi[r,c]); oc=int(go[r,c])
+            if ic!=oc:
+                if ic in swaps and swaps[ic]!=oc: return None, None
+                swaps[ic]=oc
+    if len(swaps)!=2: return None, None
+    keys=list(swaps.keys())
+    if swaps.get(keys[0])!=keys[1] or swaps.get(keys[1])!=keys[0]: return None, None
+    a,b=keys
+    for p in pairs[1:]:
+        gi2=np.array(p['input']); go2=np.array(p['output'])
+        t2=gi2.copy(); t2[gi2==a]=b; t2[gi2==b]=a
+        if not np.array_equal(t2,go2): return None, None
+    def mk(aa=a,bb=b):
+        def apply(t):
+            gs=[]
+            for tc in t['test']:
+                arr=np.array(tc['input']); out=arr.copy()
+                out[arr==aa]=bb; out[arr==bb]=aa
+                gs.append([out.tolist()])
+            return gs
+        return apply
+    result=mk()(task)
+    if score_task(task,result): return result, f"OG:color_swap"
+    return None, None
+
+def try_fill_enclosed_const(task):
+    from scipy.ndimage import label as ndlabel
+    pairs=task['train']
+    for p in pairs:
+        if np.array(p['input']).shape!=np.array(p['output']).shape: return None, None
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output']); h,w=gi.shape
+    bg=int(np.argmax(np.bincount(gi.flatten())))
+    for fill_c in range(10):
+        if fill_c==bg: continue
+        ext=np.zeros((h,w),dtype=bool); stk=[]
+        for r in range(h):
+            for c in [0,w-1]:
+                if gi[r,c]==bg: stk.append((r,c))
+        for c in range(w):
+            for r in [0,h-1]:
+                if gi[r,c]==bg: stk.append((r,c))
+        while stk:
+            r,c=stk.pop()
+            if r<0 or r>=h or c<0 or c>=w or ext[r,c] or gi[r,c]!=bg: continue
+            ext[r,c]=True; stk.extend([(r-1,c),(r+1,c),(r,c-1),(r,c+1)])
+        interior=~ext&(gi==bg)
+        if not interior.any(): continue
+        test=gi.copy(); test[interior]=fill_c
+        if not np.array_equal(test,go): continue
+        ok=True
+        for p in pairs[1:]:
+            gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+            bg2=int(np.argmax(np.bincount(gi2.flatten())))
+            ext2=np.zeros((h2,w2),dtype=bool); stk2=[]
+            for r in range(h2):
+                for c in [0,w2-1]:
+                    if gi2[r,c]==bg2: stk2.append((r,c))
+            for c in range(w2):
+                for r in [0,h2-1]:
+                    if gi2[r,c]==bg2: stk2.append((r,c))
+            while stk2:
+                r,c=stk2.pop()
+                if r<0 or r>=h2 or c<0 or c>=w2 or ext2[r,c] or gi2[r,c]!=bg2: continue
+                ext2[r,c]=True; stk2.extend([(r-1,c),(r+1,c),(r,c-1),(r,c+1)])
+            t2=gi2.copy(); t2[~ext2&(gi2==bg2)]=fill_c
+            if not np.array_equal(t2,go2): ok=False; break
+        if ok:
+            def mk(fc=fill_c):
+                def apply(t):
+                    gs=[]
+                    for tc in t['test']:
+                        a=np.array(tc['input']); hh,ww=a.shape
+                        bg2=int(np.argmax(np.bincount(a.flatten())))
+                        ext2=np.zeros((hh,ww),dtype=bool); stk2=[]
+                        for r in range(hh):
+                            for c in [0,ww-1]:
+                                if a[r,c]==bg2: stk2.append((r,c))
+                        for c in range(ww):
+                            for r in [0,hh-1]:
+                                if a[r,c]==bg2: stk2.append((r,c))
+                        while stk2:
+                            r,c=stk2.pop()
+                            if r<0 or r>=hh or c<0 or c>=ww or ext2[r,c] or a[r,c]!=bg2: continue
+                            ext2[r,c]=True; stk2.extend([(r-1,c),(r+1,c),(r,c-1),(r,c+1)])
+                        out=a.copy(); out[~ext2&(a==bg2)]=fc
+                        gs.append([out.tolist()])
+                    return gs
+                return apply
+            result=mk()(task)
+            if score_task(task,result): return result, f"OG:fill_enc_c{fill_c}"
+    return None, None
+
+
 ALL_OG_SOLVERS = [
     # Original (skip move_to_target — too slow, 0 finds)
     ("keep_by_property", try_keep_by_property),
@@ -5092,6 +5210,9 @@ ALL_OG_SOLVERS = [
     ("transpose", try_transpose_grid),
     ("extract_largest", try_extract_largest_obj),
     ("extract_smallest", try_extract_smallest_obj),
+    ("flip_rotate", try_flip_rotate_grid),
+    ("color_swap", try_color_swap_pair),
+    ("fill_enc_const", try_fill_enclosed_const),
 ]
 
 
