@@ -4452,6 +4452,97 @@ def try_recolor_by_exact_size(task):
     return None, None
 
 
+def try_obj_center_stamp(task):
+    """Learn stamp around each object's CENTER, apply to all same-color objects."""
+    pairs = task['train']
+    for p in pairs:
+        if np.array(p['input']).shape != np.array(p['output']).shape: return None, None
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output']); h,w=gi.shape
+    bg=int(np.argmax(np.bincount(gi.flatten())))
+    objs,_=extract_objects(gi)
+    if not objs: return None, None
+    for o in objs[:3]:
+        cr,cc=int(round(o.center[0])),int(round(o.center[1]))
+        stamp={}
+        for r in range(max(0,cr-6),min(h,cr+7)):
+            for c in range(max(0,cc-6),min(w,cc+7)):
+                if go[r,c]!=gi[r,c]: stamp[(r-cr,c-cc)]=int(go[r,c])
+        if not stamp: continue
+        same=[oo for oo in objs if oo.color==o.color and oo.id!=o.id]
+        if same:
+            o2=same[0]; cr2,cc2=int(round(o2.center[0])),int(round(o2.center[1]))
+            s2={}
+            for r in range(max(0,cr2-6),min(h,cr2+7)):
+                for c in range(max(0,cc2-6),min(w,cc2+7)):
+                    if go[r,c]!=gi[r,c]: s2[(r-cr2,c-cc2)]=int(go[r,c])
+            common={k:v for k,v in stamp.items() if k in s2 and s2[k]==v}
+            if not common: continue
+            stamp=common
+        test=gi.copy()
+        for oo in objs:
+            if oo.color!=o.color: continue
+            cr3,cc3=int(round(oo.center[0])),int(round(oo.center[1]))
+            for (dr,dc),sc in stamp.items():
+                nr,nc=cr3+dr,cc3+dc
+                if 0<=nr<h and 0<=nc<w: test[nr,nc]=sc
+        if np.array_equal(test,go):
+            ok=True
+            for p in pairs[1:]:
+                gi2=np.array(p['input']); go2=np.array(p['output']); h2,w2=gi2.shape
+                objs2,_=extract_objects(gi2); t2=gi2.copy()
+                for oo in objs2:
+                    if oo.color!=o.color: continue
+                    cr3,cc3=int(round(oo.center[0])),int(round(oo.center[1]))
+                    for (dr,dc),sc in stamp.items():
+                        nr,nc=cr3+dr,cc3+dc
+                        if 0<=nr<h2 and 0<=nc<w2: t2[nr,nc]=sc
+                if not np.array_equal(t2,go2): ok=False; break
+            if ok:
+                def mk(st=stamp,oc=o.color):
+                    def apply(t):
+                        gs=[]
+                        for tc in t['test']:
+                            a=np.array(tc['input']); hh,ww=a.shape
+                            objs2,_=extract_objects(a); out=a.copy()
+                            for oo in objs2:
+                                if oo.color!=oc: continue
+                                cr3,cc3=int(round(oo.center[0])),int(round(oo.center[1]))
+                                for (dr,dc),sc in st.items():
+                                    nr,nc=cr3+dr,cc3+dc
+                                    if 0<=nr<hh and 0<=nc<ww: out[nr,nc]=sc
+                            gs.append([out.tolist()])
+                        return gs
+                    return apply
+                result=mk()(task)
+                if score_task(task,result): return result, "OG:obj_center_stamp"
+    return None, None
+
+
+def try_scale_asymmetric(task):
+    """Output = input scaled by sh×sw (possibly different h and w scales)."""
+    pairs = task['train']
+    gi=np.array(pairs[0]['input']); go=np.array(pairs[0]['output'])
+    ih,iw=gi.shape; oh,ow=go.shape
+    if oh<=ih or ow<=iw: return None, None
+    for sh in range(2,8):
+        for sw in range(2,8):
+            if oh==ih*sh and ow==iw*sw:
+                if np.array_equal(np.repeat(np.repeat(gi,sh,axis=0),sw,axis=1),go):
+                    ok=True
+                    for p in pairs[1:]:
+                        gi2=np.array(p['input']); go2=np.array(p['output'])
+                        if go2.shape!=(gi2.shape[0]*sh,gi2.shape[1]*sw) or not np.array_equal(np.repeat(np.repeat(gi2,sh,axis=0),sw,axis=1),go2):
+                            ok=False; break
+                    if ok:
+                        def mk(s1=sh,s2=sw):
+                            def apply(t):
+                                return [[np.repeat(np.repeat(np.array(tc['input']),s1,axis=0),s2,axis=1).tolist()] for tc in t['test']]
+                            return apply
+                        result=mk()(task)
+                        if score_task(task,result): return result, f"OG:scale_{sh}x{sw}"
+    return None, None
+
+
 ALL_OG_SOLVERS = [
     # Original (skip move_to_target — too slow, 0 finds)
     ("keep_by_property", try_keep_by_property),
@@ -4547,6 +4638,8 @@ ALL_OG_SOLVERS = [
     ("learned_stamp", try_learned_stamp_around_pixels),
     ("per_color_stamp", try_per_color_learned_stamp),
     ("recolor_exact_size", try_recolor_by_exact_size),
+    ("obj_center_stamp", try_obj_center_stamp),
+    ("scale_asym", try_scale_asymmetric),
 ]
 
 
