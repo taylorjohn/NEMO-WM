@@ -70,6 +70,49 @@ try:
 except ImportError:
     HAS_OG = False
 
+# NumericalReasoner
+try:
+    from arc_numerical import try_numerical_reasoning
+    HAS_NUM = True
+except ImportError:
+    HAS_NUM = False
+
+# Compositional Search (lightweight version for unified runs)
+HAS_COMPOSE = False
+try:
+    from arc_overnight_compose import PRIMITIVES, apply_chain, score_chain_on_task
+    HAS_COMPOSE = True
+
+    def try_compose_search(task, max_depth=2):
+        """Quick compose search (depth 1-2 only for speed)."""
+        prim_names = list(PRIMITIVES.keys())
+        # Depth 1
+        for p1 in prim_names:
+            if score_chain_on_task([p1], task):
+                return _build_compose_result(task, [p1]), f'COMPOSE:{p1}'
+        # Depth 2
+        for p1 in prim_names:
+            for p2 in prim_names:
+                if score_chain_on_task([p1, p2], task):
+                    return _build_compose_result(task, [p1, p2]), f'COMPOSE:{p1}→{p2}'
+        return None, None
+
+    def _build_compose_result(task, chain):
+        """Build submission format from a successful chain."""
+        import numpy as np
+        results = []
+        for tc in task['test']:
+            gi = np.array(tc['input'])
+            out = apply_chain(gi, chain)
+            if out is not None:
+                results.append([out.tolist()])
+            else:
+                results.append([gi.tolist()])
+        return results
+
+except ImportError:
+    pass
+
 
 # ══════════════════════════════════════════════════════════════════════
 # UNIFIED SOLVER
@@ -213,6 +256,30 @@ class UnifiedSolver:
             except Exception:
                 pass
 
+        # ── METHOD 3.7: NumericalReasoner (count → transform) ──
+        if HAS_NUM:
+            try:
+                num_result, num_method = try_numerical_reasoning(task)
+                if num_result and score_task(task, num_result):
+                    self.stats['NUM'] += 1
+                    if filename:
+                        self.solved_by[filename] = num_method
+                    return num_result, num_method
+            except Exception:
+                pass
+
+        # ── METHOD 3.9: Compositional Search (primitive chaining) ──
+        if HAS_COMPOSE:
+            try:
+                comp_result, comp_method = try_compose_search(task)
+                if comp_result and score_task(task, comp_result):
+                    self.stats['COMPOSE'] += 1
+                    if filename:
+                        self.solved_by[filename] = comp_method
+                    return comp_result, comp_method
+            except Exception:
+                pass
+
         # ── METHOD 4: JEPA World Model ──
         if self.jepa_solver:
             try:
@@ -324,6 +391,8 @@ def run_benchmark(data_dir, limit=None, verbose=False,
     print(f"  Mental Models: {'Yes' if HAS_MM else 'No'}")
     print(f"  Advanced Ops: {'Yes (' + str(len(ALL_ADVANCED_OPS)) + ' ops)' if HAS_ADV else 'No'}")
     print(f"  Object Graph: {'Yes' if HAS_OG else 'No'}")
+    print(f"  NumericalReasoner: {'Yes (357 combos)' if HAS_NUM else 'No'}")
+    print(f"  Compositional Search: {'Yes (58 prims, depth 2)' if HAS_COMPOSE else 'No'}")
     print(f"  JEPA: {'Yes' if HAS_JEPA and enable_jepa else 'No'}")
     print(f"  Synth Proposer: {'Yes' if HAS_SYNTH and enable_synth else 'No'}")
     print("=" * 70)
