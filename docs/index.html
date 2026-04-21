@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <link rel="canonical" href="https://nemo-wm.com/">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NeMo-WM — Neuromodulated World Model | ARC-AGI-2 Solver</title>
+<title>NeMo-WM — Neuromodulated World Model for Robot Navigation</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&display=swap" rel="stylesheet">
 <style>
@@ -1140,9 +1140,6 @@ footer {
   .nav-cta { display: none; }
   .nav-hamburger { display: flex; }
 
-  /* ARC section responsive */
-  #arc div[style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
-
   /* Hero */
   .hero { padding: 7rem 1.25rem 4rem; }
   .hero h1 { font-size: clamp(2rem, 8vw, 3.5rem); }
@@ -1239,28 +1236,31 @@ footer {
 <nav>
   <div class="nav-logo">NeMo<span>-WM</span></div>
   <ul class="nav-links">
-    <li><a href="#arc">ARC-AGI-2</a></li>
-    <li><a href="#capabilities">20 Questions</a></li>
+    <li><a href="#extend">Extend</a></li>
     <li><a href="#results">Results</a></li>
     <li><a href="#mechanism">Mechanism</a></li>
+    <li><a href="#probe">Probe</a></li>
+    <li><a href="#audit">Auditability</a></li>
     <li><a href="#applications">Applications</a></li>
+    <li><a href="#sustainability">Power</a></li>
     <li><a href="#about">About</a></li>
   </ul>
-  <a href="arc-solver.html" class="nav-cta" style="margin-right:0.75rem;border-color:var(--gold);color:var(--gold)">🧩 ARC Solver</a><a href="math.html" class="nav-cta" style="margin-right:0.75rem;border-color:var(--green);color:var(--green)">📐 Math</a><a href="showcase.html" class="nav-cta" style="margin-right:0.75rem;border-color:var(--accent3);color:var(--accent3)">🎬 Demos</a><a href="https://github.com/taylorjohn/NEMO-WM" class="nav-cta" target="_blank">↗ GitHub</a>
+  <a href="coding.html" class="nav-cta" style="margin-right:0.75rem;border-color:var(--accent2);color:var(--accent2)" target="_blank">🧠 Coding Agent</a><a href="dashboard.html" class="nav-cta" style="margin-right:0.75rem;border-color:var(--gold);color:var(--gold)" target="_blank">⚡ Dashboard</a><a href="https://github.com/taylorjohn/NEMO-WM" class="nav-cta" target="_blank">↗ GitHub</a>
 <button class="nav-hamburger" id="hamburger" aria-label="Menu" onclick="toggleMenu()">
   <span></span><span></span><span></span>
 </button>
 </nav>
 <div class="nav-drawer" id="navDrawer">
-  <a href="#arc" onclick="closeMenu()">ARC-AGI-2 Solver</a>
-  <a href="arc-solver.html" onclick="closeMenu()">🧩 ARC Solver Page</a>
-  <a href="math.html" onclick="closeMenu()">📐 Math Curriculum</a>
-  <a href="#capabilities" onclick="closeMenu()">20 Questions</a>
+  <a href="#extend" onclick="closeMenu()">Extend</a>
   <a href="#results" onclick="closeMenu()">Results</a>
   <a href="#mechanism" onclick="closeMenu()">Mechanism</a>
+  <a href="#probe" onclick="closeMenu()">Probe</a>
+  <a href="#audit" onclick="closeMenu()">Auditability</a>
   <a href="#applications" onclick="closeMenu()">Applications</a>
+  <a href="#sustainability" onclick="closeMenu()">Power</a>
   <a href="#about" onclick="closeMenu()">About</a>
-  <a href="showcase.html" onclick="closeMenu()">🎬 Demos</a>
+  <a href="coding.html" target="_blank">🧠 Coding Agent</a>
+  <a href="dashboard.html" target="_blank">⚡ Live Dashboard</a>
   <a href="https://github.com/taylorjohn/NEMO-WM" target="_blank">↗ GitHub</a>
 </div>
 
@@ -1268,50 +1268,43 @@ footer {
 <div class="hero">
   <div class="hero-bg"></div>
   <div class="hero-grid"></div>
-  <div class="hero-tag"><span class="live-dot"></span> April 2026 · v21.0 · arXiv submitted · ARC-AGI-2: 105/1000 (10.5%)</div>
-  <h1>The World Model That <em>Knows</em> Itself</h1>
+  <div class="hero-tag"><span class="live-dot"></span> Preprint — April 2026 · v18.0 · arXiv endorsed · Submitting</div>
+  <h1>The World Model That <em>Teaches</em> Itself</h1>
   <p class="hero-sub">
-    20 introspective questions. 105/1000 ARC-AGI-2 at $0/task. Grounded language (648 words, no LLM). 
-    Math curriculum (10/10 levels). Inverted-U neuromodulation. 1.2M params · CPU only · 8W inference.
+    JEPA fails at 4Hz — adjacent frames are too similar to learn from.
+    NeMo-WM replaces the gradient entirely with eight biological reward signals.
+    AUROC 0.9999 · 26K params · 0.34ms · ~$2,000 edge hardware · 8W inference. 1411× faster than V-JEPA 2-L on identical hardware.
   </p>
   <div class="hero-actions">
-    <a href="#arc" class="btn-primary">↓ ARC-AGI-2 Results</a>
+    <a href="https://arxiv.org/search/?searchtype=author&query=Taylor+John&start=0" class="btn-primary" target="_blank">↓ Paper (arXiv — submitting)</a>
     <a href="https://github.com/taylorjohn/NEMO-WM" class="btn-ghost" target="_blank">↗ View on GitHub</a>
-    <a href="#results" class="btn-ghost">→ All Results</a>
-    <a href="math.html" class="btn-ghost" style="border-color:var(--green);color:var(--green)">📐 Math</a>
+    <a href="#results" class="btn-ghost">→ See Results</a>
+    <a href="dashboard.html" target="_blank" class="btn-ghost" style="border-color:var(--gold);color:var(--gold)">⚡ Live Dashboard</a>
   </div>
   <div class="stat-strip">
     <div class="stat">
-      <div class="stat-val">105</div>
-      <div class="stat-label">ARC-AGI-2 Tasks</div>
+      <div class="stat-val">26<span>K</span></div>
+      <div class="stat-label">Parameters</div>
     </div>
     <div class="stat">
-      <div class="stat-val">$0</div>
-      <div class="stat-label">Per Task Cost</div>
+      <div class="stat-val">0.34<span>ms</span></div>
+      <div class="stat-label">Per Frame (NPU)</div>
     </div>
     <div class="stat">
-      <div class="stat-val">20</div>
-      <div class="stat-label">Introspective Qs</div>
+      <div class="stat-val">0.9999</div>
+      <div class="stat-label">AUROC k=64</div>
     </div>
     <div class="stat">
-      <div class="stat-val">648</div>
-      <div class="stat-label">Grounded Words</div>
-    </div>
-    <div class="stat">
-      <div class="stat-val">0.997</div>
-      <div class="stat-label">AUROC (26K params)</div>
-    </div>
-    <div class="stat">
-      <div class="stat-val">100<span>%</span></div>
-      <div class="stat-label">Comprehension</div>
+      <div class="stat-val">7</div>
+      <div class="stat-label">Neuro Signals</div>
     </div>
     <div class="stat">
       <div class="stat-val">8<span>W</span></div>
       <div class="stat-label">Inference Power</div>
     </div>
     <div class="stat">
-      <div class="stat-val">CPU</div>
-      <div class="stat-label">No GPU Required</div>
+      <div class="stat-val">$800</div>
+      <div class="stat-label">Full Training Cost</div>
     </div>
   </div>
 </div>
@@ -1319,260 +1312,35 @@ footer {
 <!-- TICKER -->
 <div class="ticker-wrap">
   <div class="ticker">
-    <span>Introspective Qs <b>20/20</b></span>
-    <span>Language <b>648 words · 100%</b></span>
-    <span>Word lookup <b>0.21μs · 4.7M Hz</b></span>
-    <span>VPP <b>+25.1% ± 2.7%</b></span>
-    <span>DiVeQ <b>−68% loss</b></span>
-    <span>Codebook init <b>36.4× discrimination</b></span>
-    <span>Inverted-U <b>DA optimal=0.4</b></span>
-    <span>Bidirectional replay <b>24-step chains</b></span>
-    <span>Physics <b>3/3 R²=1.0</b></span>
-    <span>Mood states <b>16 emergent</b></span>
-    <span>AUROC <b>0.997 (26K params)</b></span>
-    <span>PointMaze <b>100% SR</b></span>
+    <span>AUROC k=64 <b>0.9999</b></span>
+    <span>AUROC k=32 <b>0.9997</b></span>
+    <span>AUROC k=16 <b>0.9972</b></span>
+    <span>MVTec <b>15/15 PASS</b></span>
+    <span>Params <b>26K</b></span>
+    <span>Latency <b>0.34ms</b></span>
+    <span>Cardiac AUROC <b>0.7730</b></span>
+    <span>SMAP AUROC <b>0.7730</b></span>
+    <span>V-JEPA 2-L <b>1849ms</b> vs NeMo-WM <b>1.31ms</b></span>
+    <span>lin_vel p-value <b>5×10⁻⁵⁰</b></span>
+    <span>yaw p-value <b>10⁻¹⁸</b></span>
+    <span>Speedup vs V-JEPA 2-L <b>1411×</b></span>
     <!-- duplicate for infinite loop -->
-    <span>Introspective Qs <b>20/20</b></span>
-    <span>Language <b>648 words · 100%</b></span>
-    <span>Word lookup <b>0.21μs · 4.7M Hz</b></span>
-    <span>VPP <b>+25.1% ± 2.7%</b></span>
-    <span>DiVeQ <b>−68% loss</b></span>
-    <span>Codebook init <b>36.4× discrimination</b></span>
-    <span>Inverted-U <b>DA optimal=0.4</b></span>
-    <span>Bidirectional replay <b>24-step chains</b></span>
-    <span>Physics <b>3/3 R²=1.0</b></span>
-    <span>Mood states <b>16 emergent</b></span>
-    <span>AUROC <b>0.997 (26K params)</b></span>
-    <span>PointMaze <b>100% SR</b></span>
+    <span>AUROC k=64 <b>0.9999</b></span>
+    <span>AUROC k=32 <b>0.9997</b></span>
+    <span>AUROC k=16 <b>0.9972</b></span>
+    <span>MVTec <b>15/15 PASS</b></span>
+    <span>Params <b>26K</b></span>
+    <span>Latency <b>0.34ms</b></span>
+    <span>Cardiac AUROC <b>0.7730</b></span>
+    <span>SMAP AUROC <b>0.7730</b></span>
+    <span>V-JEPA 2-L <b>1849ms</b> vs NeMo-WM <b>1.31ms</b></span>
+    <span>lin_vel p-value <b>5×10⁻⁵⁰</b></span>
+    <span>yaw p-value <b>10⁻¹⁸</b></span>
+    <span>Speedup vs V-JEPA 2-L <b>1411×</b></span>
   </div>
 </div>
 
 <!-- MECHANISM -->
-
-<!-- ARC-AGI-2 SOLVER SHOWCASE -->
-<section id="arc" style="padding:5rem 3rem;background:var(--bg2);border-top:1px solid var(--border)">
-  <div style="max-width:1100px;margin:0 auto">
-    <div style="text-align:center;margin-bottom:0.5rem">
-      <span style="font-family:var(--mono);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.15em;color:var(--gold);background:rgba(245,158,11,0.1);padding:0.3rem 0.8rem;border-radius:4px;border:1px solid rgba(245,158,11,0.2)">ARC-AGI-2 · LLM-Free Efficiency Frontier</span>
-    </div>
-    <h2 style="font-size:2.2rem;text-align:center;margin:1rem 0 0.5rem;color:var(--text)">
-      105/1000 at $0/task
-    </h2>
-    <p style="text-align:center;color:var(--text2);font-size:0.95rem;margin-bottom:3rem;max-width:700px;margin-left:auto;margin-right:auto">
-      The highest LLM-free score ever reported on ARC-AGI-2. Pure symbolic reasoning: 112 OG solvers + NumericalReasoner + compositional search. Zero neural networks. 91ms/task.
-    </p>
-
-    <!-- Score + comparison -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-bottom:3rem">
-      <!-- Big score -->
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:2.5rem;text-align:center">
-        <div style="font-family:var(--mono);font-size:4rem;font-weight:700;background:linear-gradient(135deg,var(--gold),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent">105</div>
-        <div style="font-family:var(--mono);font-size:1.2rem;color:var(--text2)">/1000 tasks solved</div>
-        <div style="margin-top:1.5rem;display:flex;justify-content:center;gap:2rem">
-          <div><div style="font-family:var(--mono);font-weight:700;color:var(--green)">$0</div><div style="font-size:0.7rem;color:var(--text3)">per task</div></div>
-          <div><div style="font-family:var(--mono);font-weight:700;color:var(--accent2)">91ms</div><div style="font-size:0.7rem;color:var(--text3)">per task</div></div>
-          <div><div style="font-family:var(--mono);font-weight:700;color:var(--accent3)">0</div><div style="font-size:0.7rem;color:var(--text3)">LLM calls</div></div>
-        </div>
-        <div style="margin-top:1rem">
-          <a href="arc-solver.html" style="font-family:var(--mono);font-size:0.75rem;color:var(--gold);text-decoration:none;border:1px solid rgba(245,158,11,0.3);padding:0.4rem 1rem;border-radius:6px">→ Full ARC Solver Page</a>
-        </div>
-      </div>
-
-      <!-- Leaderboard comparison -->
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:1.5rem;font-family:var(--mono);font-size:0.75rem">
-        <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text3);margin-bottom:1rem">ARC-AGI-2 Leaderboard</div>
-        <div style="display:flex;flex-direction:column;gap:0.5rem">
-          <div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">Imbue + Gemini 3.1</span><span>95.1%</span><span style="color:var(--text3)">$8.71</span></div>
-          <div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">Poetiq Refinement</span><span>54%</span><span style="color:var(--text3)">$30.57</span></div>
-          <div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">Claude Opus 4.5</span><span>37.6%</span><span style="color:var(--text3)">$2.20</span></div>
-          <div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">NVARC (Kaggle 1st)</span><span>24%</span><span style="color:var(--text3)">~$0.20</span></div>
-          <div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">MindsAI (Kaggle 3rd)</span><span>12.6%</span><span style="color:var(--text3)">~$0.10</span></div>
-          <div style="display:flex;justify-content:space-between;padding:0.5rem 0.6rem;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:6px"><span style="color:var(--gold);font-weight:600">NeMo-WM</span><span style="color:var(--gold);font-weight:700">10.5%</span><span style="color:var(--green);font-weight:700">$0.00</span></div>
-          <div style="display:flex;justify-content:space-between;padding:0.4rem 0"><span style="color:var(--text3)">Pure DSL ceiling</span><span style="color:var(--text3)">&lt;5%</span><span style="color:var(--text3)">$0</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Solver families -->
-    <h3 style="font-family:var(--mono);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--accent2);margin-bottom:1.5rem">Solver Architecture</h3>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0.8rem;margin-bottom:3rem">
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1rem;border-top:3px solid var(--accent)">
-        <div style="font-weight:600;margin-bottom:0.3rem">S1 Phase 2</div>
-        <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text3)">37 strategies · 54 tasks</div>
-      </div>
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1rem;border-top:3px solid var(--accent3)">
-        <div style="font-weight:600;margin-bottom:0.3rem">Object Graph</div>
-        <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text3)">112 solvers · 33 tasks</div>
-      </div>
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1rem;border-top:3px solid var(--green)">
-        <div style="font-weight:600;margin-bottom:0.3rem">Advanced Ops</div>
-        <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text3)">50 operations · 14 tasks</div>
-      </div>
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1rem;border-top:3px solid var(--gold)">
-        <div style="font-weight:600;margin-bottom:0.3rem">NumericalReasoner</div>
-        <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text3)">357 combos · count→transform</div>
-      </div>
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1rem;border-top:3px solid var(--red)">
-        <div style="font-weight:600;margin-bottom:0.3rem">Compositional Search</div>
-        <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text3)">58 prims · depth-3 chaining</div>
-      </div>
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1rem;border-top:3px solid var(--accent2)">
-        <div style="font-weight:600;margin-bottom:0.3rem">Mental Models</div>
-        <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text3)">geometric compose · 4 tasks</div>
-      </div>
-    </div>
-
-    <!-- Math + Knowledge -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem">
-      <!-- Math -->
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:1.5rem">
-        <div style="display:flex;align-items:center;gap:0.8rem;margin-bottom:1rem">
-          <span style="font-size:1.8rem">📐</span>
-          <div>
-            <div style="font-weight:600">Math Curriculum</div>
-            <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text3)">10 levels · 500/500 DeepMind benchmark</div>
-          </div>
-        </div>
-        <div style="display:flex;gap:0.3rem;flex-wrap:wrap;margin-bottom:1rem">
-          <span style="font-size:0.65rem;padding:0.15rem 0.4rem;background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.2);border-radius:3px;color:#4CAF50">★ Counting</span>
-          <span style="font-size:0.65rem;padding:0.15rem 0.4rem;background:rgba(33,150,243,0.1);border:1px solid rgba(33,150,243,0.2);border-radius:3px;color:#2196F3">★ Arithmetic</span>
-          <span style="font-size:0.65rem;padding:0.15rem 0.4rem;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.2);border-radius:3px;color:#FF9800">★ Algebra</span>
-          <span style="font-size:0.65rem;padding:0.15rem 0.4rem;background:rgba(156,39,176,0.1);border:1px solid rgba(156,39,176,0.2);border-radius:3px;color:#9C27B0">★ Geometry</span>
-          <span style="font-size:0.65rem;padding:0.15rem 0.4rem;background:rgba(255,87,34,0.1);border:1px solid rgba(255,87,34,0.2);border-radius:3px;color:#FF5722">★ Combinatorics</span>
-        </div>
-        <a href="math.html" style="font-family:var(--mono);font-size:0.75rem;color:var(--green);text-decoration:none">→ Interactive Math Showcase</a>
-      </div>
-
-      <!-- Knowledge -->
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:1.5rem">
-        <div style="display:flex;align-items:center;gap:0.8rem;margin-bottom:1rem">
-          <span style="font-size:1.8rem">🧠</span>
-          <div>
-            <div style="font-weight:600">Knowledge Base</div>
-            <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text3)">7 diagnostic suites · all passing</div>
-          </div>
-        </div>
-        <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text2);line-height:1.8">
-          13 object attributes · 13 spatial relations<br>
-          8 role types · 23 DSA patterns (2,913 LeetCode)<br>
-          D4 group theory · RCC-8 · Rectangle Algebra<br>
-          30-dim feature vectors · 58 compose primitives
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- SPRINT D6++ CAPABILITIES -->
-<section id="capabilities" style="padding:5rem 3rem;background:var(--bg);border-top:1px solid var(--border)">
-  <div style="max-width:1100px;margin:0 auto">
-    <h2 style="font-size:2rem;text-align:center;margin-bottom:0.5rem;color:var(--text)">
-      The Introspective World Model
-    </h2>
-    <p style="text-align:center;color:var(--text2);font-size:1rem;margin-bottom:3rem;max-width:700px;margin-left:auto;margin-right:auto">
-      20 introspective questions. 5 neuromodulators with inverted-U dose-response. Grounded language without LLM. Counterfactual reasoning. Bidirectional replay. All on CPU.
-    </p>
-
-    <!-- 20 Questions grid -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin-bottom:3rem">
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.25rem">
-        <div style="color:var(--accent);font-size:0.75rem;font-family:var(--mono);margin-bottom:0.5rem">PERCEPTION · Q1–Q4</div>
-        <div style="color:var(--text);font-size:0.85rem">Where am I? What does it look like? Is something wrong? Where is [text]?</div>
-        <div style="color:var(--accent2);font-size:0.75rem;margin-top:0.5rem">0.997 AUROC · 9/9 STRONG</div>
-      </div>
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.25rem">
-        <div style="color:var(--accent);font-size:0.75rem;font-family:var(--mono);margin-bottom:0.5rem">IMAGINATION · Q5–Q8</div>
-        <div style="color:var(--text);font-size:0.85rem">If I do X? Next 8 seconds? How far to plan? Trust my prediction?</div>
-        <div style="color:var(--accent2);font-size:0.75rem;margin-top:0.5rem">Superlinear ACh · α switching</div>
-      </div>
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.25rem">
-        <div style="color:var(--accent);font-size:0.75rem;font-family:var(--mono);margin-bottom:0.5rem">DECISION · Q9–Q11</div>
-        <div style="color:var(--text);font-size:0.85rem">Best action? Been here before? New kind of place?</div>
-        <div style="color:var(--accent2);font-size:0.75rem;margin-top:0.5rem">V_neuro · 0.076ms retrieval</div>
-      </div>
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.25rem">
-        <div style="color:var(--accent);font-size:0.75rem;font-family:var(--mono);margin-bottom:0.5rem">LANGUAGE · Q12–Q14</div>
-        <div style="color:var(--text);font-size:0.85rem">What does this word mean? Can I understand this? What mood am I in?</div>
-        <div style="color:var(--accent2);font-size:0.75rem;margin-top:0.5rem">648 words · 100% · 16 moods</div>
-      </div>
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.25rem">
-        <div style="color:var(--accent);font-size:0.75rem;font-family:var(--mono);margin-bottom:0.5rem">META-COGNITION · Q15–Q20</div>
-        <div style="color:var(--text);font-size:0.85rem">Does language help? WM available? Fatigued? What if I had done X? High-level plan?</div>
-        <div style="color:var(--accent2);font-size:0.75rem;margin-top:0.5rem">Δ=+0.454 · K=8→2 · 17:1 compress</div>
-      </div>
-    </div>
-
-    <!-- Key breakthroughs -->
-    <h3 style="font-size:1.2rem;text-align:center;margin-bottom:2rem;color:var(--text)">Sprint D6++ Breakthroughs (April 2026)</h3>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem;margin-bottom:2rem">
-
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.5rem">
-        <div style="font-size:1.5rem;margin-bottom:0.5rem">🧠</div>
-        <h4 style="color:var(--accent);font-size:0.95rem;margin-bottom:0.5rem">Inverted-U Neuromodulation</h4>
-        <p style="color:var(--text2);font-size:0.8rem;line-height:1.5">First AI world model with inverted-U dose-response for all 5 neuromodulators. DA=0.0 → apathy. DA=0.4 → optimal. DA=1.0 → distractibility. Matches primate PFC data (Arnsten 2021).</p>
-        <div style="color:var(--accent2);font-size:0.72rem;font-family:var(--mono);margin-top:0.75rem">WM: K=8 → K=5 → K=2 under stress</div>
-      </div>
-
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.5rem">
-        <div style="font-size:1.5rem;margin-bottom:0.5rem">🗣️</div>
-        <h4 style="color:var(--accent);font-size:0.95rem;margin-bottom:0.5rem">Grounded Language (No LLM)</h4>
-        <p style="color:var(--text2);font-size:0.8rem;line-height:1.5">648 words across 15 domains. 100% comprehension. Plateau proof: 37M hearings → 65.1% ceiling broken by stemming, not more data. Word lookup at 4.7 million Hz.</p>
-        <div style="color:var(--accent2);font-size:0.72rem;font-family:var(--mono);margin-top:0.75rem">sim(gravity, falling) = +0.997</div>
-      </div>
-
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.5rem">
-        <div style="font-size:1.5rem;margin-bottom:0.5rem">🔄</div>
-        <h4 style="color:var(--accent);font-size:0.95rem;margin-bottom:0.5rem">Bidirectional Replay</h4>
-        <p style="color:var(--text2);font-size:0.8rem;line-height:1.5">Forward replay for consolidation. Backward replay for causal credit assignment. 24-step causal chains identified during sleep. Foster & Wilson 2006.</p>
-        <div style="color:var(--accent2);font-size:0.72rem;font-family:var(--mono);margin-top:0.75rem">5 fwd + 5 bwd per sleep cycle</div>
-      </div>
-
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.5rem">
-        <div style="font-size:1.5rem;margin-bottom:0.5rem">🤔</div>
-        <h4 style="color:var(--accent);font-size:0.95rem;margin-bottom:0.5rem">Counterfactual Reasoning (Q18)</h4>
-        <p style="color:var(--text2);font-size:0.8rem;line-height:1.5">"What if I had gone left?" Branches from episodic memory at high-DA decision points, rolls out alternatives, computes regret. 8/8 tests passed.</p>
-        <div style="color:var(--accent2);font-size:0.72rem;font-family:var(--mono);margin-top:0.75rem">Best alternative identified + regret signal</div>
-      </div>
-
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.5rem">
-        <div style="font-size:1.5rem;margin-bottom:0.5rem">🏗️</div>
-        <h4 style="color:var(--accent);font-size:0.95rem;margin-bottom:0.5rem">Hierarchical Schema Planning (Q19)</h4>
-        <p style="color:var(--text2);font-size:0.8rem;line-height:1.5">Plan at schema level (which "type of place"), execute at action level. 17:1 compression ratio. Fast replanning when schemas are blocked.</p>
-        <div style="color:var(--accent2);font-size:0.72rem;font-family:var(--mono);margin-top:0.75rem">1,450 transitions · 8 regions · BFS+beam</div>
-      </div>
-
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.5rem">
-        <div style="font-size:1.5rem;margin-bottom:0.5rem">📊</div>
-        <h4 style="color:var(--accent);font-size:0.95rem;margin-bottom:0.5rem">VPP Belief Augmentation</h4>
-        <p style="color:var(--text2);font-size:0.8rem;line-height:1.5">Sparse proprioceptive hints improve visual policy by +25.1% ± 2.7% on real human demos. Only 9.6% parameter overhead. Consistent across 3 runs.</p>
-        <div style="color:var(--accent2);font-size:0.72rem;font-family:var(--mono);margin-top:0.75rem">25,650 samples · 206 episodes</div>
-      </div>
-
-    </div>
-
-    <!-- Comparison table -->
-    <div style="overflow-x:auto;margin-top:2rem">
-      <table style="width:100%;border-collapse:collapse;font-size:0.8rem;font-family:var(--mono)">
-        <tr style="border-bottom:1px solid var(--border)">
-          <th style="text-align:left;padding:0.75rem;color:var(--text2)">Capability</th>
-          <th style="text-align:center;padding:0.75rem;color:var(--accent)">NeMo-WM</th>
-          <th style="text-align:center;padding:0.75rem;color:var(--text2)">DreamerV3</th>
-          <th style="text-align:center;padding:0.75rem;color:var(--text2)">Diff. Policy</th>
-          <th style="text-align:center;padding:0.75rem;color:var(--text2)">DINO-WM</th>
-        </tr>
-        <tr style="border-bottom:1px solid var(--border)"><td style="padding:0.5rem">Introspective Qs</td><td style="text-align:center;color:var(--accent)"><b>20/20</b></td><td style="text-align:center;color:var(--text2)">2/20</td><td style="text-align:center;color:var(--text2)">0/20</td><td style="text-align:center;color:var(--text2)">1/20</td></tr>
-        <tr style="border-bottom:1px solid var(--border)"><td style="padding:0.5rem">Inverted-U Neuromod</td><td style="text-align:center;color:var(--accent)"><b>5 signals</b></td><td style="text-align:center;color:var(--text2)">—</td><td style="text-align:center;color:var(--text2)">—</td><td style="text-align:center;color:var(--text2)">—</td></tr>
-        <tr style="border-bottom:1px solid var(--border)"><td style="padding:0.5rem">Grounded Language</td><td style="text-align:center;color:var(--accent)"><b>648 words</b></td><td style="text-align:center;color:var(--text2)">—</td><td style="text-align:center;color:var(--text2)">—</td><td style="text-align:center;color:var(--text2)">—</td></tr>
-        <tr style="border-bottom:1px solid var(--border)"><td style="padding:0.5rem">Counterfactual</td><td style="text-align:center;color:var(--accent)"><b>Q18</b></td><td style="text-align:center;color:var(--text2)">—</td><td style="text-align:center;color:var(--text2)">—</td><td style="text-align:center;color:var(--text2)">—</td></tr>
-        <tr style="border-bottom:1px solid var(--border)"><td style="padding:0.5rem">Hierarchical Planning</td><td style="text-align:center;color:var(--accent)"><b>17:1</b></td><td style="text-align:center;color:var(--text2)">—</td><td style="text-align:center;color:var(--text2)">—</td><td style="text-align:center;color:var(--text2)">—</td></tr>
-        <tr style="border-bottom:1px solid var(--border)"><td style="padding:0.5rem">Hardware</td><td style="text-align:center;color:var(--accent)"><b>CPU</b></td><td style="text-align:center;color:var(--text2)">GPU</td><td style="text-align:center;color:var(--text2)">GPU</td><td style="text-align:center;color:var(--text2)">GPU</td></tr>
-        <tr><td style="padding:0.5rem">Parameters</td><td style="text-align:center;color:var(--accent)"><b>1.2M</b></td><td style="text-align:center;color:var(--text2)">~200M</td><td style="text-align:center;color:var(--text2)">~263M</td><td style="text-align:center;color:var(--text2)">~5M</td></tr>
-      </table>
-    </div>
-
-  </div>
-</section>
-
 <section id="extend" style="padding:7rem 3rem;background:var(--bg2);position:relative;overflow:hidden;border-top:1px solid var(--border)">
 
   <!-- Background grid decoration -->
@@ -3219,9 +2987,81 @@ document.getElementById('navDrawer').addEventListener('click', function(e) {
         <div style="font-family:var(--mono);font-size:0.65rem;color:var(--text3);margin-top:4px">Novelty response</div>
       </div>
     </div>
-    <a href="arc-solver.html" style="display:inline-flex;align-items:center;gap:0.75rem;font-family:var(--mono);font-size:0.8rem;letter-spacing:0.08em;text-transform:uppercase;padding:0.9rem 2.25rem;background:rgba(245,158,11,0.1);border:1px solid var(--gold);color:var(--gold);text-decoration:none;border-radius:8px;transition:all 0.2s" onmouseover="this.style.background='rgba(245,158,11,0.2)'" onmouseout="this.style.background='rgba(245,158,11,0.1)'">
+    <a href="dashboard.html" target="_blank" style="display:inline-flex;align-items:center;gap:0.75rem;font-family:var(--mono);font-size:0.8rem;letter-spacing:0.08em;text-transform:uppercase;padding:0.9rem 2.25rem;background:rgba(245,158,11,0.1);border:1px solid var(--gold);color:var(--gold);text-decoration:none;border-radius:8px;transition:all 0.2s" onmouseover="this.style.background='rgba(245,158,11,0.2)'" onmouseout="this.style.background='rgba(245,158,11,0.1)'">
       ⚡ Open Live Dashboard →
     </a>
+  </div>
+</section>
+
+<!-- ═══ CODING AGENT SECTION ═══ -->
+<section id="coding" style="border-top:1px solid var(--border)">
+  <div class="section-tag">Autonomous Coder</div>
+  <div class="section-title" style="margin-bottom:1.5rem">NeMo-WM Writes Code</div>
+  <div class="section-body" style="margin-bottom:2.5rem">
+    Beyond robot navigation, NeMo-WM is an autonomous coding agent. It reads a problem, identifies the algorithm from 21 DSA patterns, selects the right template variant from 63 options, and generates working code in 8 languages — with zero LLM calls.
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.5rem;margin-bottom:2.5rem">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;text-align:center">
+      <div style="font-family:var(--mono);font-size:2.2rem;font-weight:700;color:var(--accent)">94%</div>
+      <div style="font-size:0.8rem;color:var(--text3);margin-top:0.25rem">Pattern accuracy on 35 hard LC problems</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;text-align:center">
+      <div style="font-family:var(--mono);font-size:2.2rem;font-weight:700;color:var(--accent2)">91%</div>
+      <div style="font-size:0.8rem;color:var(--text3);margin-top:0.25rem">Template selection (specific variant)</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;text-align:center">
+      <div style="font-family:var(--mono);font-size:2.2rem;font-weight:700;color:var(--green)">0</div>
+      <div style="font-size:0.8rem;color:var(--text3);margin-top:0.25rem">LLM / API calls required</div>
+    </div>
+  </div>
+
+  <!-- Mini code example -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start">
+    <div>
+      <div style="font-family:var(--mono);font-size:0.7rem;color:var(--accent2);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1rem">The Process</div>
+      <div style="font-size:0.85rem;color:var(--text2);line-height:1.8">
+        <div style="margin-bottom:0.5rem"><span style="color:var(--accent);font-weight:700">1.</span> <strong>Read</strong> — parse problem text, detect input/output types</div>
+        <div style="margin-bottom:0.5rem"><span style="color:var(--accent);font-weight:700">2.</span> <strong>Expand</strong> — synonym engine: "add up" → "two sum", "pair sum"</div>
+        <div style="margin-bottom:0.5rem"><span style="color:var(--accent);font-weight:700">3.</span> <strong>Detect</strong> — 20+ structural signals: needs_dp, needs_heap, is_sorted...</div>
+        <div style="margin-bottom:0.5rem"><span style="color:var(--accent);font-weight:700">4.</span> <strong>Match</strong> — score 21 patterns with boost/penalty system</div>
+        <div style="margin-bottom:0.5rem"><span style="color:var(--accent);font-weight:700">5.</span> <strong>Select</strong> — pick exact template: not just "DP" but "coin_change"</div>
+        <div style="margin-bottom:0.5rem"><span style="color:var(--accent);font-weight:700">6.</span> <strong>Generate</strong> — output working code in the target language</div>
+      </div>
+      <div style="margin-top:1.5rem">
+        <a href="coding.html" target="_blank" style="display:inline-flex;align-items:center;gap:0.75rem;font-family:var(--mono);font-size:0.8rem;letter-spacing:0.08em;text-transform:uppercase;padding:0.9rem 2.25rem;background:rgba(6,182,212,0.1);border:1px solid var(--accent2);color:var(--accent2);text-decoration:none;border-radius:8px;transition:all 0.2s" onmouseover="this.style.background='rgba(6,182,212,0.2)'" onmouseout="this.style.background='rgba(6,182,212,0.1)'">
+          🧠 See Full Examples →
+        </a>
+      </div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+      <div style="padding:0.5rem 1rem;background:var(--surface);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:0.7rem;color:var(--text3);display:flex;justify-content:space-between">
+        <span>nemo_solve.py</span>
+        <span style="color:var(--green)">● Two Sum → Hash Table</span>
+      </div>
+      <pre style="padding:1.25rem;font-family:var(--mono);font-size:0.75rem;line-height:1.7;color:var(--text2);overflow-x:auto;margin:0"><span style="color:#546e7a"># NeMo-WM generated — 0 LLM calls</span>
+<span style="color:#c792ea">def</span> <span style="color:#82aaff">two_sum</span>(<span style="color:#eeffff">nums</span>, <span style="color:#eeffff">target</span>):
+    <span style="color:#eeffff">seen</span> <span style="color:#89ddff">=</span> {}
+    <span style="color:#c792ea">for</span> <span style="color:#eeffff">i</span>, <span style="color:#eeffff">num</span> <span style="color:#c792ea">in</span> <span style="color:#82aaff">enumerate</span>(<span style="color:#eeffff">nums</span>):
+        <span style="color:#eeffff">comp</span> <span style="color:#89ddff">=</span> <span style="color:#eeffff">target</span> <span style="color:#89ddff">-</span> <span style="color:#eeffff">num</span>
+        <span style="color:#c792ea">if</span> <span style="color:#eeffff">comp</span> <span style="color:#c792ea">in</span> <span style="color:#eeffff">seen</span>:
+            <span style="color:#c792ea">return</span> [<span style="color:#eeffff">seen</span>[<span style="color:#eeffff">comp</span>], <span style="color:#eeffff">i</span>]
+        <span style="color:#eeffff">seen</span>[<span style="color:#eeffff">num</span>] <span style="color:#89ddff">=</span> <span style="color:#eeffff">i</span>
+    <span style="color:#c792ea">return</span> []
+<span style="color:#546e7a"># O(n) time, O(n) space</span></pre>
+    </div>
+  </div>
+
+  <!-- Language cards mini -->
+  <div style="margin-top:2.5rem;display:flex;gap:0.75rem;flex-wrap:wrap;justify-content:center">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:0.5rem 1rem;font-family:var(--mono);font-size:0.75rem;color:var(--text2)">🐍 Python <span style="color:var(--accent)">12</span></div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:0.5rem 1rem;font-family:var(--mono);font-size:0.75rem;color:var(--text2)">🟨 JS <span style="color:var(--accent)">9</span></div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:0.5rem 1rem;font-family:var(--mono);font-size:0.75rem;color:var(--text2)">☕ Java <span style="color:var(--accent)">8</span></div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:0.5rem 1rem;font-family:var(--mono);font-size:0.75rem;color:var(--text2)">⚡ C++ <span style="color:var(--accent)">6</span></div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:0.5rem 1rem;font-family:var(--mono);font-size:0.75rem;color:var(--text2)">🦀 Rust <span style="color:var(--accent)">4</span></div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:0.5rem 1rem;font-family:var(--mono);font-size:0.75rem;color:var(--text2)">🐹 Go <span style="color:var(--accent)">2</span></div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:0.5rem 1rem;font-family:var(--mono);font-size:0.75rem;color:var(--text2)">🔷 TS <span style="color:var(--accent)">1</span></div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:0.5rem 1rem;font-family:var(--mono);font-size:0.75rem;color:var(--text2)">💜 C# <span style="color:var(--accent)">1</span></div>
   </div>
 </section>
 

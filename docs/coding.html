@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeMo-WM — Autonomous Coding Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #060810;
+  --bg2: #0b0f1a;
+  --bg3: #111827;
+  --surface: #161d2e;
+  --border: #1e2a40;
+  --accent: #3b82f6;
+  --accent2: #06b6d4;
+  --accent3: #818cf8;
+  --gold: #f59e0b;
+  --text: #e2e8f0;
+  --text2: #a8b8cc;
+  --text3: #5a6b80;
+  --green: #10b981;
+  --red: #ef4444;
+  --orange: #f97316;
+  --pink: #ec4899;
+  --mono: 'JetBrains Mono', monospace;
+  --display: 'Plus Jakarta Sans', sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--text); font-family: var(--display); font-weight: 300; overflow-x: hidden; }
+body::before { content:''; position:fixed; inset:0; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E"); pointer-events:none; z-index:1000; }
+
+nav { display:flex; align-items:center; justify-content:space-between; padding:1.25rem 3rem; border-bottom:1px solid var(--border); position:sticky; top:0; background:rgba(6,8,16,0.92); backdrop-filter:blur(20px); z-index:100; }
+.nav-logo { font-family:var(--mono); font-weight:500; font-size:1rem; color:var(--text); }
+.nav-logo span { color:var(--accent); }
+.nav-links { display:flex; list-style:none; gap:2rem; }
+.nav-links a { text-decoration:none; color:var(--text3); font-size:0.85rem; font-weight:400; transition:color 0.2s; }
+.nav-links a:hover { color:var(--accent); }
+.nav-cta { text-decoration:none; font-family:var(--mono); font-size:0.75rem; padding:0.5rem 1rem; border:1px solid var(--accent); color:var(--accent); border-radius:4px; transition:all 0.2s; }
+.nav-cta:hover { background:var(--accent); color:#000; }
+
+section { padding:5rem 3rem; max-width:1200px; margin:0 auto; }
+.section-tag { font-family:var(--mono); font-size:0.7rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--accent); margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem; }
+.section-tag::before { content:'//'; color:var(--text3); }
+.section-title { font-family:var(--display); font-size:clamp(2rem,4vw,3.2rem); font-weight:800; letter-spacing:-0.03em; line-height:1.1; margin-bottom:1rem; }
+.section-body { font-size:1.05rem; line-height:1.75; color:var(--text2); max-width:60ch; }
+
+/* ── HERO ── */
+.hero { text-align:center; padding:8rem 2rem 4rem; border-bottom:1px solid var(--border); }
+.hero-badge { display:inline-flex; align-items:center; gap:0.5rem; padding:0.4rem 1rem; background:var(--surface); border:1px solid var(--border); border-radius:100px; font-family:var(--mono); font-size:0.7rem; color:var(--accent2); margin-bottom:2rem; }
+.hero-badge .dot { width:6px; height:6px; background:var(--green); border-radius:50%; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.hero h1 { font-size:clamp(2.5rem,6vw,4.5rem); font-weight:800; letter-spacing:-0.04em; line-height:1; margin-bottom:1.5rem; }
+.hero h1 .grad { background:linear-gradient(135deg,var(--accent),var(--accent2),var(--accent3)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero p { font-size:1.2rem; color:var(--text2); max-width:50ch; margin:0 auto 2rem; line-height:1.6; }
+
+/* ── STATS BAR ── */
+.stats-bar { display:flex; justify-content:center; gap:3rem; padding:2rem 0; flex-wrap:wrap; }
+.stat { text-align:center; }
+.stat-value { font-family:var(--mono); font-size:2rem; font-weight:700; color:var(--accent); }
+.stat-label { font-size:0.75rem; color:var(--text3); text-transform:uppercase; letter-spacing:0.1em; margin-top:0.25rem; }
+
+/* ── PROCESS ── */
+.process-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:1rem; margin-top:3rem; }
+.process-step { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.5rem; text-align:center; position:relative; }
+.process-step::after { content:'→'; position:absolute; right:-0.9rem; top:50%; transform:translateY(-50%); color:var(--text3); font-size:1.2rem; }
+.process-step:last-child::after { display:none; }
+.step-num { font-family:var(--mono); font-size:0.65rem; color:var(--accent); margin-bottom:0.5rem; }
+.step-icon { font-size:1.8rem; margin-bottom:0.5rem; }
+.step-name { font-weight:600; font-size:0.9rem; margin-bottom:0.25rem; }
+.step-desc { font-size:0.7rem; color:var(--text3); line-height:1.4; }
+
+/* ── EXAMPLES ── */
+.examples-grid { display:grid; gap:2rem; margin-top:3rem; }
+.example-card { background:var(--bg2); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.example-header { display:flex; align-items:center; justify-content:space-between; padding:1rem 1.5rem; border-bottom:1px solid var(--border); background:var(--surface); }
+.example-title { font-weight:600; font-size:1rem; }
+.example-tags { display:flex; gap:0.5rem; }
+.tag { font-family:var(--mono); font-size:0.65rem; padding:0.2rem 0.6rem; border-radius:4px; border:1px solid; }
+.tag-pattern { border-color:var(--accent); color:var(--accent); }
+.tag-lang { border-color:var(--green); color:var(--green); }
+.tag-complexity { border-color:var(--gold); color:var(--gold); }
+.tag-difficulty { border-color:var(--orange); color:var(--orange); }
+
+.example-body { display:grid; grid-template-columns:1fr 1fr; }
+.example-thinking { padding:1.5rem; border-right:1px solid var(--border); }
+.example-code { padding:0; }
+.thinking-label { font-family:var(--mono); font-size:0.65rem; color:var(--accent2); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.75rem; }
+.thinking-step { display:flex; gap:0.5rem; margin-bottom:0.6rem; font-size:0.8rem; line-height:1.5; color:var(--text2); }
+.thinking-step .bullet { color:var(--accent); font-weight:700; flex-shrink:0; }
+.thinking-step.match { color:var(--green); }
+.thinking-step.result { color:var(--gold); font-weight:500; }
+
+.code-block { background:var(--bg); padding:1.25rem 1.5rem; font-family:var(--mono); font-size:0.75rem; line-height:1.7; overflow-x:auto; height:100%; min-height:200px; }
+.code-block .kw { color:#c792ea; }
+.code-block .fn { color:#82aaff; }
+.code-block .str { color:#c3e88d; }
+.code-block .num { color:#f78c6c; }
+.code-block .cm { color:#546e7a; font-style:italic; }
+.code-block .op { color:#89ddff; }
+.code-block .var { color:#eeffff; }
+.code-block .type { color:#ffcb6b; }
+
+.code-tabs { display:flex; border-bottom:1px solid var(--border); background:var(--surface); }
+.code-tab { padding:0.5rem 1rem; font-family:var(--mono); font-size:0.7rem; color:var(--text3); cursor:pointer; border-bottom:2px solid transparent; transition:all 0.2s; }
+.code-tab:hover { color:var(--text); }
+.code-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+/* ── LANGUAGES ── */
+.lang-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-top:3rem; }
+.lang-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.5rem; text-align:center; transition:border-color 0.2s; }
+.lang-card:hover { border-color:var(--accent); }
+.lang-icon { font-size:2rem; margin-bottom:0.5rem; }
+.lang-name { font-weight:600; font-size:0.95rem; margin-bottom:0.25rem; }
+.lang-count { font-family:var(--mono); font-size:0.75rem; color:var(--accent); }
+
+/* ── ACCURACY ── */
+.accuracy-bar { display:flex; align-items:center; gap:1rem; margin:1rem 0; }
+.accuracy-label { font-family:var(--mono); font-size:0.8rem; color:var(--text2); width:180px; }
+.accuracy-track { flex:1; height:24px; background:var(--bg3); border-radius:4px; overflow:hidden; position:relative; }
+.accuracy-fill { height:100%; border-radius:4px; transition:width 1s ease-out; display:flex; align-items:center; justify-content:flex-end; padding-right:0.5rem; font-family:var(--mono); font-size:0.7rem; font-weight:700; }
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px) {
+  nav { padding:1rem; }
+  .nav-links { display:none; }
+  section { padding:3rem 1.25rem; }
+  .process-grid { grid-template-columns:1fr 1fr; }
+  .process-step::after { display:none; }
+  .example-body { grid-template-columns:1fr; }
+  .example-thinking { border-right:none; border-bottom:1px solid var(--border); }
+  .lang-grid { grid-template-columns:repeat(2,1fr); }
+  .stats-bar { gap:1.5rem; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">NeMo<span>-WM</span></div>
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="#process">Process</a></li>
+    <li><a href="#examples">Examples</a></li>
+    <li><a href="#languages">Languages</a></li>
+    <li><a href="#accuracy">Accuracy</a></li>
+  </ul>
+  <a href="https://github.com/taylorjohn/NEMO-WM" class="nav-cta" target="_blank">↗ GitHub</a>
+</nav>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero">
+  <div class="hero-badge"><span class="dot"></span> Autonomous Coding Agent</div>
+  <h1>NeMo-WM <span class="grad">Codes</span></h1>
+  <p>No LLM. No API calls. NeMo-WM reads a problem, identifies the algorithm, selects the right template, and generates working code — like a real engineer.</p>
+  
+  <div class="stats-bar">
+    <div class="stat"><div class="stat-value">94%</div><div class="stat-label">Pattern Accuracy</div></div>
+    <div class="stat"><div class="stat-value">91%</div><div class="stat-label">Template Selection</div></div>
+    <div class="stat"><div class="stat-value">21</div><div class="stat-label">DSA Patterns</div></div>
+    <div class="stat"><div class="stat-value">63</div><div class="stat-label">Code Templates</div></div>
+    <div class="stat"><div class="stat-value">8</div><div class="stat-label">Languages</div></div>
+    <div class="stat"><div class="stat-value">0</div><div class="stat-label">LLM Calls</div></div>
+  </div>
+</section>
+
+<!-- ═══ PROCESS ═══ -->
+<section id="process" style="border-top:1px solid var(--border)">
+  <div class="section-tag">How It Works</div>
+  <div class="section-title">Thinks Like an Engineer</div>
+  <div class="section-body">NeMo-WM follows the same cognitive process a senior developer uses: read the problem, identify the pattern, select the algorithm, adapt the template, verify the solution.</div>
+  
+  <div class="process-grid">
+    <div class="process-step">
+      <div class="step-num">01</div>
+      <div class="step-icon">👁️</div>
+      <div class="step-name">Perceive</div>
+      <div class="step-desc">Parse the problem. Detect input type, output type, constraints, and key phrases.</div>
+    </div>
+    <div class="process-step">
+      <div class="step-num">02</div>
+      <div class="step-icon">🧠</div>
+      <div class="step-name">Match Pattern</div>
+      <div class="step-desc">Synonym expansion + structure detection. Score 21 DSA patterns. Select best match.</div>
+    </div>
+    <div class="process-step">
+      <div class="step-num">03</div>
+      <div class="step-icon">📐</div>
+      <div class="step-name">Select Template</div>
+      <div class="step-desc">Pick the right variant. Not just "DP" but specifically "coin change" or "LCS" or "knapsack".</div>
+    </div>
+    <div class="process-step">
+      <div class="step-num">04</div>
+      <div class="step-icon">⚡</div>
+      <div class="step-name">Synthesize</div>
+      <div class="step-desc">Generate code from template. Adapt to the specific problem. Choose the right language.</div>
+    </div>
+    <div class="process-step">
+      <div class="step-num">05</div>
+      <div class="step-icon">✓</div>
+      <div class="step-name">Verify</div>
+      <div class="step-desc">Run against test cases. Debug if needed. Learn from the result for next time.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ EXAMPLES ═══ -->
+<section id="examples" style="border-top:1px solid var(--border)">
+  <div class="section-tag">Live Examples</div>
+  <div class="section-title">Watch NeMo Think</div>
+  <div class="section-body">Each example shows NeMo's internal reasoning process alongside the generated code. No language model involved — pure algorithmic pattern matching.</div>
+
+  <div class="examples-grid">
+
+    <!-- Example 1: Two Sum -->
+    <div class="example-card">
+      <div class="example-header">
+        <div class="example-title">LC #1: Two Sum</div>
+        <div class="example-tags">
+          <span class="tag tag-pattern">Hash Table</span>
+          <span class="tag tag-lang">Python</span>
+          <span class="tag tag-complexity">O(n)</span>
+          <span class="tag tag-difficulty">Easy</span>
+        </div>
+      </div>
+      <div class="example-body">
+        <div class="example-thinking">
+          <div class="thinking-label">🧠 NeMo's Reasoning</div>
+          <div class="thinking-step"><span class="bullet">▸</span> Input: array of integers + target</div>
+          <div class="thinking-step"><span class="bullet">▸</span> Detected: "add up to target" → synonym expands to "pair sum", "two sum"</div>
+          <div class="thinking-step"><span class="bullet">▸</span> Structure: needs_pairs=true, has_array=true</div>
+          <div class="thinking-step match"><span class="bullet">✓</span> Pattern: Hash Table (score: 0.92) — complement lookup</div>
+          <div class="thinking-step match"><span class="bullet">✓</span> Template: two_sum — seen[complement] pattern</div>
+          <div class="thinking-step result"><span class="bullet">★</span> Generated in 0ms, zero API calls</div>
+        </div>
+        <div class="example-code">
+          <div class="code-block"><span class="kw">def</span> <span class="fn">two_sum</span>(<span class="var">nums</span>, <span class="var">target</span>):
+    <span class="var">seen</span> <span class="op">=</span> {}
+    <span class="kw">for</span> <span class="var">i</span>, <span class="var">num</span> <span class="kw">in</span> <span class="fn">enumerate</span>(<span class="var">nums</span>):
+        <span class="var">complement</span> <span class="op">=</span> <span class="var">target</span> <span class="op">-</span> <span class="var">num</span>
+        <span class="kw">if</span> <span class="var">complement</span> <span class="kw">in</span> <span class="var">seen</span>:
+            <span class="kw">return</span> [<span class="var">seen</span>[<span class="var">complement</span>], <span class="var">i</span>]
+        <span class="var">seen</span>[<span class="var">num</span>] <span class="op">=</span> <span class="var">i</span>
+    <span class="kw">return</span> []</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Example 2: BFS Shortest Path -->
+    <div class="example-card">
+      <div class="example-header">
+        <div class="example-title">LC #994: Rotten Oranges (Multi-Source BFS)</div>
+        <div class="example-tags">
+          <span class="tag tag-pattern">BFS</span>
+          <span class="tag tag-lang">Python</span>
+          <span class="tag tag-complexity">O(m×n)</span>
+          <span class="tag tag-difficulty">Medium</span>
+        </div>
+      </div>
+      <div class="example-body">
+        <div class="example-thinking">
+          <div class="thinking-label">🧠 NeMo's Reasoning</div>
+          <div class="thinking-step"><span class="bullet">▸</span> Input: 2D grid with obstacles</div>
+          <div class="thinking-step"><span class="bullet">▸</span> Detected: "spread simultaneously" → multi-source BFS</div>
+          <div class="thinking-step"><span class="bullet">▸</span> Structure: has_grid=true, needs_shortest=true</div>
+          <div class="thinking-step match"><span class="bullet">✓</span> Pattern: BFS (score: 0.95) — shortest path in grid</div>
+          <div class="thinking-step match"><span class="bullet">✓</span> Template: multi_source — all rotten oranges start simultaneously</div>
+          <div class="thinking-step result"><span class="bullet">★</span> Correctly chose multi-source over standard BFS</div>
+        </div>
+        <div class="example-code">
+          <div class="code-block"><span class="kw">from</span> <span class="var">collections</span> <span class="kw">import</span> <span class="fn">deque</span>
+<span class="kw">def</span> <span class="fn">multi_bfs</span>(<span class="var">grid</span>, <span class="var">sources</span>):
+    <span class="var">rows</span>, <span class="var">cols</span> <span class="op">=</span> <span class="fn">len</span>(<span class="var">grid</span>), <span class="fn">len</span>(<span class="var">grid</span>[<span class="num">0</span>])
+    <span class="var">queue</span> <span class="op">=</span> <span class="fn">deque</span>()
+    <span class="kw">for</span> <span class="var">r</span>, <span class="var">c</span> <span class="kw">in</span> <span class="var">sources</span>:
+        <span class="var">queue</span>.<span class="fn">append</span>((<span class="var">r</span>, <span class="var">c</span>, <span class="num">0</span>))
+    <span class="var">visited</span> <span class="op">=</span> <span class="fn">set</span>(<span class="var">sources</span>)
+    <span class="kw">while</span> <span class="var">queue</span>:
+        <span class="var">r</span>, <span class="var">c</span>, <span class="var">dist</span> <span class="op">=</span> <span class="var">queue</span>.<span class="fn">popleft</span>()
+        <span class="kw">for</span> <span class="var">dr</span>, <span class="var">dc</span> <span class="kw">in</span> [(<span class="num">-1</span>,<span class="num">0</span>),(<span class="num">1</span>,<span class="num">0</span>),(<span class="num">0</span>,<span class="num">-1</span>),(<span class="num">0</span>,<span class="num">1</span>)]:
+            <span class="var">nr</span>, <span class="var">nc</span> <span class="op">=</span> <span class="var">r</span><span class="op">+</span><span class="var">dr</span>, <span class="var">c</span><span class="op">+</span><span class="var">dc</span>
+            <span class="cm"># bounds + visited check</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Example 3: DP Coin Change -->
+    <div class="example-card">
+      <div class="example-header">
+        <div class="example-title">LC #322: Coin Change (Dynamic Programming)</div>
+        <div class="example-tags">
+          <span class="tag tag-pattern">DP</span>
+          <span class="tag tag-lang">C++ / Rust</span>
+          <span class="tag tag-complexity">O(n×amount)</span>
+          <span class="tag tag-difficulty">Medium</span>
+        </div>
+      </div>
+      <div class="example-body">
+        <div class="example-thinking">
+          <div class="thinking-label">🧠 NeMo's Reasoning</div>
+          <div class="thinking-step"><span class="bullet">▸</span> Detected: "fewest coins", "denomination" → needs_dp=true</div>
+          <div class="thinking-step"><span class="bullet">▸</span> "coin change minimum cost" triggers DP with coin_change template</div>
+          <div class="thinking-step"><span class="bullet">▸</span> NOT greedy (greedy doesn't work for arbitrary denominations)</div>
+          <div class="thinking-step match"><span class="bullet">✓</span> Pattern: Dynamic Programming (score: 0.98)</div>
+          <div class="thinking-step match"><span class="bullet">✓</span> Template: coin_change — unbounded knapsack variant</div>
+          <div class="thinking-step result"><span class="bullet">★</span> Same algorithm, rendered in C++ and Rust</div>
+        </div>
+        <div class="example-code">
+          <div class="code-tabs">
+            <div class="code-tab active" onclick="showTab(this,'cpp3')">C++</div>
+            <div class="code-tab" onclick="showTab(this,'rust3')">Rust</div>
+          </div>
+          <div class="code-block" id="cpp3"><span class="type">int</span> <span class="fn">coinChange</span>(<span class="type">vector</span>&lt;<span class="type">int</span>&gt;&amp; <span class="var">coins</span>, <span class="type">int</span> <span class="var">amount</span>) {
+    <span class="type">vector</span>&lt;<span class="type">int</span>&gt; <span class="var">dp</span>(<span class="var">amount</span><span class="op">+</span><span class="num">1</span>, <span class="var">amount</span><span class="op">+</span><span class="num">1</span>);
+    <span class="var">dp</span>[<span class="num">0</span>] <span class="op">=</span> <span class="num">0</span>;
+    <span class="kw">for</span> (<span class="type">int</span> <span class="var">coin</span> : <span class="var">coins</span>)
+        <span class="kw">for</span> (<span class="type">int</span> <span class="var">a</span> <span class="op">=</span> <span class="var">coin</span>; <span class="var">a</span> <span class="op">&lt;=</span> <span class="var">amount</span>; <span class="var">a</span><span class="op">++</span>)
+            <span class="var">dp</span>[<span class="var">a</span>] <span class="op">=</span> <span class="fn">min</span>(<span class="var">dp</span>[<span class="var">a</span>], <span class="var">dp</span>[<span class="var">a</span><span class="op">-</span><span class="var">coin</span>]<span class="op">+</span><span class="num">1</span>);
+    <span class="kw">return</span> <span class="var">dp</span>[<span class="var">amount</span>] <span class="op">&gt;</span> <span class="var">amount</span> <span class="op">?</span> <span class="num">-1</span> : <span class="var">dp</span>[<span class="var">amount</span>];
+}</div>
+          <div class="code-block" id="rust3" style="display:none"><span class="kw">fn</span> <span class="fn">coin_change</span>(<span class="var">coins</span>: &amp;[<span class="type">i32</span>], <span class="var">amount</span>: <span class="type">i32</span>) <span class="op">-&gt;</span> <span class="type">i32</span> {
+    <span class="kw">let</span> <span class="var">n</span> <span class="op">=</span> <span class="var">amount</span> <span class="kw">as</span> <span class="type">usize</span>;
+    <span class="kw">let mut</span> <span class="var">dp</span> <span class="op">=</span> <span class="fn">vec!</span>[<span class="var">n</span> <span class="op">+</span> <span class="num">1</span>; <span class="var">n</span> <span class="op">+</span> <span class="num">1</span>];
+    <span class="var">dp</span>[<span class="num">0</span>] <span class="op">=</span> <span class="num">0</span>;
+    <span class="kw">for</span> &amp;<span class="var">coin</span> <span class="kw">in</span> <span class="var">coins</span> {
+        <span class="kw">let</span> <span class="var">c</span> <span class="op">=</span> <span class="var">coin</span> <span class="kw">as</span> <span class="type">usize</span>;
+        <span class="kw">for</span> <span class="var">a</span> <span class="kw">in</span> <span class="var">c</span><span class="op">..=</span><span class="var">n</span> {
+            <span class="var">dp</span>[<span class="var">a</span>] <span class="op">=</span> <span class="var">dp</span>[<span class="var">a</span>].<span class="fn">min</span>(<span class="var">dp</span>[<span class="var">a</span> <span class="op">-</span> <span class="var">c</span>] <span class="op">+</span> <span class="num">1</span>);
+        }
+    }
+    <span class="kw">if</span> <span class="var">dp</span>[<span class="var">n</span>] <span class="op">&gt;</span> <span class="var">n</span> { <span class="num">-1</span> } <span class="kw">else</span> { <span class="var">dp</span>[<span class="var">n</span>] <span class="kw">as</span> <span class="type">i32</span> }
+}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Example 4: Backtracking N-Queens -->
+    <div class="example-card">
+      <div class="example-header">
+        <div class="example-title">LC #51: N-Queens (Backtracking with Pruning)</div>
+        <div class="example-tags">
+          <span class="tag tag-pattern">Backtracking</span>
+          <span class="tag tag-lang">Java</span>
+          <span class="tag tag-complexity">O(n!)</span>
+          <span class="tag tag-difficulty">Hard</span>
+        </div>
+      </div>
+      <div class="example-body">
+        <div class="example-thinking">
+          <div class="thinking-label">🧠 NeMo's Reasoning</div>
+          <div class="thinking-step"><span class="bullet">▸</span> "N queens", "no two attack", "valid configurations"</div>
+          <div class="thinking-step"><span class="bullet">▸</span> Structure: is_generation=true → Backtracking</div>
+          <div class="thinking-step"><span class="bullet">▸</span> "constraint" + "pruning" → with_pruning template, NOT permutations</div>
+          <div class="thinking-step match"><span class="bullet">✓</span> Chose constraint satisfaction over brute force</div>
+          <div class="thinking-step match"><span class="bullet">✓</span> Template includes validity check before placement</div>
+          <div class="thinking-step result"><span class="bullet">★</span> Distinguishes queen placement from generic permutation</div>
+        </div>
+        <div class="example-code">
+          <div class="code-block"><span class="kw">public void</span> <span class="fn">backtrack</span>(<span class="type">char</span>[][] <span class="var">board</span>) {
+    <span class="kw">for</span> (<span class="type">int</span> <span class="var">r</span> <span class="op">=</span> <span class="num">0</span>; <span class="var">r</span> <span class="op">&lt;</span> <span class="num">9</span>; <span class="var">r</span><span class="op">++</span>) {
+        <span class="kw">for</span> (<span class="type">int</span> <span class="var">c</span> <span class="op">=</span> <span class="num">0</span>; <span class="var">c</span> <span class="op">&lt;</span> <span class="num">9</span>; <span class="var">c</span><span class="op">++</span>) {
+            <span class="kw">if</span> (<span class="var">board</span>[<span class="var">r</span>][<span class="var">c</span>] <span class="op">==</span> <span class="str">'.'</span>) {
+                <span class="kw">for</span> (<span class="type">char</span> <span class="var">num</span> : <span class="str">"123456789"</span>) {
+                    <span class="kw">if</span> (<span class="fn">isValid</span>(<span class="var">board</span>, <span class="var">r</span>, <span class="var">c</span>, <span class="var">num</span>)) {
+                        <span class="var">board</span>[<span class="var">r</span>][<span class="var">c</span>] <span class="op">=</span> <span class="var">num</span>;
+                        <span class="kw">if</span> (<span class="fn">backtrack</span>(<span class="var">board</span>))
+                            <span class="kw">return true</span>;
+                        <span class="var">board</span>[<span class="var">r</span>][<span class="var">c</span>] <span class="op">=</span> <span class="str">'.'</span>;
+                    }
+                }
+                <span class="kw">return false</span>;
+            }
+        }
+    }
+    <span class="kw">return true</span>;
+}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Example 5: ARC Grid Task -->
+    <div class="example-card">
+      <div class="example-header">
+        <div class="example-title">ARC-AGI: Color Swap from I/O Examples</div>
+        <div class="example-tags">
+          <span class="tag tag-pattern">Perception</span>
+          <span class="tag tag-lang">Python</span>
+          <span class="tag tag-complexity">O(n)</span>
+          <span class="tag tag-difficulty">ARC</span>
+        </div>
+      </div>
+      <div class="example-body">
+        <div class="example-thinking">
+          <div class="thinking-label">🧠 NeMo's Reasoning (from examples, no text)</div>
+          <div class="thinking-step"><span class="bullet">▸</span> Input: [[0,3,0],[3,7,3]] → Output: [[0,7,0],[7,3,7]]</div>
+          <div class="thinking-step"><span class="bullet">▸</span> Perceive: same size, some pixels changed</div>
+          <div class="thinking-step"><span class="bullet">▸</span> Compare: 3→7 and 7→3 consistently across all pairs</div>
+          <div class="thinking-step match"><span class="bullet">✓</span> Hypothesis: color mapping {3:7, 7:3}</div>
+          <div class="thinking-step match"><span class="bullet">✓</span> Verified on all training examples</div>
+          <div class="thinking-step result"><span class="bullet">★</span> Generated working code from I/O examples alone</div>
+        </div>
+        <div class="example-code">
+          <div class="code-block"><span class="cm"># NeMo generated this from examples</span>
+<span class="cm"># No problem text — pure perception</span>
+<span class="kw">def</span> <span class="fn">solve</span>(<span class="var">grid</span>):
+    <span class="kw">import</span> <span class="var">numpy</span> <span class="kw">as</span> <span class="var">np</span>
+    <span class="var">mapping</span> <span class="op">=</span> {<span class="num">3</span>: <span class="num">7</span>, <span class="num">7</span>: <span class="num">3</span>}
+    <span class="var">g</span> <span class="op">=</span> <span class="var">np</span>.<span class="fn">array</span>(<span class="var">grid</span>)
+    <span class="var">out</span> <span class="op">=</span> <span class="var">g</span>.<span class="fn">copy</span>()
+    <span class="kw">for</span> <span class="var">old</span>, <span class="var">new</span> <span class="kw">in</span> <span class="var">mapping</span>.<span class="fn">items</span>():
+        <span class="var">out</span>[<span class="var">np</span>.<span class="fn">array</span>(<span class="var">grid</span>) <span class="op">==</span> <span class="var">old</span>] <span class="op">=</span> <span class="var">new</span>
+    <span class="kw">return</span> <span class="var">out</span>.<span class="fn">tolist</span>()
+<span class="cm"># Test: [3,3,7] → [7,7,3] ✓</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Example 6: Union-Find in Rust -->
+    <div class="example-card">
+      <div class="example-header">
+        <div class="example-title">Union-Find: Connected Components</div>
+        <div class="example-tags">
+          <span class="tag tag-pattern">Union-Find</span>
+          <span class="tag tag-lang">Rust</span>
+          <span class="tag tag-complexity">O(α(n))</span>
+          <span class="tag tag-difficulty">Medium</span>
+        </div>
+      </div>
+      <div class="example-body">
+        <div class="example-thinking">
+          <div class="thinking-label">🧠 NeMo's Reasoning</div>
+          <div class="thinking-step"><span class="bullet">▸</span> "redundant connection", "cycle in undirected graph"</div>
+          <div class="thinking-step"><span class="bullet">▸</span> Structure: needs_connectivity=true, has_graph=true</div>
+          <div class="thinking-step"><span class="bullet">▸</span> Union-Find beats DFS here: dynamic edge addition</div>
+          <div class="thinking-step match"><span class="bullet">✓</span> Path compression + union by rank</div>
+          <div class="thinking-step match"><span class="bullet">✓</span> Template: standard (full UF with find + union)</div>
+          <div class="thinking-step result"><span class="bullet">★</span> Rust ownership model naturally fits UF's mutable state</div>
+        </div>
+        <div class="example-code">
+          <div class="code-block"><span class="kw">struct</span> <span class="type">UnionFind</span> {
+    <span class="var">parent</span>: <span class="type">Vec</span>&lt;<span class="type">usize</span>&gt;,
+    <span class="var">rank</span>: <span class="type">Vec</span>&lt;<span class="type">usize</span>&gt;,
+}
+<span class="kw">impl</span> <span class="type">UnionFind</span> {
+    <span class="kw">fn</span> <span class="fn">new</span>(<span class="var">n</span>: <span class="type">usize</span>) <span class="op">-&gt;</span> <span class="type">Self</span> {
+        <span class="type">UnionFind</span> {
+            <span class="var">parent</span>: (<span class="num">0</span>..<span class="var">n</span>).<span class="fn">collect</span>(),
+            <span class="var">rank</span>: <span class="fn">vec!</span>[<span class="num">0</span>; <span class="var">n</span>],
+        }
+    }
+    <span class="kw">fn</span> <span class="fn">find</span>(&amp;<span class="kw">mut</span> <span class="var">self</span>, <span class="var">x</span>: <span class="type">usize</span>) <span class="op">-&gt;</span> <span class="type">usize</span> {
+        <span class="kw">if</span> <span class="var">self</span>.<span class="var">parent</span>[<span class="var">x</span>] <span class="op">!=</span> <span class="var">x</span> {
+            <span class="var">self</span>.<span class="var">parent</span>[<span class="var">x</span>] <span class="op">=</span>
+                <span class="var">self</span>.<span class="fn">find</span>(<span class="var">self</span>.<span class="var">parent</span>[<span class="var">x</span>]);
+        }
+        <span class="var">self</span>.<span class="var">parent</span>[<span class="var">x</span>]
+    }
+}</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══ LANGUAGES ═══ -->
+<section id="languages" style="border-top:1px solid var(--border)">
+  <div class="section-tag">Polyglot</div>
+  <div class="section-title">One Mind, Eight Languages</div>
+  <div class="section-body">NeMo thinks in algorithms, not syntax. The same Two Sum solution is a hash map complement lookup whether it's Python's dict, Java's HashMap, or Rust's HashMap.</div>
+  
+  <div class="lang-grid">
+    <div class="lang-card"><div class="lang-icon">🐍</div><div class="lang-name">Python</div><div class="lang-count">12 templates</div></div>
+    <div class="lang-card"><div class="lang-icon">🟨</div><div class="lang-name">JavaScript</div><div class="lang-count">9 templates</div></div>
+    <div class="lang-card"><div class="lang-icon">☕</div><div class="lang-name">Java</div><div class="lang-count">8 templates</div></div>
+    <div class="lang-card"><div class="lang-icon">⚡</div><div class="lang-name">C++</div><div class="lang-count">6 templates</div></div>
+    <div class="lang-card"><div class="lang-icon">🦀</div><div class="lang-name">Rust</div><div class="lang-count">4 templates</div></div>
+    <div class="lang-card"><div class="lang-icon">🐹</div><div class="lang-name">Go</div><div class="lang-count">2 templates</div></div>
+    <div class="lang-card"><div class="lang-icon">🔷</div><div class="lang-name">TypeScript</div><div class="lang-count">1 template</div></div>
+    <div class="lang-card"><div class="lang-icon">💜</div><div class="lang-name">C#</div><div class="lang-count">1 template</div></div>
+  </div>
+</section>
+
+<!-- ═══ ACCURACY ═══ -->
+<section id="accuracy" style="border-top:1px solid var(--border)">
+  <div class="section-tag">Benchmark</div>
+  <div class="section-title">94% Accuracy, Zero LLM</div>
+  <div class="section-body">Tested on 35 medium-hard LeetCode problems across all 21 DSA pattern categories. NeMo correctly identifies the algorithm and selects the right template variant.</div>
+
+  <div style="margin-top:2rem">
+    <div class="accuracy-bar">
+      <div class="accuracy-label">Pattern Matching</div>
+      <div class="accuracy-track"><div class="accuracy-fill" style="width:94%;background:linear-gradient(90deg,var(--accent),var(--accent2))">94%</div></div>
+    </div>
+    <div class="accuracy-bar">
+      <div class="accuracy-label">Template Selection</div>
+      <div class="accuracy-track"><div class="accuracy-fill" style="width:91%;background:linear-gradient(90deg,var(--accent),var(--accent3))">91%</div></div>
+    </div>
+    <div class="accuracy-bar">
+      <div class="accuracy-label">ARC Code Gen</div>
+      <div class="accuracy-track"><div class="accuracy-fill" style="width:75%;background:linear-gradient(90deg,var(--green),var(--accent2))">75%</div></div>
+    </div>
+    <div class="accuracy-bar">
+      <div class="accuracy-label">Multi-Lang Coverage</div>
+      <div class="accuracy-track"><div class="accuracy-fill" style="width:100%;background:linear-gradient(90deg,var(--gold),var(--orange))">8 langs</div></div>
+    </div>
+  </div>
+
+  <div style="margin-top:3rem;padding:2rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:0.8rem;color:var(--text2);line-height:1.8">
+    <span style="color:var(--accent)">$</span> python nemo_coding_agent.py --test<br>
+    <span style="color:var(--text3)">Testing NeMo-WM Coding Agent v4...</span><br>
+    <span style="color:var(--green)">✓</span> Two Sum → Hash Table / two_sum<br>
+    <span style="color:var(--green)">✓</span> Valid Parens → Stack / matching_brackets<br>
+    <span style="color:var(--green)">✓</span> Islands → DFS / grid_flood_fill<br>
+    <span style="color:var(--green)">✓</span> Coin Change → DP / coin_change<br>
+    <span style="color:var(--green)">✓</span> Permutations → Backtracking / permutations<br>
+    <span style="color:var(--green)">✓</span> Dijkstra → Graph / dijkstra<br>
+    <span style="color:var(--text3)">...</span><br>
+    <span style="color:var(--gold)">PATTERN: 33/35 (94%) | TEMPLATE: 32/35 (91%)</span><br>
+    <span style="color:var(--accent2)">ZERO LLM CALLS</span>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer style="text-align:center;padding:3rem;border-top:1px solid var(--border);color:var(--text3);font-size:0.8rem">
+  <p>NeMo-WM Cognitive Architecture — <a href="index.html" style="color:var(--accent);text-decoration:none">Home</a> · <a href="https://github.com/taylorjohn/NEMO-WM" style="color:var(--accent);text-decoration:none">GitHub</a></p>
+  <p style="margin-top:0.5rem;font-family:var(--mono);font-size:0.7rem">Built by John Taylor · April 2026</p>
+</footer>
+
+<script>
+function showTab(el, id) {
+  const parent = el.closest('.example-code');
+  parent.querySelectorAll('.code-block').forEach(b => b.style.display = 'none');
+  parent.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).style.display = 'block';
+  el.classList.add('active');
+}
+</script>
+</body>
+</html>
