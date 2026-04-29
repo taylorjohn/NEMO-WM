@@ -78,7 +78,7 @@
 | VPP Augmentation | **+25.1% +/- 2.7%** loss | Real data, 3 runs |
 | Self-Narration | **2.8us/call** | 350,866 Hz |
 | Mood States | **16 emergent** | From neuromodulatory signals |
-| Introspective Questions | **17/17** | DreamerV3: 2/17 |
+| Introspective Capabilities | **28 grounded + tested / 38 total** | DreamerV3: ~2 |
 
 ---
 
@@ -285,7 +285,7 @@ Retrieve latency:    0.076ms (brute force: 183ms = 2414x faster)
 
 | Capability | NeMo-WM | DreamerV3 | Diff. Policy | DINO-WM | TD-MPC2 |
 |---|---|---|---|---|---|
-| Introspective Qs | **17/17** | 2/17 | 0/17 | 1/17 | 2/17 |
+| Introspective Capabilities | **28 grounded + tested / 38 total** | ~2 | 0 | ~1 | ~2 |
 | Episodic Memory | **Yes** | No | No | No | No |
 | Schema Learning | **DiVeQ** | No | No | No | No |
 | Self-Narration | **5 components** | No | No | No | No |
@@ -297,6 +297,16 @@ Retrieve latency:    0.076ms (brute force: 183ms = 2414x faster)
 
 ---
 
+
+### Capabilities Catalog
+
+The full enumeration of NeMo-WM's 38 introspective capabilities is in [INTROSPECTIVE_CAPABILITIES_CATALOG.md](./INTROSPECTIVE_CAPABILITIES_CATALOG.md), generated from [introspective_capabilities_catalog.py](./introspective_capabilities_catalog.py):
+
+- **28 production-grade** (cited grounding + executable test)
+- **6 grounded-only** (cited grounding, implementation pending)
+- **4 tested-only** (working code, citation pending)
+
+To add a capability, edit the Python file and re-run. The catalog regenerates automatically -- no drift between code and docs.
 ## Neuromodulatory Signals
 
 | Signal | Biological Analogue | Computational Role |
